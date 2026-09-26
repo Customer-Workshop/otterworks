@@ -1,0 +1,5971 @@
+{
+  "census_version": 1,
+  "source_family": "oracle",
+  "identifier_case": "default",
+  "mode": "offline_ddl",
+  "inputs": [
+    {
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "sha256": "d995f979986279bebca15d6ffeb415eb29142dcbf34c10ad2819f1507a51bcc4",
+      "bytes": 9597
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "sha256": "82bb170a52a38a96cfafd9bf7312e4e805f022422118ac428283d68dd514c485",
+      "bytes": 21587
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/schema/03_seed_static.sql",
+      "sha256": "ec5cba7751a75dc5450e9a62a0c211f047245c2658e9990e06d5c2121a89914c",
+      "bytes": 14341
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/schema/04_jobs.sql",
+      "sha256": "95bc8b949f4514099385c68894d02caf83b5fabb301186aff7cb83e25e2e777d",
+      "bytes": 1554
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/schema/04_upgrade_static.sql",
+      "sha256": "b357aa3457bd6d4506315651a27e6f12386f52c81d5c30c346a8950f2dfb8e3f",
+      "bytes": 6287
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+      "sha256": "94728593735247e7a2fccfe7db56613cf99e1b0be46a24924e5395a483d09b71",
+      "bytes": 3132
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/packages/02_pkg_plans.sql",
+      "sha256": "ae58f53d325488e2a6c52c3496355b18fd9064b5ecc77ef001597da645ac90b4",
+      "bytes": 4429
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/packages/03_pkg_rating.sql",
+      "sha256": "e755afbb9cf8253a8c6fb3546a553941ee2e14b307469b392dfca5e97249ff0e",
+      "bytes": 9618
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/packages/04_pkg_invoicing.sql",
+      "sha256": "c6b1b5b24dbb0dc1526aa227bbc14dc73567cfaf092edf8546f1a3d04411dd2a",
+      "bytes": 8276
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql",
+      "sha256": "26d0b2fc7de60869e729c6569053e19145464c2338685e937aa59286bc16e93d",
+      "bytes": 4316
+    }
+  ],
+  "tables": {
+    "CODES": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "CODE_TYPE",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CODE_VAL",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CODE_DESC",
+          "type": "VARCHAR2",
+          "length": 80,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "CODE_TYPE",
+        "CODE_VAL"
+      ],
+      "unique": [],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 10,
+      "primary_key_name": "PK_CODES"
+    },
+    "TENANTS": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "NAME",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TAX_EXEMPT_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "'N'",
+          "comment": null
+        },
+        {
+          "name": "STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": "CODES('TENANT_STATUS')"
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [
+        {
+          "name": "UQ_TENANTS_NAME",
+          "columns": [
+            "NAME"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 40,
+      "primary_key_name": "PK_TENANTS"
+    },
+    "PLANS": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CODE",
+          "type": "VARCHAR2",
+          "length": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TIER_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": "CODES('PLAN_TIER')"
+        },
+        {
+          "name": "MONTHLY_FEE",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 2,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "INCLUDED_UNITS",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 10,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "OVERAGE_RATE",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 6,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ACTIVE_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "'Y'",
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [
+        {
+          "name": "UQ_PLANS_CODE",
+          "columns": [
+            "CODE"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 49,
+      "primary_key_name": "PK_PLANS"
+    },
+    "SUBSCRIPTIONS": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PLAN_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STARTS_ON",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ENDS_ON",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": "CODES('SUB_STATUS')"
+        },
+        {
+          "name": "SUSPENDED_ON",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [],
+      "foreign_keys": [
+        {
+          "name": "FK_SUB_TENANT",
+          "columns": [
+            "TENANT_ID"
+          ],
+          "ref_table": "TENANTS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        },
+        {
+          "name": "FK_SUB_PLAN",
+          "columns": [
+            "PLAN_ID"
+          ],
+          "ref_table": "PLANS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 61,
+      "primary_key_name": "PK_SUBSCRIPTIONS"
+    },
+    "USAGE_EVENTS": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "OCCURRED_AT",
+          "type": "TIMESTAMP",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UNITS",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 10,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "KIND_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": "CODES('USAGE_KIND')"
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [],
+      "foreign_keys": [
+        {
+          "name": "FK_USAGE_TENANT",
+          "columns": [
+            "TENANT_ID"
+          ],
+          "ref_table": "TENANTS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 74,
+      "primary_key_name": "PK_USAGE_EVENTS"
+    },
+    "RATING_PERIODS": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PERIOD_START",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PERIOD_END",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [
+        {
+          "name": "UQ_RATING_PERIODS",
+          "columns": [
+            "TENANT_ID",
+            "PERIOD_START"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "FK_RP_TENANT",
+          "columns": [
+            "TENANT_ID"
+          ],
+          "ref_table": "TENANTS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 84,
+      "primary_key_name": "PK_RATING_PERIODS"
+    },
+    "RATING_RESULTS": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PERIOD_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SUBSCRIPTION_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "USED_UNITS",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 10,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "QUOTA_UNITS",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 10,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ROLLOVER_UNITS",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 10,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "BILLABLE_UNITS",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 10,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "OVERAGE_AMOUNT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 2,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREATED_AT",
+          "type": "TIMESTAMP",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [],
+      "foreign_keys": [
+        {
+          "name": "FK_RR_PERIOD",
+          "columns": [
+            "PERIOD_ID"
+          ],
+          "ref_table": "RATING_PERIODS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        },
+        {
+          "name": "FK_RR_SUB",
+          "columns": [
+            "SUBSCRIPTION_ID"
+          ],
+          "ref_table": "SUBSCRIPTIONS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 94,
+      "primary_key_name": "PK_RATING_RESULTS"
+    },
+    "INVOICES": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PERIOD_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ISSUED_AT",
+          "type": "TIMESTAMP",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SUBTOTAL",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 2,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TAX",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 2,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TOTAL",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 2,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": "CODES('INV_STATUS')"
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [],
+      "foreign_keys": [
+        {
+          "name": "FK_INV_TENANT",
+          "columns": [
+            "TENANT_ID"
+          ],
+          "ref_table": "TENANTS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        },
+        {
+          "name": "FK_INV_PERIOD",
+          "columns": [
+            "PERIOD_ID"
+          ],
+          "ref_table": "RATING_PERIODS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 109,
+      "primary_key_name": "PK_INVOICES"
+    },
+    "INVOICE_LINES": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "INVOICE_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LINE_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 6,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LINE_TYPE",
+          "type": "VARCHAR2",
+          "length": 10,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "DESCRIPTION",
+          "type": "VARCHAR2",
+          "length": 400,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "AMOUNT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 2,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [
+        {
+          "name": "UQ_INVOICE_LINES",
+          "columns": [
+            "INVOICE_ID",
+            "LINE_NO"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "FK_IL_INVOICE",
+          "columns": [
+            "INVOICE_ID"
+          ],
+          "ref_table": "INVOICES",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": "CASCADE",
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 123,
+      "primary_key_name": "PK_INVOICE_LINES"
+    },
+    "CREDIT_NOTES": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ISSUED_ON",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "AMOUNT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 2,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "REMAINING_AMOUNT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 2,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [],
+      "foreign_keys": [
+        {
+          "name": "FK_CN_TENANT",
+          "columns": [
+            "TENANT_ID"
+          ],
+          "ref_table": "TENANTS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 135,
+      "primary_key_name": "PK_CREDIT_NOTES"
+    },
+    "DUNNING_ATTEMPTS": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "INVOICE_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ATTEMPT_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SCHEDULED_FOR",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": "CODES('DUN_STATUS')"
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [
+        {
+          "name": "UQ_DUNNING_ATTEMPTS",
+          "columns": [
+            "INVOICE_ID",
+            "ATTEMPT_NO"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "FK_DA_TENANT",
+          "columns": [
+            "TENANT_ID"
+          ],
+          "ref_table": "TENANTS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        },
+        {
+          "name": "FK_DA_INVOICE",
+          "columns": [
+            "INVOICE_ID"
+          ],
+          "ref_table": "INVOICES",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 145,
+      "primary_key_name": "PK_DUNNING_ATTEMPTS"
+    },
+    "NOTIFICATIONS": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "KIND_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": "CODES('NOTIF_KIND')"
+        },
+        {
+          "name": "SENT_AT",
+          "type": "TIMESTAMP",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "ID"
+      ],
+      "unique": [
+        {
+          "name": "UQ_NOTIFICATIONS",
+          "columns": [
+            "TENANT_ID",
+            "KIND_CD",
+            "SENT_AT"
+          ]
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "FK_NOTIF_TENANT",
+          "columns": [
+            "TENANT_ID"
+          ],
+          "ref_table": "TENANTS",
+          "ref_columns": [
+            "ID"
+          ],
+          "on_delete": null,
+          "validated": true
+        }
+      ],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 158,
+      "primary_key_name": "PK_NOTIFICATIONS"
+    },
+    "BILLING_AUDIT_LOG": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "LOG_ID",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LOGGED_AT",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "SYSDATE",
+          "comment": null
+        },
+        {
+          "name": "MODULE",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MESSAGE",
+          "type": "VARCHAR2",
+          "length": 4000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "LOG_ID"
+      ],
+      "unique": [],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 169,
+      "primary_key_name": "PK_BILLING_AUDIT_LOG"
+    },
+    "SUBSCRIPTIONS_HIST": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "HIST_ID",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "HIST_DT",
+          "type": "VARCHAR2",
+          "length": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "yes, the history timestamp is a string"
+        },
+        {
+          "name": "HIST_OP",
+          "type": "VARCHAR2",
+          "length": 3,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PLAN_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STARTS_ON",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ENDS_ON",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SUSPENDED_ON",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "HIST_ID"
+      ],
+      "unique": [],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 190,
+      "primary_key_name": "PK_SUBSCRIPTIONS_HIST"
+    },
+    "CUSTOMER_MASTER": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "CUST_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_SEQ_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_NO",
+          "type": "VARCHAR2",
+          "length": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_NAME",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_NAME_UPPER",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LEGAL_NAME",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "DBA_NAME",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_1",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_2",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_3",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_4",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_5",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_6",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CITY",
+          "type": "VARCHAR2",
+          "length": 80,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATE_CD",
+          "type": "VARCHAR2",
+          "length": 4,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ZIP",
+          "type": "VARCHAR2",
+          "length": 12,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ZIP4",
+          "type": "VARCHAR2",
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "COUNTRY_CD",
+          "type": "VARCHAR2",
+          "length": 4,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_1",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_2",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_3",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_4",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_5",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_6",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_CITY",
+          "type": "VARCHAR2",
+          "length": 80,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_STATE_CD",
+          "type": "VARCHAR2",
+          "length": 4,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ZIP",
+          "type": "VARCHAR2",
+          "length": 12,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE1",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE2",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE3",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE4",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE1_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE2_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE3_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE4_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FAX",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "EMAIL_1",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "EMAIL_2",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "EMAIL_3",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SIGNUP_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LAST_ACTIVITY_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LAST_INVOICE_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LAST_PAYMENT_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TERMINATE_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SUB_STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SEGMENT_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "REGION_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TERRITORY_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CHANNEL_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "RATE_CLASS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TAX_EXEMPT_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREDIT_HOLD_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "DUNNING_EXEMPT_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "VIP_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUR_BAL_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PAST_DUE_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "YTD_BILLED_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LTD_BILLED_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "YTD_PAID_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREDIT_LIMIT_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "RELATED_ACCT_IDS",
+          "type": "VARCHAR2",
+          "length": 2000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CHILD_ACCT_IDS",
+          "type": "VARCHAR2",
+          "length": 2000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PROMO_CODES_CSV",
+          "type": "VARCHAR2",
+          "length": 1000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CONTACT_NOTES",
+          "type": "VARCHAR2",
+          "length": 4000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LEGACY_SYS_KEY",
+          "type": "VARCHAR2",
+          "length": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAINFRAME_ACCT_NO",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CONVERSION_BATCH_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 8,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_01",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_02",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_03",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_04",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_05",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_06",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_07",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_08",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_09",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_10",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_11",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_12",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_13",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_14",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_15",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_16",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_17",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_18",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_19",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_20",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_01",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_02",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_03",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_04",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_05",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_06",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_07",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_08",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_09",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_10",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_11",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_12",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_13",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_14",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_15",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_16",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_17",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_18",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_19",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_20",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_21",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_22",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_23",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_24",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_25",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_26",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_27",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_28",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_29",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_30",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_31",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_32",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_33",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_34",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_35",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_36",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_37",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_38",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_39",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_40",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_01",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_02",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_03",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_04",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_05",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_06",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_07",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_08",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_09",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_10",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_01",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_02",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_03",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_04",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_05",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_06",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_07",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_08",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_09",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_10",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREATED_BY",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREATED_DT",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UPDATED_BY",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UPDATED_DT",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ROW_VERSION_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 8,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "CUST_ID"
+      ],
+      "unique": [],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "line": 22,
+      "primary_key_name": "PK_CUSTOMER_MASTER"
+    },
+    "CUSTOMER_MASTER_HIST": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "HIST_ID",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "HIST_DT",
+          "type": "VARCHAR2",
+          "length": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "HIST_OP",
+          "type": "VARCHAR2",
+          "length": 3,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_SEQ_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_NO",
+          "type": "VARCHAR2",
+          "length": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_NAME",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_NAME_UPPER",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LEGAL_NAME",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "DBA_NAME",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_1",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_2",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_3",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_4",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_5",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ADDR_LINE_6",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CITY",
+          "type": "VARCHAR2",
+          "length": 80,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATE_CD",
+          "type": "VARCHAR2",
+          "length": 4,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ZIP",
+          "type": "VARCHAR2",
+          "length": 12,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ZIP4",
+          "type": "VARCHAR2",
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "COUNTRY_CD",
+          "type": "VARCHAR2",
+          "length": 4,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_1",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_2",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_3",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_4",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_5",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ADDR_LINE_6",
+          "type": "VARCHAR2",
+          "length": 120,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_CITY",
+          "type": "VARCHAR2",
+          "length": 80,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_STATE_CD",
+          "type": "VARCHAR2",
+          "length": 4,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAIL_ZIP",
+          "type": "VARCHAR2",
+          "length": 12,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE1",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE2",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE3",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE4",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE1_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE2_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE3_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PHONE4_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FAX",
+          "type": "VARCHAR2",
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "EMAIL_1",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "EMAIL_2",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "EMAIL_3",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SIGNUP_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LAST_ACTIVITY_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LAST_INVOICE_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LAST_PAYMENT_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TERMINATE_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SUB_STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SEGMENT_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "REGION_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TERRITORY_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CHANNEL_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "RATE_CLASS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TAX_EXEMPT_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREDIT_HOLD_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "DUNNING_EXEMPT_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "VIP_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUR_BAL_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PAST_DUE_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "YTD_BILLED_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LTD_BILLED_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "YTD_PAID_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREDIT_LIMIT_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "RELATED_ACCT_IDS",
+          "type": "VARCHAR2",
+          "length": 2000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CHILD_ACCT_IDS",
+          "type": "VARCHAR2",
+          "length": 2000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "PROMO_CODES_CSV",
+          "type": "VARCHAR2",
+          "length": 1000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CONTACT_NOTES",
+          "type": "VARCHAR2",
+          "length": 4000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LEGACY_SYS_KEY",
+          "type": "VARCHAR2",
+          "length": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "MAINFRAME_ACCT_NO",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CONVERSION_BATCH_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 8,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_01",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_02",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_03",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_04",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_05",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_06",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_07",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_08",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_09",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_10",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_11",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_12",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_13",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_14",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_15",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_16",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_17",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_18",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_19",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "FLAG_20",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_01",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_02",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_03",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_04",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_05",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_06",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_07",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_08",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_09",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_10",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_11",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_12",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_13",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_14",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_15",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_16",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_17",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_18",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_19",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_20",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_21",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_22",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_23",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_24",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_25",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_26",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_27",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_28",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_29",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_30",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_31",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_32",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_33",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_34",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_35",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_36",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_37",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_38",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_39",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_40",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_01",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_02",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_03",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_04",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_05",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_06",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_07",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_08",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_09",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_AMT_10",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_01",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_02",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_03",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_04",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_05",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_06",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_07",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_08",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_09",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UDF_DT_10",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREATED_BY",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CREATED_DT",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UPDATED_BY",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UPDATED_DT",
+          "type": "DATE",
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ROW_VERSION_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 8,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "HIST_ID"
+      ],
+      "unique": [],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "line": 181,
+      "primary_key_name": "PK_CUSTOMER_MASTER_HIST"
+    },
+    "ENTITY_ATTR_VALUE": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "EAV_ID",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ENTITY_TYPE",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": "'CUSTOMER', 'INVOICE', ..."
+        },
+        {
+          "name": "ENTITY_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ATTR_NAME",
+          "type": "VARCHAR2",
+          "length": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ATTR_VALUE",
+          "type": "VARCHAR2",
+          "length": 4000,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ATTR_TYPE",
+          "type": "VARCHAR2",
+          "length": 10,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'STR'",
+          "comment": null
+        },
+        {
+          "name": "CREATED_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "DD-MON-YY, naturally"
+        }
+      ],
+      "primary_key": [
+        "EAV_ID"
+      ],
+      "unique": [],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "line": 378,
+      "primary_key_name": "PK_ENTITY_ATTR_VALUE"
+    },
+    "INVOICE_LINE": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "LINE_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "INVOICE_NO",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "INVOICE_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "\"references\" INVOICE_HEADER... usually"
+        },
+        {
+          "name": "CUST_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "unenforced pointer at CUSTOMER_MASTER"
+        },
+        {
+          "name": "CUST_NO",
+          "type": "VARCHAR2",
+          "length": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_NAME",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "denormalized copy"
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LINE_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 6,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "LINE_TYPE_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "ITEM_DESC",
+          "type": "VARCHAR2",
+          "length": 400,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "QTY",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 12,
+          "scale": 3,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "UNIT_PRICE",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 4,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "AMOUNT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TAX_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "INVOICE_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "DD-MON-YY text"
+        },
+        {
+          "name": "SERVICE_PERIOD",
+          "type": "VARCHAR2",
+          "length": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "'MMYYYY-MMYYYY' text"
+        },
+        {
+          "name": "POSTED_YN",
+          "type": "CHAR",
+          "length": 1,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "GL_ACCT_CSV",
+          "type": "VARCHAR2",
+          "length": 200,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "comma-separated GL account splits"
+        },
+        {
+          "name": "BATCH_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 8,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "SRC_SYSTEM",
+          "type": "VARCHAR2",
+          "length": 10,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "LINE_ID"
+      ],
+      "unique": [],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "line": 405,
+      "primary_key_name": "PK_INVOICE_LINE"
+    },
+    "INVOICE_HEADER": {
+      "schema": null,
+      "columns": [
+        {
+          "name": "INVOICE_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "INVOICE_NO",
+          "type": "VARCHAR2",
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "CUST_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "TENANT_ID",
+          "type": "VARCHAR2",
+          "length": 36,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "INVOICE_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "DD-MON-YY text"
+        },
+        {
+          "name": "DUE_DT",
+          "type": "VARCHAR2",
+          "length": 9,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "STATUS_CD",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 4,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": "CODES('INV_STATUS')"
+        },
+        {
+          "name": "TOTAL_AMT",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        },
+        {
+          "name": "BATCH_NO",
+          "type": "NUMBER",
+          "length": null,
+          "precision": 8,
+          "scale": null,
+          "nullable": true,
+          "default": null,
+          "comment": null
+        }
+      ],
+      "primary_key": [
+        "INVOICE_ID"
+      ],
+      "unique": [],
+      "foreign_keys": [],
+      "checks": [],
+      "comment": null,
+      "partitioned": false,
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "line": 429,
+      "primary_key_name": "PK_INVOICE_HEADER"
+    }
+  },
+  "indexes": [],
+  "sequences": [
+    {
+      "name": "SEQ_BILLING_AUDIT_LOG",
+      "start_with": 1,
+      "increment_by": 1
+    },
+    {
+      "name": "SEQ_SUBSCRIPTIONS_HIST",
+      "start_with": 1,
+      "increment_by": 1
+    },
+    {
+      "name": "SEQ_CUSTOMER_MASTER",
+      "start_with": 100000,
+      "increment_by": 1
+    },
+    {
+      "name": "SEQ_CUSTOMER_MASTER_HIST",
+      "start_with": 1,
+      "increment_by": 1
+    },
+    {
+      "name": "SEQ_ENTITY_ATTR_VALUE",
+      "start_with": 1,
+      "increment_by": 1
+    }
+  ],
+  "triggers": [
+    {
+      "name": "TRG_BILLING_AUDIT_LOG_ID",
+      "table": "BILLING_AUDIT_LOG",
+      "timing": "BEFORE",
+      "events": [
+        "INSERT"
+      ],
+      "sequence_assigns": [
+        "LOG_ID"
+      ],
+      "enabled": true,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 179
+    },
+    {
+      "name": "TRG_SUBSCRIPTIONS_HIST",
+      "table": "SUBSCRIPTIONS",
+      "timing": "AFTER",
+      "events": [
+        "UPDATE",
+        "DELETE"
+      ],
+      "sequence_assigns": [],
+      "enabled": true,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 206
+    },
+    {
+      "name": "TRG_SUB_NO_UNCANCEL",
+      "table": "SUBSCRIPTIONS",
+      "timing": "BEFORE",
+      "events": [
+        "UPDATE"
+      ],
+      "sequence_assigns": [],
+      "enabled": true,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 228
+    },
+    {
+      "name": "TRG_USAGE_EVENTS_CHECK",
+      "table": "USAGE_EVENTS",
+      "timing": "BEFORE",
+      "events": [
+        "INSERT"
+      ],
+      "sequence_assigns": [],
+      "enabled": true,
+      "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+      "line": 239
+    },
+    {
+      "name": "TRG_CUSTOMER_MASTER_SEQ",
+      "table": "CUSTOMER_MASTER",
+      "timing": "BEFORE",
+      "events": [
+        "INSERT"
+      ],
+      "sequence_assigns": [
+        "CUST_SEQ_NO"
+      ],
+      "enabled": true,
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "line": 346
+    },
+    {
+      "name": "TRG_CUSTOMER_MASTER_HIST",
+      "table": "CUSTOMER_MASTER",
+      "timing": "AFTER",
+      "events": [
+        "UPDATE",
+        "DELETE"
+      ],
+      "sequence_assigns": [],
+      "enabled": true,
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "line": 358
+    },
+    {
+      "name": "TRG_ENTITY_ATTR_VALUE_SEQ",
+      "table": "ENTITY_ATTR_VALUE",
+      "timing": "BEFORE",
+      "events": [
+        "INSERT"
+      ],
+      "sequence_assigns": [
+        "EAV_ID"
+      ],
+      "enabled": true,
+      "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+      "line": 391
+    }
+  ],
+  "views": [],
+  "materialized_views": [],
+  "plsql_units": [
+    {
+      "kind": "PACKAGE",
+      "name": "PKG_OW_UTIL"
+    },
+    {
+      "kind": "PACKAGE BODY",
+      "name": "PKG_OW_UTIL"
+    },
+    {
+      "kind": "PACKAGE",
+      "name": "PKG_PLANS"
+    },
+    {
+      "kind": "PACKAGE BODY",
+      "name": "PKG_PLANS"
+    },
+    {
+      "kind": "PACKAGE",
+      "name": "PKG_RATING"
+    },
+    {
+      "kind": "PACKAGE BODY",
+      "name": "PKG_RATING"
+    },
+    {
+      "kind": "PACKAGE",
+      "name": "PKG_INVOICING"
+    },
+    {
+      "kind": "PACKAGE BODY",
+      "name": "PKG_INVOICING"
+    },
+    {
+      "kind": "PACKAGE",
+      "name": "PKG_DUNNING"
+    },
+    {
+      "kind": "PACKAGE BODY",
+      "name": "PKG_DUNNING"
+    }
+  ],
+  "scheduler_jobs": [
+    {
+      "name": "JOB_NIGHTLY_DUNNING",
+      "repeat_interval": "FREQ=DAILY;BYHOUR=2;BYMINUTE=0"
+    },
+    {
+      "name": "JOB_PURGE_AUDIT_LOG",
+      "repeat_interval": "FREQ=DAILY;BYHOUR=3;BYMINUTE=30"
+    }
+  ],
+  "seed_rows": {
+    "CODES": 32,
+    "TENANTS": 11,
+    "PLANS": 3,
+    "SUBSCRIPTIONS": 11,
+    "USAGE_EVENTS": 16,
+    "RATING_PERIODS": 3,
+    "RATING_RESULTS": 3,
+    "INVOICES": 5,
+    "CREDIT_NOTES": 5,
+    "DUNNING_ATTEMPTS": 1,
+    "NOTIFICATIONS": 1,
+    "INVOICE_LINES": 6,
+    "CUSTOMER_MASTER": 2,
+    "ENTITY_ATTR_VALUE": 8
+  },
+  "relationships": [
+    {
+      "parent": "TENANTS",
+      "child": "SUBSCRIPTIONS",
+      "child_columns": [
+        "TENANT_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_SUB_TENANT",
+      "parent_known": true
+    },
+    {
+      "parent": "PLANS",
+      "child": "SUBSCRIPTIONS",
+      "child_columns": [
+        "PLAN_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_SUB_PLAN",
+      "parent_known": true
+    },
+    {
+      "parent": "TENANTS",
+      "child": "USAGE_EVENTS",
+      "child_columns": [
+        "TENANT_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_USAGE_TENANT",
+      "parent_known": true
+    },
+    {
+      "parent": "TENANTS",
+      "child": "RATING_PERIODS",
+      "child_columns": [
+        "TENANT_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_RP_TENANT",
+      "parent_known": true
+    },
+    {
+      "parent": "RATING_PERIODS",
+      "child": "RATING_RESULTS",
+      "child_columns": [
+        "PERIOD_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_RR_PERIOD",
+      "parent_known": true
+    },
+    {
+      "parent": "SUBSCRIPTIONS",
+      "child": "RATING_RESULTS",
+      "child_columns": [
+        "SUBSCRIPTION_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_RR_SUB",
+      "parent_known": true
+    },
+    {
+      "parent": "TENANTS",
+      "child": "INVOICES",
+      "child_columns": [
+        "TENANT_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_INV_TENANT",
+      "parent_known": true
+    },
+    {
+      "parent": "RATING_PERIODS",
+      "child": "INVOICES",
+      "child_columns": [
+        "PERIOD_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_INV_PERIOD",
+      "parent_known": true
+    },
+    {
+      "parent": "INVOICES",
+      "child": "INVOICE_LINES",
+      "child_columns": [
+        "INVOICE_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": "CASCADE",
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_IL_INVOICE",
+      "parent_known": true
+    },
+    {
+      "parent": "TENANTS",
+      "child": "CREDIT_NOTES",
+      "child_columns": [
+        "TENANT_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_CN_TENANT",
+      "parent_known": true
+    },
+    {
+      "parent": "TENANTS",
+      "child": "DUNNING_ATTEMPTS",
+      "child_columns": [
+        "TENANT_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_DA_TENANT",
+      "parent_known": true
+    },
+    {
+      "parent": "INVOICES",
+      "child": "DUNNING_ATTEMPTS",
+      "child_columns": [
+        "INVOICE_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_DA_INVOICE",
+      "parent_known": true
+    },
+    {
+      "parent": "TENANTS",
+      "child": "NOTIFICATIONS",
+      "child_columns": [
+        "TENANT_ID"
+      ],
+      "parent_columns": [
+        "ID"
+      ],
+      "on_delete": null,
+      "cardinality": "1:N",
+      "cardinality_basis": "assumed",
+      "evidence": "FK FK_NOTIF_TENANT",
+      "parent_known": true
+    }
+  ],
+  "traps": [
+    {
+      "table": "CODES",
+      "kind": "reference_data",
+      "evidence": "32 seed rows in scripts, no FKs"
+    },
+    {
+      "table": "TENANTS",
+      "kind": "yn_flag",
+      "evidence": "CHAR(1) *_YN columns",
+      "columns": [
+        "TAX_EXEMPT_YN"
+      ]
+    },
+    {
+      "table": "TENANTS",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "STATUS_CD"
+      ]
+    },
+    {
+      "table": "PLANS",
+      "kind": "yn_flag",
+      "evidence": "CHAR(1) *_YN columns",
+      "columns": [
+        "ACTIVE_YN"
+      ]
+    },
+    {
+      "table": "PLANS",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "TIER_CD"
+      ]
+    },
+    {
+      "table": "SUBSCRIPTIONS",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "STATUS_CD"
+      ]
+    },
+    {
+      "table": "USAGE_EVENTS",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "KIND_CD"
+      ]
+    },
+    {
+      "table": "INVOICES",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "STATUS_CD"
+      ]
+    },
+    {
+      "table": "DUNNING_ATTEMPTS",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "STATUS_CD"
+      ]
+    },
+    {
+      "table": "NOTIFICATIONS",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "KIND_CD"
+      ]
+    },
+    {
+      "table": "SUBSCRIPTIONS_HIST",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "STATUS_CD"
+      ]
+    },
+    {
+      "table": "SUBSCRIPTIONS_HIST",
+      "kind": "date_as_string",
+      "evidence": "date kept as text",
+      "columns": [
+        "HIST_DT"
+      ]
+    },
+    {
+      "table": "SUBSCRIPTIONS_HIST",
+      "kind": "unenforced_pointer",
+      "evidence": "*_ID column with a matching table and no FK",
+      "columns": [
+        "TENANT_ID",
+        "PLAN_ID"
+      ],
+      "targets": [
+        "TENANTS",
+        "PLANS"
+      ]
+    },
+    {
+      "table": "SUBSCRIPTIONS_HIST",
+      "kind": "history_copy",
+      "evidence": "full-row copy of a base table",
+      "of_table": "SUBSCRIPTIONS"
+    },
+    {
+      "table": "CUSTOMER_MASTER",
+      "kind": "yn_flag",
+      "evidence": "CHAR(1) *_YN columns",
+      "columns": [
+        "TAX_EXEMPT_YN",
+        "CREDIT_HOLD_YN",
+        "DUNNING_EXEMPT_YN",
+        "VIP_YN"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "PHONE1_TYPE_CD",
+        "PHONE2_TYPE_CD",
+        "PHONE3_TYPE_CD",
+        "PHONE4_TYPE_CD",
+        "STATUS_CD",
+        "SUB_STATUS_CD",
+        "CUST_TYPE_CD",
+        "SEGMENT_CD",
+        "REGION_CD",
+        "TERRITORY_CD",
+        "CHANNEL_CD",
+        "RATE_CLASS_CD"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER",
+      "kind": "csv_list",
+      "evidence": "delimited list in a string column",
+      "columns": [
+        "RELATED_ACCT_IDS",
+        "CHILD_ACCT_IDS",
+        "PROMO_CODES_CSV"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER",
+      "kind": "date_as_string",
+      "evidence": "date kept as text",
+      "columns": [
+        "SIGNUP_DT",
+        "LAST_ACTIVITY_DT",
+        "LAST_INVOICE_DT",
+        "LAST_PAYMENT_DT",
+        "TERMINATE_DT"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER",
+      "kind": "repeating_group",
+      "evidence": "numbered column series; candidate arrays",
+      "groups": {
+        "ADDR_LINE": [
+          "ADDR_LINE_1",
+          "ADDR_LINE_2",
+          "ADDR_LINE_3",
+          "ADDR_LINE_4",
+          "ADDR_LINE_5",
+          "ADDR_LINE_6"
+        ],
+        "MAIL_ADDR_LINE": [
+          "MAIL_ADDR_LINE_1",
+          "MAIL_ADDR_LINE_2",
+          "MAIL_ADDR_LINE_3",
+          "MAIL_ADDR_LINE_4",
+          "MAIL_ADDR_LINE_5",
+          "MAIL_ADDR_LINE_6"
+        ],
+        "PHONE": [
+          "PHONE1",
+          "PHONE2",
+          "PHONE3",
+          "PHONE4"
+        ],
+        "EMAIL": [
+          "EMAIL_1",
+          "EMAIL_2",
+          "EMAIL_3"
+        ],
+        "FLAG": [
+          "FLAG_01",
+          "FLAG_02",
+          "FLAG_03",
+          "FLAG_04",
+          "FLAG_05",
+          "FLAG_06",
+          "FLAG_07",
+          "FLAG_08",
+          "FLAG_09",
+          "FLAG_10",
+          "FLAG_11",
+          "FLAG_12",
+          "FLAG_13",
+          "FLAG_14",
+          "FLAG_15",
+          "FLAG_16",
+          "FLAG_17",
+          "FLAG_18",
+          "FLAG_19",
+          "FLAG_20"
+        ],
+        "UDF": [
+          "UDF_01",
+          "UDF_02",
+          "UDF_03",
+          "UDF_04",
+          "UDF_05",
+          "UDF_06",
+          "UDF_07",
+          "UDF_08",
+          "UDF_09",
+          "UDF_10",
+          "UDF_11",
+          "UDF_12",
+          "UDF_13",
+          "UDF_14",
+          "UDF_15",
+          "UDF_16",
+          "UDF_17",
+          "UDF_18",
+          "UDF_19",
+          "UDF_20",
+          "UDF_21",
+          "UDF_22",
+          "UDF_23",
+          "UDF_24",
+          "UDF_25",
+          "UDF_26",
+          "UDF_27",
+          "UDF_28",
+          "UDF_29",
+          "UDF_30",
+          "UDF_31",
+          "UDF_32",
+          "UDF_33",
+          "UDF_34",
+          "UDF_35",
+          "UDF_36",
+          "UDF_37",
+          "UDF_38",
+          "UDF_39",
+          "UDF_40"
+        ],
+        "UDF_AMT": [
+          "UDF_AMT_01",
+          "UDF_AMT_02",
+          "UDF_AMT_03",
+          "UDF_AMT_04",
+          "UDF_AMT_05",
+          "UDF_AMT_06",
+          "UDF_AMT_07",
+          "UDF_AMT_08",
+          "UDF_AMT_09",
+          "UDF_AMT_10"
+        ],
+        "UDF_DT": [
+          "UDF_DT_01",
+          "UDF_DT_02",
+          "UDF_DT_03",
+          "UDF_DT_04",
+          "UDF_DT_05",
+          "UDF_DT_06",
+          "UDF_DT_07",
+          "UDF_DT_08",
+          "UDF_DT_09",
+          "UDF_DT_10"
+        ]
+      }
+    },
+    {
+      "table": "CUSTOMER_MASTER",
+      "kind": "unenforced_pointer",
+      "evidence": "*_ID column with a matching table and no FK",
+      "columns": [
+        "TENANT_ID"
+      ],
+      "targets": [
+        "TENANTS"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER",
+      "kind": "seeded_table",
+      "evidence": "2 seed rows in scripts; has identity/temporal columns, not treated as reference data"
+    },
+    {
+      "table": "CUSTOMER_MASTER_HIST",
+      "kind": "yn_flag",
+      "evidence": "CHAR(1) *_YN columns",
+      "columns": [
+        "TAX_EXEMPT_YN",
+        "CREDIT_HOLD_YN",
+        "DUNNING_EXEMPT_YN",
+        "VIP_YN"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER_HIST",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "PHONE1_TYPE_CD",
+        "PHONE2_TYPE_CD",
+        "PHONE3_TYPE_CD",
+        "PHONE4_TYPE_CD",
+        "STATUS_CD",
+        "SUB_STATUS_CD",
+        "CUST_TYPE_CD",
+        "SEGMENT_CD",
+        "REGION_CD",
+        "TERRITORY_CD",
+        "CHANNEL_CD",
+        "RATE_CLASS_CD"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER_HIST",
+      "kind": "csv_list",
+      "evidence": "delimited list in a string column",
+      "columns": [
+        "RELATED_ACCT_IDS",
+        "CHILD_ACCT_IDS",
+        "PROMO_CODES_CSV"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER_HIST",
+      "kind": "date_as_string",
+      "evidence": "date kept as text",
+      "columns": [
+        "HIST_DT",
+        "SIGNUP_DT",
+        "LAST_ACTIVITY_DT",
+        "LAST_INVOICE_DT",
+        "LAST_PAYMENT_DT",
+        "TERMINATE_DT"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER_HIST",
+      "kind": "repeating_group",
+      "evidence": "numbered column series; candidate arrays",
+      "groups": {
+        "ADDR_LINE": [
+          "ADDR_LINE_1",
+          "ADDR_LINE_2",
+          "ADDR_LINE_3",
+          "ADDR_LINE_4",
+          "ADDR_LINE_5",
+          "ADDR_LINE_6"
+        ],
+        "MAIL_ADDR_LINE": [
+          "MAIL_ADDR_LINE_1",
+          "MAIL_ADDR_LINE_2",
+          "MAIL_ADDR_LINE_3",
+          "MAIL_ADDR_LINE_4",
+          "MAIL_ADDR_LINE_5",
+          "MAIL_ADDR_LINE_6"
+        ],
+        "PHONE": [
+          "PHONE1",
+          "PHONE2",
+          "PHONE3",
+          "PHONE4"
+        ],
+        "EMAIL": [
+          "EMAIL_1",
+          "EMAIL_2",
+          "EMAIL_3"
+        ],
+        "FLAG": [
+          "FLAG_01",
+          "FLAG_02",
+          "FLAG_03",
+          "FLAG_04",
+          "FLAG_05",
+          "FLAG_06",
+          "FLAG_07",
+          "FLAG_08",
+          "FLAG_09",
+          "FLAG_10",
+          "FLAG_11",
+          "FLAG_12",
+          "FLAG_13",
+          "FLAG_14",
+          "FLAG_15",
+          "FLAG_16",
+          "FLAG_17",
+          "FLAG_18",
+          "FLAG_19",
+          "FLAG_20"
+        ],
+        "UDF": [
+          "UDF_01",
+          "UDF_02",
+          "UDF_03",
+          "UDF_04",
+          "UDF_05",
+          "UDF_06",
+          "UDF_07",
+          "UDF_08",
+          "UDF_09",
+          "UDF_10",
+          "UDF_11",
+          "UDF_12",
+          "UDF_13",
+          "UDF_14",
+          "UDF_15",
+          "UDF_16",
+          "UDF_17",
+          "UDF_18",
+          "UDF_19",
+          "UDF_20",
+          "UDF_21",
+          "UDF_22",
+          "UDF_23",
+          "UDF_24",
+          "UDF_25",
+          "UDF_26",
+          "UDF_27",
+          "UDF_28",
+          "UDF_29",
+          "UDF_30",
+          "UDF_31",
+          "UDF_32",
+          "UDF_33",
+          "UDF_34",
+          "UDF_35",
+          "UDF_36",
+          "UDF_37",
+          "UDF_38",
+          "UDF_39",
+          "UDF_40"
+        ],
+        "UDF_AMT": [
+          "UDF_AMT_01",
+          "UDF_AMT_02",
+          "UDF_AMT_03",
+          "UDF_AMT_04",
+          "UDF_AMT_05",
+          "UDF_AMT_06",
+          "UDF_AMT_07",
+          "UDF_AMT_08",
+          "UDF_AMT_09",
+          "UDF_AMT_10"
+        ],
+        "UDF_DT": [
+          "UDF_DT_01",
+          "UDF_DT_02",
+          "UDF_DT_03",
+          "UDF_DT_04",
+          "UDF_DT_05",
+          "UDF_DT_06",
+          "UDF_DT_07",
+          "UDF_DT_08",
+          "UDF_DT_09",
+          "UDF_DT_10"
+        ]
+      }
+    },
+    {
+      "table": "CUSTOMER_MASTER_HIST",
+      "kind": "unenforced_pointer",
+      "evidence": "*_ID column with a matching table and no FK",
+      "columns": [
+        "TENANT_ID"
+      ],
+      "targets": [
+        "TENANTS"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER_HIST",
+      "kind": "history_copy",
+      "evidence": "full-row copy of a base table",
+      "of_table": "CUSTOMER_MASTER"
+    },
+    {
+      "table": "ENTITY_ATTR_VALUE",
+      "kind": "date_as_string",
+      "evidence": "date kept as text",
+      "columns": [
+        "CREATED_DT"
+      ]
+    },
+    {
+      "table": "ENTITY_ATTR_VALUE",
+      "kind": "eav",
+      "evidence": "entity-attribute-value shape; typed as strings"
+    },
+    {
+      "table": "INVOICE_LINE",
+      "kind": "yn_flag",
+      "evidence": "CHAR(1) *_YN columns",
+      "columns": [
+        "POSTED_YN"
+      ]
+    },
+    {
+      "table": "INVOICE_LINE",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "LINE_TYPE_CD"
+      ]
+    },
+    {
+      "table": "INVOICE_LINE",
+      "kind": "csv_list",
+      "evidence": "delimited list in a string column",
+      "columns": [
+        "GL_ACCT_CSV"
+      ]
+    },
+    {
+      "table": "INVOICE_LINE",
+      "kind": "date_as_string",
+      "evidence": "date kept as text",
+      "columns": [
+        "INVOICE_DT"
+      ]
+    },
+    {
+      "table": "INVOICE_LINE",
+      "kind": "unenforced_pointer",
+      "evidence": "*_ID column with a matching table and no FK",
+      "columns": [
+        "INVOICE_ID",
+        "TENANT_ID"
+      ],
+      "targets": [
+        "INVOICES",
+        "TENANTS"
+      ]
+    },
+    {
+      "table": "INVOICE_HEADER",
+      "kind": "code_lookup",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+        "STATUS_CD"
+      ]
+    },
+    {
+      "table": "INVOICE_HEADER",
+      "kind": "date_as_string",
+      "evidence": "date kept as text",
+      "columns": [
+        "INVOICE_DT",
+        "DUE_DT"
+      ]
+    },
+    {
+      "table": "INVOICE_HEADER",
+      "kind": "unenforced_pointer",
+      "evidence": "*_ID column with a matching table and no FK",
+      "columns": [
+        "TENANT_ID"
+      ],
+      "targets": [
+        "TENANTS"
+      ]
+    },
+    {
+      "table": "BILLING_AUDIT_LOG",
+      "kind": "sequence_trigger_identity",
+      "evidence": "trigger TRG_BILLING_AUDIT_LOG_ID assigns NEXTVAL",
+      "columns": [
+        "LOG_ID"
+      ]
+    },
+    {
+      "table": "CUSTOMER_MASTER",
+      "kind": "sequence_trigger_identity",
+      "evidence": "trigger TRG_CUSTOMER_MASTER_SEQ assigns NEXTVAL",
+      "columns": [
+        "CUST_SEQ_NO"
+      ]
+    },
+    {
+      "table": "ENTITY_ATTR_VALUE",
+      "kind": "sequence_trigger_identity",
+      "evidence": "trigger TRG_ENTITY_ATTR_VALUE_SEQ assigns NEXTVAL",
+      "columns": [
+        "EAV_ID"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "kind": "reference_data_candidate",
+      "table": "ENTITY_ATTR_VALUE",
+      "evidence": "8 seed rows, no FKs on this table; cannot distinguish lookup from entity"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE",
+      "name": "PKG_OW_UTIL"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE BODY",
+      "name": "PKG_OW_UTIL"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE",
+      "name": "PKG_PLANS"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE BODY",
+      "name": "PKG_PLANS"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE",
+      "name": "PKG_RATING"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE BODY",
+      "name": "PKG_RATING"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE",
+      "name": "PKG_INVOICING"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE BODY",
+      "name": "PKG_INVOICING"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE",
+      "name": "PKG_DUNNING"
+    },
+    {
+      "kind": "plsql_unit_needs_manual_review",
+      "unit_kind": "PACKAGE BODY",
+      "name": "PKG_DUNNING"
+    },
+    {
+      "kind": "trigger_business_logic",
+      "table": "SUBSCRIPTIONS",
+      "name": "TRG_SUBSCRIPTIONS_HIST"
+    },
+    {
+      "kind": "trigger_business_logic",
+      "table": "SUBSCRIPTIONS",
+      "name": "TRG_SUB_NO_UNCANCEL"
+    },
+    {
+      "kind": "trigger_business_logic",
+      "table": "USAGE_EVENTS",
+      "name": "TRG_USAGE_EVENTS_CHECK"
+    },
+    {
+      "kind": "trigger_business_logic",
+      "table": "CUSTOMER_MASTER",
+      "name": "TRG_CUSTOMER_MASTER_HIST"
+    }
+  ],
+  "unparsed": [
+    {
+      "file": "services/legacy-billing/db/oracle/schema/04_upgrade_static.sql",
+      "line": 6,
+      "statement": "DECLARE marker_columns NUMBER; BEGIN SELECT COUNT(*) INTO marker_columns FROM user_tab_columns WHERE table_name = 'FIXTURE_META' AND column_name = 'MARKER'; IF marker_columns = 0 THEN EXECUTE IMMEDIAT"
+    },
+    {
+      "file": "services/legacy-billing/db/oracle/schema/04_upgrade_static.sql",
+      "line": 170,
+      "statement": "MERGE INTO fixture_meta target USING (SELECT 'static_seed_version' AS marker, '2' AS value FROM dual) source ON (target.marker = source.marker) WHEN MATCHED THEN UPDATE SET target.value = source.value"
+    }
+  ]
+}

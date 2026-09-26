@@ -1,0 +1,868 @@
+[
+ {
+  "op": "resolve",
+  "collection": "invoiceLine",
+  "match": {
+   "kind": "unenforced_pointer"
+  },
+  "resolution": "INVOICE_LINE.INVOICE_ID points at INVOICE_HEADER (not INVOICES); unenforced, orphans quarantined (quarantine_reason=orphan_line). TENANT_ID kept as a plain reference to tenants",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "401-408",
+   "quote": "invoice_id ... -- \"references\" INVOICE_HEADER... usually"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "invoiceLine",
+  "match": {
+   "kind": "csv_list"
+  },
+  "resolution": "GL_ACCT_CSV comma-delimited, 1-3 tokens; csv_to_array",
+  "evidence": {
+   "file": "testdata/legacy/oracle_billing_seed.py",
+   "lines": "327",
+   "quote": "\",\".join(str(rng.randint(40000,49999)) for _ in range(rng.randint(1,3)))"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "invoiceLine",
+  "match": {
+   "kind": "date_as_string"
+  },
+  "resolution": "'DD-MON-YY' text; bad values quarantined; SERVICE_PERIOD 'MMYYYY-MMYYYY' stays a string",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "420-421",
+   "quote": "invoice_dt VARCHAR2(9) -- DD-MON-YY text"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "entityAttrValue",
+  "match": {
+   "kind": "reference_data_candidate"
+  },
+  "resolution": "not reference data: rows are per-customer attributes (entity_id = cust_id), read only alongside the customer; embedded into customerMaster.attributes",
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "293-298",
+   "quote": "SELECT * FROM entity_attr_value WHERE entity_type = 'CUSTOMER' AND entity_id = :1 ORDER BY eav_id"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "entityAttrValue",
+  "match": {
+   "kind": "date_as_string"
+  },
+  "resolution": "CREATED_DT is 'DD-MON-YY' text; bad values quarantined",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "385",
+   "quote": "created_dt VARCHAR2(9) -- DD-MON-YY, naturally"
+  }
+ },
+ {
+  "op": "embed",
+  "child_table": "INVOICE_LINES",
+  "into": "invoices",
+  "array_path": "lines",
+  "cardinality": "1:few",
+  "basis": "derived",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/04_pkg_invoicing.sql",
+   "lines": "84-109",
+   "quote": "fn_invoice_preview is a fixed 5-row UNION ALL (plan/usage/tax/tax/credit); fn_invoice_lines: SELECT line_no, line_type, description, amount FROM invoice_lines WHERE invoice_id = p_invoice_id ORDER BY line_no. sp_issue_invoice DELETEs and re-INSERTs the lines with the invoice. Lines are only ever read per parent, bounded at 5, written with the parent."
+  }
+ },
+ {
+  "op": "embed",
+  "child_table": "ENTITY_ATTR_VALUE",
+  "into": "customerMaster",
+  "array_path": "attributes",
+  "cardinality": "1:few",
+  "basis": "derived",
+  "parent_key": [
+   "ENTITY_ID"
+  ],
+  "parent_ref": [
+   "CUST_ID"
+  ],
+  "child_where": "entity_type = 'CUSTOMER'",
+  "target_where": {
+   "attributes.entityType": "CUSTOMER"
+  },
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "287-298",
+   "quote": "SELECT * FROM customer_master WHERE tenant_id = :1 ORDER BY cust_seq_no FETCH FIRST 1 ROWS ONLY ... SELECT * FROM entity_attr_value WHERE entity_type = 'CUSTOMER' AND entity_id = :1 ORDER BY eav_id -- attributes are always fetched with their customer; the seeder writes n_cust//3 rows over ~7 attr names (testdata/legacy/oracle_billing_seed.py:247-267), i.e. a handful per customer"
+  }
+ },
+ {
+  "op": "pattern",
+  "collection": "customerMaster",
+  "pattern": "attribute",
+  "detail": "ENTITY_ATTR_VALUE folded into attributes[] {attrName, attrValue, attrType, createdDt}; duplicate attr names kept as separate elements (no unique key on (entity_id, attr_name)); rows with entity_type <> 'CUSTOMER' stay out of scope and are reported as scoped_embed_remainder",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "376-390",
+   "quote": "Everything that never got a real column ends up here"
+  }
+ },
+ {
+  "op": "embed",
+  "child_table": "INVOICE_LINE",
+  "into": "invoiceHeader",
+  "array_path": "lines",
+  "cardinality": "1:N",
+  "basis": "derived",
+  "parent_key": [
+   "INVOICE_ID"
+  ],
+  "parent_ref": [
+   "INVOICE_ID"
+  ],
+  "evidence": {
+   "file": "services/legacy-billing/app/reports.py",
+   "lines": "55-80",
+   "quote": "FROM invoice_header h, invoice_line l, codes st WHERE h.batch_no = :batch_no AND h.invoice_id = l.invoice_id -- INVOICE_LINE is only ever read joined to its header (month-end aggregate); it never appears alone. Seeder caps line_no at i % 25 + 1 (testdata/legacy/oracle_billing_seed.py:322). Orphan lines (invoice_id with no header, ~37/10k, oracle_billing_seed.py:145) have no parent document and are quarantined by the loader, never embedded."
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "embed_unbounded",
+   "parent": "invoiceHeader",
+   "child": "INVOICE_LINE"
+  },
+  "resolution": "bounded: line_no cycles 1..25 per invoice in the only writer (seeder); 25 lines x ~20 short columns stays far below 16 MB",
+  "evidence": {
+   "file": "testdata/legacy/oracle_billing_seed.py",
+   "lines": "322",
+   "quote": "i % 25 + 1"
+  }
+ },
+ {
+  "op": "pattern",
+  "collection": "subscriptionsHist",
+  "pattern": "document_versioning",
+  "detail": "append-only trigger copy of SUBSCRIPTIONS; no reader in the repo; migrate as its own collection (history), never embedded",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+   "lines": "206-223",
+   "quote": "AFTER UPDATE OR DELETE ON subscriptions ... INSERT INTO subscriptions_hist"
+  }
+ },
+ {
+  "op": "pattern",
+  "collection": "customerMasterHist",
+  "pattern": "document_versioning",
+  "detail": "append-only trigger copy of CUSTOMER_MASTER; no reader in the repo; own collection",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "358-373",
+   "quote": "AFTER UPDATE OR DELETE ON customer_master ... full-row copy"
+  }
+ },
+ {
+  "op": "pattern",
+  "collection": "billingAuditLog",
+  "pattern": "ttl",
+  "detail": "TTL index on loggedAt, expireAfterSeconds 90 days, replaces JOB_PURGE_AUDIT_LOG (which is enabled => FALSE today; enable TTL only with the customer's sign-off)",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/04_jobs.sql",
+   "lines": "20-27",
+   "quote": "DELETE FROM billing_audit_log WHERE logged_at < SYSDATE - 90"
+  }
+ },
+ {
+  "op": "pattern",
+  "collection": "usageEvents",
+  "pattern": "reference",
+  "detail": "own collection; every read is per-tenant and time-ranged (index {tenantId:1, occurredAt:-1}); unbounded append-only ingest so never embedded in tenants",
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "212-222",
+   "quote": "WHERE u.tenant_id = :1 AND u.occurred_at >= :2 AND u.occurred_at < TO_DATE(:3,'YYYY-MM-DD') + 1 ORDER BY u.occurred_at DESC"
+  }
+ },
+ {
+  "op": "pattern",
+  "collection": "tenants",
+  "pattern": "extended_reference",
+  "detail": "keep codes as reference data; statusCd stays numeric and statusDesc is NOT denormalised (the facade joins codes on every /me read but the packages hardcode DECODE; the loader stores the code only, parity is on the code)",
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "110-119",
+   "quote": "LEFT JOIN codes ts ON ts.code_type = 'TENANT_STATUS' AND ts.code_val = t.status_cd"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "tenants",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric *_CD fields; codes is a reference_data collection resolved at read time (facade joins, packages DECODE)",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "40-45",
+   "quote": "SELECT code_desc FROM codes WHERE code_type = :1 AND code_val = :2"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "plans",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric *_CD fields; codes stays reference data",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "40-45",
+   "quote": "SELECT code_desc FROM codes WHERE code_type = :1 AND code_val = :2"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "subscriptions",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric *_CD fields; codes stays reference data",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/02_pkg_plans.sql",
+   "lines": "91-94",
+   "quote": "status_cd = DECODE(r.status_cd,30,30,10)"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "usageEvents",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric kindCd; trigger validation (kind exists in CODES) moves to the loader/app",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+   "lines": "239-253",
+   "quote": "SELECT COUNT(*) INTO v_cnt FROM codes WHERE code_type = 'USAGE_KIND' AND code_val = :NEW.kind_cd"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "invoices",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric statusCd; codes stays reference data",
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "245-247",
+   "quote": "LEFT JOIN codes c ON c.code_type = 'INV_STATUS'"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "dunningAttempts",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric statusCd; codes stays reference data",
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "341-344",
+   "quote": "LEFT JOIN codes c ON c.code_type = 'DUN_STATUS'"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "notifications",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric kindCd; codes stays reference data",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql",
+   "lines": "86-94",
+   "quote": "INSERT INTO notifications (id, tenant_id, kind_cd, sent_at)"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "subscriptionsHist",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric statusCd (history copy, verbatim)",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+   "lines": "206-223",
+   "quote": "INSERT INTO subscriptions_hist"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMaster",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep the 12 numeric *_CD fields verbatim; codes stays reference data (CUST_STATUS, CUST_TYPE, PHONE_TYPE seeded in codes)",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "9-19",
+   "quote": "INSERT INTO codes ... 'CUST_STATUS' ... 'CUST_TYPE' ... 'PHONE_TYPE'"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMasterHist",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric *_CD fields verbatim (history copy)",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "358-373",
+   "quote": "full-row copy"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "invoiceHeader",
+  "match": {
+   "kind": "code_lookup"
+  },
+  "resolution": "keep numeric statusCd; month-end report resolves through codes",
+  "evidence": {
+   "file": "services/legacy-billing/app/reports.py",
+   "lines": "42-52",
+   "quote": "st.code_type (+) = 'INV_STATUS' AND st.code_val (+) = h.status_cd"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "subscriptionsHist",
+  "match": {
+   "kind": "unenforced_pointer"
+  },
+  "resolution": "TENANT_ID/PLAN_ID kept as plain string references (history rows may point at deleted tenants/plans; no lookup at load)",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+   "lines": "190-204",
+   "quote": "subscriptions_hist ... no FK"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMaster",
+  "match": {
+   "kind": "unenforced_pointer"
+  },
+  "resolution": "TENANT_ID kept as a plain reference to tenants; the facade looks customers up by tenant_id so index {tenantId:1, custSeqNo:1}",
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "121-127",
+   "quote": "FROM customer_master WHERE tenant_id = :1 ORDER BY cust_seq_no FETCH FIRST 1 ROWS ONLY"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMasterHist",
+  "match": {
+   "kind": "unenforced_pointer"
+  },
+  "resolution": "TENANT_ID kept verbatim (history copy)",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "358-373",
+   "quote": "full-row copy"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "invoiceHeader",
+  "match": {
+   "kind": "unenforced_pointer",
+   "table": "INVOICE_HEADER"
+  },
+  "resolution": "TENANT_ID kept as plain reference; reports scope by batch_no, not tenant",
+  "evidence": {
+   "file": "services/legacy-billing/app/reports.py",
+   "lines": "42-52",
+   "quote": "WHERE h.batch_no = :batch_no"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMaster",
+  "match": {
+   "kind": "repeating_group"
+  },
+  "resolution": "wave 1 keeps ADDR_LINE_1..6, MAIL_ADDR_LINE_1..6, PHONE1..4, EMAIL_1..3, FLAG_01..20, UDF_* as flat fields so the harness grades column-for-column; folding into arrays is a post-cutover schema_versioning step (no app code reads them individually; /customer does SELECT *)",
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "287",
+   "quote": "SELECT * FROM customer_master WHERE tenant_id = :1"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMasterHist",
+  "match": {
+   "kind": "repeating_group"
+  },
+  "resolution": "flat fields, verbatim copy of customerMaster's choice",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "181-340",
+   "quote": "customer_master_hist"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMaster",
+  "match": {
+   "kind": "csv_list"
+  },
+  "resolution": "comma-delimited; csv_to_array with trim, drop empty tokens; values containing ';' or the literal 'NULL'/'NONE' are quarantined (quarantine_reason=malformed_csv), never split",
+  "evidence": {
+   "file": "testdata/legacy/oracle_billing_seed.py",
+   "lines": "202-206",
+   "quote": "\",\".join(str(rng.randint(10_000,99_999)) ...) ; malformed: [\",,\",\"12345,,67890,\",\"A;B;C\",\" , 99 ,\",\"NULL,NONE,\", ...]"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMasterHist",
+  "match": {
+   "kind": "csv_list"
+  },
+  "resolution": "same rule as customerMaster",
+  "evidence": {
+   "file": "testdata/legacy/oracle_billing_seed.py",
+   "lines": "202-206",
+   "quote": "same seeder values"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "subscriptionsHist",
+  "match": {
+   "kind": "date_as_string"
+  },
+  "resolution": "HIST_DT is 'DD-MON-YY HH24:MI:SS' text; converted by date_format decision",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+   "lines": "218",
+   "quote": "TO_CHAR(SYSDATE,'DD-MON-YY HH24:MI:SS')"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMaster",
+  "match": {
+   "kind": "date_as_string"
+  },
+  "resolution": "'DD-MON-YY' text (pkg_ow_util.f_dt2str); unparseable planted values ('31-FEB-24', 'N/A', '1/1/1900', ...) are quarantined (quarantine_reason=bad_date), never passed through as text",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "50-62",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH') ... TO_DATE(p_str,'DD-MON-YY', ...)"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "customerMasterHist",
+  "match": {
+   "kind": "date_as_string"
+  },
+  "resolution": "as customerMaster; HIST_DT is 'DD-MON-YY HH24:MI:SS'",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "370",
+   "quote": "TO_CHAR(SYSDATE,'DD-MON-YY HH24:MI:SS')"
+  }
+ },
+ {
+  "op": "resolve",
+  "collection": "invoiceHeader",
+  "match": {
+   "kind": "date_as_string",
+   "table": "INVOICE_HEADER"
+  },
+  "resolution": "'DD-MON-YY' text; bad values quarantined",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "434-435",
+   "quote": "invoice_dt VARCHAR2(9), due_dt VARCHAR2(9)"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "subscriptionsHist",
+  "field": "HIST_DT",
+  "format": "%d-%b-%y %H:%M:%S",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+   "lines": "218",
+   "quote": "TO_CHAR(SYSDATE,'DD-MON-YY HH24:MI:SS')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMasterHist",
+  "field": "HIST_DT",
+  "format": "%d-%b-%y %H:%M:%S",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "370",
+   "quote": "TO_CHAR(SYSDATE,'DD-MON-YY HH24:MI:SS')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMaster",
+  "field": "SIGNUP_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMaster",
+  "field": "LAST_ACTIVITY_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMaster",
+  "field": "LAST_INVOICE_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMaster",
+  "field": "LAST_PAYMENT_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMaster",
+  "field": "TERMINATE_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMasterHist",
+  "field": "SIGNUP_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMasterHist",
+  "field": "LAST_ACTIVITY_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMasterHist",
+  "field": "LAST_INVOICE_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMasterHist",
+  "field": "LAST_PAYMENT_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "customerMasterHist",
+  "field": "TERMINATE_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "52",
+   "quote": "TO_CHAR(p_dt,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH')"
+  }
+ },
+ {
+  "op": "date_format",
+  "embed": {
+   "into": "customerMaster",
+   "child_table": "ENTITY_ATTR_VALUE"
+  },
+  "field": "CREATED_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "385",
+   "quote": "created_dt VARCHAR2(9) -- DD-MON-YY, naturally"
+  }
+ },
+ {
+  "op": "date_format",
+  "embed": {
+   "into": "invoiceHeader",
+   "child_table": "INVOICE_LINE"
+  },
+  "field": "INVOICE_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "420",
+   "quote": "invoice_dt VARCHAR2(9) -- DD-MON-YY text"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "invoiceHeader",
+  "field": "INVOICE_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "434",
+   "quote": "invoice_dt VARCHAR2(9)"
+  }
+ },
+ {
+  "op": "date_format",
+  "collection": "invoiceHeader",
+  "field": "DUE_DT",
+  "format": "%d-%b-%y",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "435",
+   "quote": "due_dt VARCHAR2(9)"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "plsql_unit_needs_manual_review",
+   "name": "PKG_OW_UTIL"
+  },
+  "resolution": "utility: f_md5_uuid (deterministic key gen), f_code_desc (codes lookup), f_dt2str/f_str2dt ('DD-MON-YY'), log_msg (autonomous insert into billing_audit_log). Reimplemented as pure functions in the Python service; log_msg becomes an insert into billingAuditLog. Unit u-07-plsql-util",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql",
+   "lines": "26-77",
+   "quote": "STANDARD_HASH(...,'MD5') ... INSERT INTO billing_audit_log (module, message)"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "plsql_unit_needs_manual_review",
+   "name": "PKG_PLANS"
+  },
+  "resolution": "fn_list_plans, fn_entitlement, sp_change_plan: read plans/tenants/subscriptions, write subscriptions (+hist). Reimplemented in the service (unit u-08-plsql-plans); history copy written explicitly by the service",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/02_pkg_plans.sql",
+   "lines": "24-104",
+   "quote": "UPDATE subscriptions SET ends_on = p_effective_on - 1, status_cd = DECODE(r.status_cd,30,30,10) WHERE CURRENT OF c_open_subs"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "plsql_unit_needs_manual_review",
+   "name": "PKG_RATING"
+  },
+  "resolution": "compute_rating / fn_usage_rating / fn_usage_summary / sp_finalize_rating: reads subscriptions, plans, usageEvents, ratingResults+ratingPeriods; upserts ratingPeriods/ratingResults. Reimplemented in the service (unit u-09-plsql-rating), aggregation pipeline replaces the row-by-row loop",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/03_pkg_rating.sql",
+   "lines": "32-217",
+   "quote": "FOR r IN (SELECT u.units, u.occurred_at FROM usage_events u WHERE u.tenant_id = p_tenant_id) LOOP"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "plsql_unit_needs_manual_review",
+   "name": "PKG_INVOICING"
+  },
+  "resolution": "compute_preview / fn_invoice_preview / fn_invoice_lines / sp_issue_invoice: writes invoices (with embedded lines, single document replace) and burns down creditNotes. Reimplemented in the service (unit u-10-plsql-invoicing); multi-document step (invoice + creditNotes) uses a transaction",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/04_pkg_invoicing.sql",
+   "lines": "113-194",
+   "quote": "DELETE FROM invoice_lines WHERE invoice_id = :1 ... INSERT INTO invoice_lines ... UPDATE credit_notes SET remaining_amount = GREATEST(remaining_amount - v_credit, 0)"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "plsql_unit_needs_manual_review",
+   "name": "PKG_DUNNING"
+  },
+  "resolution": "fn_overdue_accounts / sp_schedule_dunning / sp_suspend_overdue: reads invoices/tenants/dunningAttempts, writes dunningAttempts, tenants, subscriptions, notifications. Reimplemented in the service (unit u-11-plsql-dunning); JOB_NIGHTLY_DUNNING becomes a scheduled service task",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql",
+   "lines": "17-99",
+   "quote": "UPDATE tenants SET status_cd = 20 WHERE id = t.tenant_id"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "trigger_business_logic",
+   "name": "TRG_SUBSCRIPTIONS_HIST"
+  },
+  "resolution": "history write moves into the service's subscription update path (unit u-08); parity checked by counting subscriptionsHist rows per op",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+   "lines": "206-223",
+   "quote": "AFTER UPDATE OR DELETE ON subscriptions"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "trigger_business_logic",
+   "name": "TRG_SUB_NO_UNCANCEL"
+  },
+  "resolution": "invariant 'cancelled (30) never leaves cancelled' enforced in the service update path and by a JSON-schema-independent guard in unit u-08",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+   "lines": "228-235",
+   "quote": "BEFORE UPDATE OF status_cd"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "trigger_business_logic",
+   "name": "TRG_USAGE_EVENTS_CHECK"
+  },
+  "resolution": "units > 0 and kindCd in codes(USAGE_KIND) validated in /internal/usage/events (already validates units 1..1,000,000) and by collection JSON schema validation on usageEvents",
+  "evidence": {
+   "file": "services/legacy-billing/app/facade.py",
+   "lines": "381-411",
+   "quote": "INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd)"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "trigger_business_logic",
+   "name": "TRG_CUSTOMER_MASTER_HIST"
+  },
+  "resolution": "no app writer of customer_master exists (seeder only); history copy is loaded verbatim as customerMasterHist; post-cutover writers must write history explicitly (documented in runbook)",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+   "lines": "358-373",
+   "quote": "AFTER UPDATE OR DELETE ON customer_master"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "scheduler_job",
+   "name": "JOB_NIGHTLY_DUNNING"
+  },
+  "resolution": "D3: disabled today (enabled => FALSE); becomes a scheduled task in the billing service calling the migrated dunning logic (unit u-11); owner: customer DBA / billing team",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/04_jobs.sql",
+   "lines": "5-17",
+   "quote": "pkg_dunning.sp_schedule_dunning(TRUNC(SYSDATE)); pkg_dunning.sp_suspend_overdue(TRUNC(SYSDATE))"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "scheduler_job",
+   "name": "JOB_PURGE_AUDIT_LOG"
+  },
+  "resolution": "D3: disabled today; replaced by a TTL index on billingAuditLog.loggedAt (90 days), created only with customer sign-off",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/04_jobs.sql",
+   "lines": "20-27",
+   "quote": "DELETE FROM billing_audit_log WHERE logged_at < SYSDATE - 90"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "unparsed_statement",
+   "file": "services/legacy-billing/db/oracle/schema/04_upgrade_static.sql"
+  },
+  "resolution": "both unparsed statements are fixture-metadata housekeeping (FIXTURE_META marker column + MERGE of static_seed_version); FIXTURE_META is an excluded object, not data",
+  "evidence": {
+   "file": "services/legacy-billing/db/oracle/schema/04_upgrade_static.sql",
+   "lines": "6-170",
+   "quote": "MERGE INTO fixture_meta target USING (SELECT 'static_seed_version' AS marker, '2' AS value FROM dual)"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "scoped_embed_remainder",
+   "parent": "customerMaster",
+   "child": "ENTITY_ATTR_VALUE"
+  },
+  "resolution": "every writer in the repo (seeder, static seeds, upgrade seeds) writes entity_type='CUSTOMER' only; the loader counts rows with entity_type <> 'CUSTOMER' and any non-zero count is a unit FAIL (quarantine_reason=eav_unexpected_entity_type), not a silent drop",
+  "evidence": {
+   "file": "testdata/legacy/oracle_billing_seed.py",
+   "lines": "253",
+   "quote": "eav_rows.append((f\"{ns}:{i}\", \"CUSTOMER\", cid, rng.choice(attrs),"
+  }
+ },
+ {
+  "op": "resolve",
+  "match": {
+   "kind": "embed_null_pointer_rows",
+   "table": "INVOICE_LINE"
+  },
+  "resolution": "INVOICE_ID is never NULL: the only writer assigns either a real header id or a deterministic ghost id; NULL or ghost invoice_id rows are quarantined by the loader (quarantine_reason=orphan_line) and counted in the unit report, never dropped silently",
+  "evidence": {
+   "file": "testdata/legacy/oracle_billing_seed.py",
+   "lines": "305-311",
+   "quote": "if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\") ... else: inv_id, inv_no, cust_i = inv_ids[rng.randrange(n_inv)]"
+  }
+ }
+]

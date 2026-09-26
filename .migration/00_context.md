@@ -31,6 +31,7 @@ unless marked DISCOVERED or PROPOSED.
 | Source read-only credential | none; no source connectivity exists | FACT |
 | Migration cluster credential | none. The org environment injects `MONGODB_ATLAS_URI`; the offline guard requires it masked, so every offline command runs as `env -u MONGODB_ATLAS_URI <command>` | DISCOVERED (offline_guard) |
 | Network path | n/a | FACT |
+| Fixture | same-engine synthetic Oracle Free container `otterworks-oracle-billing-oracle-billing-1` (host port 52521), seeded `NS=demo`; DSN env name `OW_BILLING_FIXTURE_DSN` (demo constant, not a secret); manifest `.migration/fixtures/ow_billing_demo.json`; local target `ow-mongo` (mongo:7, `MONGO_LOCAL_URI`) | DISCOVERED (playbook 2) |
 | Can children reach the source? | No. All recon is `--mode fixture --target-class local` (local Oracle Free fixture container + local mongo). It is never merge evidence | FACT |
 
 ## Correctness contract

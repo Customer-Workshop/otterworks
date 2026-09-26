@@ -184,8 +184,8 @@ make demo-destroy NS=d24-before
    `otterworks/dev/rds/master` when it is not exported).
 
 Verification refuses to certify - exits non-zero - when it *cannot* check something it
-should: an Azure-backed token (`azure: true` or any `-after` token without an overlay)
-with no `AZURE_*` credentials, or `DB_PASSWORD` unset. "Skipped" never counts as clean.
+should: an Azure-backed token (`azure: true` in its overlay) with no `AZURE_*` credentials,
+or `DB_PASSWORD` unset. "Skipped" never counts as clean.
 
 `make demo-verify-clean NS=<token>` runs step 5 alone. Typical destroy: 5–8 min
 (before), 10–15 min (after; SQL server deletion is the long pole).

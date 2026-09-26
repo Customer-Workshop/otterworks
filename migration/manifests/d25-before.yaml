@@ -1,0 +1,6 @@
+# BEFORE deployment: seeded Db2 only. No Azure resources, never migrated. `ldm` exits 4 for this namespace.
+namespace: d25-before
+extends: ../manifest.yaml
+migrate: false
+azure: false
+purge: false

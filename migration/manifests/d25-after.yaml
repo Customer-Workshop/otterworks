@@ -1,0 +1,16 @@
+# AFTER deployment: same seed, migrated into the tenant's PostgreSQL database (schemas mig/stg/arch), unload
+# files staged on the shared S3 bucket under this namespace's prefix, validated rows purged from this
+# namespace's Db2. No Azure resource is required; the LOAD stage runs on PySpark local mode inside the Job.
+namespace: d25-after
+extends: ../manifest.yaml
+migrate: true
+azure: false
+purge: true
+execution:
+  run_job_in_azure: false
+  load_engine: spark                            # serial | spark (local[*] inside the migration Job pod)
+  spark:
+    master: "local[*]"
+    driver_memory: 1g
+    shuffle_partitions: 4
+    records_per_slice: 5000

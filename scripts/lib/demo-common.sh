@@ -195,12 +195,22 @@ token_wants_azure() {
   printf 'false'
 }
 
-# Whether this token is migrated at all (overlay migrate: true, or a throwaway
-# `<x>-after` token without an overlay, which gets the PostgreSQL + S3 default).
+# Whether this token is migrated at all: the overlay's migrate flag. `ldm` refuses to
+# run a namespace without an overlay (CONTRACTS.md §4: purge may only be enabled there),
+# so an `<x>-after` token needs migration/manifests/<x>-after.yaml before deploying.
 token_wants_migrate() {
   local token="$1"
   if [ -f "$(overlay_path "${token}")" ]; then overlay_flag "${token}" migrate; return 0; fi
-  [ "$(token_state "${token}")" = "after" ] && printf 'true' || printf 'false'
+  printf 'false'
+}
+
+# Fail before touching anything when an after-token has no overlay: the deploy would
+# otherwise get as far as the `ldm init` Job and exit 4 there.
+require_overlay() {
+  local token="$1"
+  [ "$(token_state "${token}")" = "after" ] || return 0
+  [ -f "$(overlay_path "${token}")" ] ||
+    die "overlay $(overlay_path "${token}") not found; copy migration/manifests/d24-after.yaml and set namespace: ${token}" 2
 }
 
 # Expiry (§3.3) ---------------------------------------------------------------

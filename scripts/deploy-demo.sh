@@ -63,6 +63,7 @@ export DRY_RUN
 
 # --- validate before touching anything (§3.1) --------------------------------------
 validate_token "${TOKEN}"
+require_overlay "${TOKEN}"
 RUN="$(token_run "${TOKEN}")"; STATE="$(token_state "${TOKEN}")"
 NS="$(demo_namespace "${TOKEN}")"
 DB2_DB="$(db2_db_name "${TOKEN}")"
@@ -106,7 +107,6 @@ tf "${TOKEN}" "${DEMO_AWS_TF_DIR}" apply -input=false -auto-approve "${DEMO_AWS_
 DB2_VOLUME_ID="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" db2_volume_id)"
 DB2_VOLUME_AZ="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" db2_volume_az)"
 DEMO_BUCKET="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" bucket_name)"
-JOB_ECR_URL="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" job_repository_url)"
 JOB_ROLE_ARN="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" job_role_arn)"
 [ -n "${DEMO_BUCKET}" ] || DEMO_BUCKET="$(demo_s3_bucket "${TOKEN}")"
 stage_end 0

@@ -1,0 +1,84 @@
+{
+ "wave": 3,
+ "run_id": "single-session-wave-3",
+ "auto_merge": false,
+ "auto_merge_reason": "offline engagement: fixture/local evidence is never merge evidence (AGENTS.md rule 11; 00_context.md)",
+ "path": "single-session (2 batches, playbook 0 step 5) + one fresh independent reconciliation session (recon-w3, evidence c961af93)",
+ "mapping_version": "map-draft-3.1",
+ "tolerance_version": "tol-2",
+ "verifier": {
+  "status": "RUN",
+  "wave_verdict": "fixture PASS, live recon pending customer run",
+  "session": "345d39d8789843a3a03365ee30a4baf7",
+  "branch": "tp-run/mongodb-20260926T164803Z-rt-offline--recon-w3",
+  "report": ".migration/recon/wave-3/report.md",
+  "findings": [
+   "F1 (low, u-07): ow_util.code_desc(type, None) raises TypeError where PKG_OW_UTIL.f_code_desc returns 'UNKNOWN(-1)'; unreachable from fixture/transcripts",
+   "F2 (low, u-11): suspend_overdue cutoff is timestamp-granular vs Oracle day-granular TO_CHAR compare; unreachable with current writers (issue_invoice writes midnight only)",
+   "D1: u-07/u-08 committed mapping.subset.json labelled map-draft-2 while run branch is map-draft-3.1 (content verbatim); relabel before any live run"
+  ]
+ },
+ "batches": [
+  {
+   "id": "w3-b01",
+   "units": [
+    "u-07-plsql-util",
+    "u-08-plsql-plans"
+   ],
+   "branch": "tp-run/mongodb-20260926T164803Z-rt-offline--w3-b01",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1725",
+   "recon_mode": "fixture",
+   "target_class": "local",
+   "recon_verdict": "PASS",
+   "verifier_verdict": "PASS (fixture, local)",
+   "status": "BLOCKED",
+   "failure_class": "offline_no_live_recon",
+   "quarantine": 0,
+   "write_targets": [
+    "ow_billing_migration.parity_w3_b01"
+   ],
+   "one_line_summary": "u-07 T1 2/T2 1/T3 32/T4 2 PASS, 38 helper checks 0 mismatch; u-08 T1 4/T2 10/T3 143/T4 4 PASS, 5/5 PLANS transcripts; verifier agrees tier-for-tier, probes: TRG_SUB_NO_UNCANCEL holds, 1 hist row per closed sub; merge_eligible=false"
+  },
+  {
+   "id": "w3-b02",
+   "units": [
+    "u-09-plsql-rating",
+    "u-10-plsql-invoicing",
+    "u-11-plsql-dunning"
+   ],
+   "branch": "tp-run/mongodb-20260926T164803Z-rt-offline--w3-b02",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1726",
+   "recon_mode": "fixture",
+   "target_class": "local",
+   "recon_verdict": "PASS",
+   "verifier_verdict": "PASS (fixture, local) with finding F2",
+   "status": "BLOCKED",
+   "failure_class": "offline_no_live_recon",
+   "quarantine": 0,
+   "write_targets": [
+    "ow_billing_migration.parity_w3_b02"
+   ],
+   "one_line_summary": "u-09 T1 2/T2 8/T3 6/T4 2, u-10 T1 5/T2 16/T3 19/T4 3, u-11 T1 5/T2 10/T3 142/T4 3 all PASS; 19/19 transcripts replay; verifier agrees, nightly dunning idempotent on double call; merge_eligible=false"
+  }
+ ],
+ "circuit_breaker": {
+  "tripped": false
+ },
+ "collisions": [],
+ "awaiting_manual_merge": [],
+ "skill_feedback": [
+  "harness: warn/fail when subset spec version differs from .migration/03_mapping_spec.json (--expect-mapping-version)",
+  "playbook 4: PL/SQL code units need a behavioural probe checklist (idempotency, trigger invariants, boundary dates) beyond Tier 4 read projections",
+  "playbook 4: test day-granular date compares with non-midnight timestamps even when the fixture has none",
+  "sp_finalize_rating stores GREATEST(quota-used,0) in rolloverUnits, read INSERTs literally",
+  "transcript decimal fields render 2dp; tax/2 preview halves unrounded",
+  "make tp-smoke needs go on the box; rely on CI for Go/Node stages"
+ ],
+ "tooling_gaps": [
+  "make -C services/legacy-billing tp-smoke: no such target",
+  "make tp-smoke: go: command not found",
+  "harness rejects --allowed-targets-file outside <root>/.migration/",
+  "ow-mongo container crashed once mid-run (exit 14), restarted, data intact"
+ ],
+ "generated_at": "2026-09-26T19:03:04.608167+00:00"
+}

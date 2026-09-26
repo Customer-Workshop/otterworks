@@ -8,8 +8,9 @@
   "legacy_sources": [
     "OW_BILLING"
   ],
-  "note": "The only database Devin may write on Atlas cluster otterworks-demo (project otterworks-demos). Credential: secret MONGODB_MMP_RT_TARGET_URI (name only). MONGODB_ATLAS_URI is not used. 'catalogs' mirrors 'databases' because the org-wide dbx-migration-factory PreToolUse guard (hooks/dbx_guard.py) also reads this file and requires it. 'target_hosts' names the migration-cluster secret so that guard can resolve the target connection (secret name only).",
+  "note": "The only database Devin may write on Atlas cluster otterworks-demo (project otterworks-demos). Credential: secret MONGODB_MMP_RT_TARGET_URI (name only). MONGODB_ATLAS_URI is not used. 'catalogs' mirrors 'databases' because the org-wide dbx-migration-factory PreToolUse guard (hooks/dbx_guard.py) also reads this file and requires it. 'target_hosts' names the migration-cluster secret so that guard can resolve the target connection (secret name only). guard_mode=warn: the dbx guard is a Databricks/Postgres static analyser and cannot resolve pymongo/oracledb programs (mongo-migration connectivity_probe.py, recon, loaders); in warn mode it still hard-blocks any write shape against legacy_sources (OW_BILLING) and logs everything else. Target-side write scope is enforced by the mongo-migration probe (target_not_allowlisted), the scoped readWrite@mmp_rt_billing principal, and wave-manifest write-target checks. Decision row 2026-09-26 in 05_decisions.md.",
   "target_hosts": [
     "MONGODB_MMP_RT_TARGET_URI"
-  ]
+  ],
+  "guard_mode": "warn"
 }

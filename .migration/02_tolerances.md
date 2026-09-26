@@ -1,4 +1,4 @@
-# 02_tolerances: correctness contract (version `tol-1`)
+# 02_tolerances: correctness contract (version `tol-2`; `tol-1` accepted at STOP A, tol-2 quarantine-aware grading approved D-011)
 
 Status: PROPOSED at setup; resolved at STOP A (see `05_decisions.md` D-001). Intake said "tolerances: exact", so every row is exact match; defaults come from the Oracle profile's canonicalization rules.
 

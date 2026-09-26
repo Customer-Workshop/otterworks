@@ -35,7 +35,7 @@ unless marked DISCOVERED or PROPOSED.
 | Can children reach the source? | No. All recon is `--mode fixture --target-class local` (local Oracle Free fixture container + local mongo). It is never merge evidence | FACT |
 
 ## Correctness contract
-See `02_tolerances.md` / `02_tolerances.json` (version `tol-1`): exact tolerances,
+See `02_tolerances.md` / `02_tolerances.json` (version `tol-2` since D-011; STOP A accepted `tol-1`): exact tolerances,
 row-diff threshold 100000, source concurrency 1.
 
 ## Process

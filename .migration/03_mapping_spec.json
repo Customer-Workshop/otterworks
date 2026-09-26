@@ -1,5 +1,5 @@
 {
-  "version": "map-draft-2",
+  "version": "map-draft-3",
   "source_family": "oracle",
   "collections": [
     {
@@ -5668,7 +5668,7 @@
           ],
           "cardinality": "1:N",
           "cardinality_basis": "derived",
-          "evidence": "unenforced pointer (no FK in DDL) ['INVOICE_ID']; services/legacy-billing/app/reports.py: FROM invoice_header h, invoice_line l, codes st WHERE h.batch_no = :batch_no AND h.invoice_id = l.invoice_id -- INVOICE_LINE is only ever read joined to its header (month-end aggregate); it never appears alone. Seeder caps line_no at i % 25 + 1 (testdata/legacy/oracle_billing_seed.py:322). Orphan lines (invoice_id with no header, ~37/10k, oracle_billing_seed.py:145) have no parent document and are quarantined by the loader, never embedded.",
+          "evidence": "unenforced pointer (no FK in DDL) ['INVOICE_ID']; services/legacy-billing/app/reports.py: FROM invoice_header h, invoice_line l, codes st WHERE h.batch_no = :batch_no AND h.invoice_id = l.invoice_id -- INVOICE_LINE is only ever read joined to its header (month-end aggregate); it never appears alone. Seeder caps line_no at i % 25 + 1 (testdata/legacy/oracle_billing_seed.py:322). Orphan lines (invoice_id with no header, ~37/10k, oracle_billing_seed.py:145) have no parent document and are quarantined by the loader, never embedded.; testdata/legacy/oracle_billing_seed.py: if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\") -- orphan INVOICE_LINE rows have no INVOICE_HEADER parent; the accepted model quarantines them (quarantine_reason=orphan_line), so the embed's Tier 1 population is scoped to lines with a parent (D-018, human-approved map-draft-3)",
           "shape": "array",
           "parent_ref": [
             "INVOICE_ID"
@@ -5684,7 +5684,9 @@
               ],
               "proposal": "keep the numeric code; resolve to a label in the app or a codes collection"
             }
-          ]
+          ],
+          "child_where": "invoice_id IN (SELECT invoice_id FROM invoice_header)",
+          "target_where": "{\"lines.invoiceId\": {\"$exists\": true}}"
         }
       ],
       "decision": {
@@ -5746,7 +5748,7 @@
     }
   ],
   "canonicalization": {
-    "version": "map-draft-2-canon",
+    "version": "map-draft-3-canon",
     "rules": [
       {
         "rule": "decimal_round",
@@ -6879,6 +6881,62 @@
         },
         "cited": "testdata/legacy/oracle_billing_seed.py: if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\") ... else: inv_id, inv_no, cust_i = inv_ids[rng.randrange(n_inv)]",
         "status": "PROPOSED"
+      },
+      {
+        "op": "embed",
+        "child_table": "INVOICE_LINE",
+        "into": "invoiceHeader",
+        "array_path": "lines",
+        "cardinality": "1:N",
+        "basis": "derived",
+        "parent_key": [
+          "INVOICE_ID"
+        ],
+        "child_where": "invoice_id IN (SELECT invoice_id FROM invoice_header)",
+        "target_where": {
+          "lines.invoiceId": {
+            "$exists": true
+          }
+        },
+        "evidence": {
+          "file": "testdata/legacy/oracle_billing_seed.py",
+          "lines": "305-311",
+          "quote": "if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\") -- orphan INVOICE_LINE rows have no INVOICE_HEADER parent; the accepted model quarantines them (quarantine_reason=orphan_line), so the embed's Tier 1 population is scoped to lines with a parent (D-018, human-approved map-draft-3)"
+        },
+        "cited": "testdata/legacy/oracle_billing_seed.py: if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\") -- orphan INVOICE_LINE rows have no INVOICE_HEADER parent; the accepted model quarantines them (quarantine_reason=orphan_line), so the embed's Tier 1 population is scoped to lines with a parent (D-018, human-approved map-draft-3)",
+        "status": "PROPOSED"
+      },
+      {
+        "op": "resolve",
+        "match": {
+          "kind": "scoped_embed_remainder",
+          "parent": "invoiceHeader",
+          "child": "INVOICE_LINE"
+        },
+        "resolution": "the remainder (lines whose invoice_id has no INVOICE_HEADER row; 37 planted ghost-invoice rows in the fixture) is quarantined by the u-06 loader with quarantine_reason=orphan_line and reported as a count; it is deliberately in no collection (D-018)",
+        "evidence": {
+          "file": "testdata/legacy/oracle_billing_seed.py",
+          "lines": "305-311",
+          "quote": "if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\")"
+        },
+        "cited": "testdata/legacy/oracle_billing_seed.py: if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\")",
+        "status": "PROPOSED"
+      },
+      {
+        "op": "resolve",
+        "match": {
+          "kind": "embed_unbounded",
+          "parent": "invoiceHeader",
+          "child": "INVOICE_LINE"
+        },
+        "resolution": "bounded: line_no cycles 1..25 per invoice in the only writer (seeder); 25 lines x ~20 short columns stays far below 16 MB (re-asserted after the D-018 scoped re-embed)",
+        "evidence": {
+          "file": "testdata/legacy/oracle_billing_seed.py",
+          "lines": "322",
+          "quote": "i % 25 + 1"
+        },
+        "cited": "testdata/legacy/oracle_billing_seed.py: i % 25 + 1",
+        "status": "PROPOSED"
       }
     ],
     "resolved": [
@@ -7039,6 +7097,25 @@
         "proposal": "rows whose INVOICE_ID IS NULL have no parent document and are dropped by the embed; confirm with a count or keep the table as a collection",
         "resolution": "INVOICE_ID is never NULL: the only writer assigns either a real header id or a deterministic ghost id; NULL or ghost invoice_id rows are quarantined by the loader (quarantine_reason=orphan_line) and counted in the unit report, never dropped silently",
         "evidence": "testdata/legacy/oracle_billing_seed.py: if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\") ... else: inv_id, inv_no, cust_i = inv_ids[rng.randrange(n_inv)]"
+      },
+      {
+        "kind": "scoped_embed_remainder",
+        "parent": "invoiceHeader",
+        "child": "INVOICE_LINE",
+        "array_path": "lines",
+        "child_where": "invoice_id IN (SELECT invoice_id FROM invoice_header)",
+        "note": "rows where NOT (invoice_id IN (SELECT invoice_id FROM invoice_header)) are in no collection after this embed; embed them elsewhere, or keep invoiceLine as a collection with root_where",
+        "resolution": "the remainder (lines whose invoice_id has no INVOICE_HEADER row; 37 planted ghost-invoice rows in the fixture) is quarantined by the u-06 loader with quarantine_reason=orphan_line and reported as a count; it is deliberately in no collection (D-018)",
+        "evidence": "testdata/legacy/oracle_billing_seed.py: if i in orphan_idx: inv_id = md5_uuid(f\"{ns}:ghost-invoice:{i}\")"
+      },
+      {
+        "kind": "embed_unbounded",
+        "parent": "invoiceHeader",
+        "child": "INVOICE_LINE",
+        "array_path": "lines",
+        "note": "1:N embed: confirm the fan-out bound and document size (16 MB) against data, or bucket/reference",
+        "resolution": "bounded: line_no cycles 1..25 per invoice in the only writer (seeder); 25 lines x ~20 short columns stays far below 16 MB (re-asserted after the D-018 scoped re-embed)",
+        "evidence": "testdata/legacy/oracle_billing_seed.py: i % 25 + 1"
       }
     ]
   }

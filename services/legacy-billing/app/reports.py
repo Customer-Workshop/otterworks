@@ -34,6 +34,17 @@ SOURCE = {
     "detail": "INVOICE_HEADER / INVOICE_LINE via CODES lookup (RPT-114)",
 }
 
+MONGO_SOURCE = {
+    "engine": "mongodb",
+    "system": "mmp_rt_billing (Atlas otterworks-demo)",
+    "detail": "invoice_headers $lookup invoice_lines on invoiceId, codes lookup (RPT-114 aggregation pipelines)",
+}
+
+
+def _mongo_backend():
+    return os.getenv("BILLING_BACKEND", "postgres").lower() == "mongo"
+
+
 FINANCE_SOURCE = {
     "system": "CUSTBILL month-end batch",
     "detail": "ksh/Perl chain over Oracle CUSTBILL extract",
@@ -139,11 +150,23 @@ def oracle_query(sql, params):
         return cursor.fetchall()
 
 
+def month_end_rows(batch_no):
+    """(status_rows, line_rows) for one conversion batch; BILLING_BACKEND=mongo serves the
+    RPT-114 rollup from invoice_headers aggregation pipelines (backends/mongo/invoice_batch.py)."""
+    if _mongo_backend():
+        from backends.mongo import invoice_batch
+
+        return (invoice_batch.month_end_by_status(batch_no),
+                invoice_batch.month_end_by_status_line_type(batch_no))
+    return (oracle_query(STATUS_SQL, {"batch_no": batch_no}),
+            oracle_query(LINE_SQL, {"batch_no": batch_no}))
+
+
 def report_meta(ns):
     return {
         "namespace": ns,
         "batch_no": ns_batch_no(ns),
-        "source": SOURCE,
+        "source": MONGO_SOURCE if _mongo_backend() else SOURCE,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
@@ -161,8 +184,7 @@ def month_end():
     ns = request.args.get("ns", "demo")
     batch_no = ns_batch_no(ns)
     try:
-        status_rows = oracle_query(STATUS_SQL, {"batch_no": batch_no})
-        line_rows = oracle_query(LINE_SQL, {"batch_no": batch_no})
+        status_rows, line_rows = month_end_rows(batch_no)
     except Exception:  # estate offline: fail closed, never fabricate numbers
         logger.exception("month-end report failed for ns=%s", ns)
         return jsonify(ESTATE_UNAVAILABLE), 503

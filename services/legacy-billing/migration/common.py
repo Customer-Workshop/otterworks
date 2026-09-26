@@ -176,14 +176,21 @@ def _flush(coll, batch):
     return len(batch)
 
 
-def load_collection(conn, db, mapping, collection_name, where=None):
-    """Load one root-only collection through its mapping-spec rows. Returns doc count."""
+def load_collection(conn, db, mapping, collection_name, where=None, derive=None):
+    """Load one root-only collection through its mapping-spec rows. Returns doc count.
+
+    derive(row, doc) -> dict | None adds the collection's mapping-spec `derived_fields`
+    (ungraded, e.g. invoice_lines.orphan) to a document after the graded fields are mapped;
+    a None/empty return adds nothing (flag absent, per the null_missing_equiv policy)."""
     c = next(x for x in mapping["collections"] if x["collection"] == collection_name)
     coll = reset_collection(db, collection_name, mapping.get("index_plan", {}).get(collection_name, []))
     cols = sorted({f["source"] for f in c["fields"]} | set(c["key"]["source"]))
     batch, n = [], 0
     for row in fetch_rows(conn, c["root_table"], cols, where or c.get("root_where")):
-        batch.append(_root_doc(c, row))
+        doc = _root_doc(c, row)
+        if derive is not None:
+            doc.update(derive(row, doc) or {})
+        batch.append(doc)
         if len(batch) >= 2000:
             n += _flush(coll, batch); batch = []
     n += _flush(coll, batch)
@@ -210,14 +217,16 @@ def fetch_children(conn, embed, where=None):
                 yield tuple(row[k] for k in embed["parent_key"]), row_to_doc(embed["fields"], row)
 
 
-def load_embedded_collection(conn, db, mapping, collection_name, where=None):
+def load_embedded_collection(conn, db, mapping, collection_name, where=None, derive=None):
     """Load a root collection with its mapping-spec embeds (child tables -> arrays under
     array_path). Root docs get an empty array when no child row exists. Orphan child rows
     (no root row) are counted and returned, never written. Returns (doc count, orphans)."""
     c = next(x for x in mapping["collections"] if x["collection"] == collection_name)
     embeds = c.get("embeds", [])
     if not embeds:
-        return load_collection(conn, db, mapping, collection_name, where), 0
+        return load_collection(conn, db, mapping, collection_name, where, derive=derive), 0
+    if derive is not None:
+        raise ValueError(f"{collection_name}: derive is only supported for root-only collections")
     coll = reset_collection(db, collection_name, mapping.get("index_plan", {}).get(collection_name, []))
     cols = sorted({f["source"] for f in c["fields"]} | set(c["key"]["source"]))
     docs = {}
@@ -245,10 +254,14 @@ def load_embedded_collection(conn, db, mapping, collection_name, where=None):
     return n, orphans
 
 
-def load_unit(conn, db, mapping, write_targets):
-    """Load every declared write target of one unit mapping; embeds handled per spec."""
+def load_unit(conn, db, mapping, write_targets, derive=None):
+    """Load every declared write target of one unit mapping, in the given order; embeds
+    handled per spec. derive: {collection: callable} for ungraded derived fields; when a flag
+    depends on an already-loaded sibling (invoice_lines.orphan needs invoice_headers), the
+    unit loader sequences the two load_embedded_collection calls itself."""
+    derive = derive or {}
     results = {}
     for name in write_targets:
-        n, orphans = load_embedded_collection(conn, db, mapping, name)
+        n, orphans = load_embedded_collection(conn, db, mapping, name, derive=derive.get(name))
         results[name] = (n, orphans)
     return results

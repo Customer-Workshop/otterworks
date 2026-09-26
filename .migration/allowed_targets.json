@@ -1,0 +1,6 @@
+{
+  "databases": ["ow_billing_migration"],
+  "catalogs": ["ow_billing_migration"],
+  "run_mode": "fixture",
+  "_note": "mongo kit reads databases. catalogs mirrors the same single database only because the co-installed dbx-migration-factory PreToolUse hook parses this file and rejects it without a non-empty catalogs list; it authorizes no Databricks target."
+}

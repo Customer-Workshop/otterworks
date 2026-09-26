@@ -832,13 +832,11 @@ class PostgresTarget:
         deleted: dict[str, int] = {}
         try:
             with self.conn.transaction():  # type: ignore[attr-defined]
-                with self.conn.cursor() as cur:  # type: ignore[attr-defined]
-                    for schema, table in targets:
-                        stmt = sql.SQL("DELETE FROM {}.{} WHERE namespace = %s").format(
-                            sql.Identifier(schema), sql.Identifier(table)
-                        )
-                        cur.execute(stmt, (namespace,))
-                        deleted[f"{schema}.{table}"] = int(cur.rowcount)
+                for schema, table in targets:
+                    stmt = sql.SQL("DELETE FROM {}.{} WHERE namespace = %s").format(
+                        sql.Identifier(schema), sql.Identifier(table)
+                    )
+                    deleted[f"{schema}.{table}"] = self._run(stmt, (namespace,))
         except self.psycopg.Error as e:
             raise TargetError(*parse_pg_error(e)) from e
         return deleted

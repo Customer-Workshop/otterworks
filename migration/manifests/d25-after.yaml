@@ -2,6 +2,7 @@
 # files staged on the shared S3 bucket under this namespace's prefix, validated rows purged from this
 # namespace's Db2. No Azure resource is required; the LOAD stage runs on PySpark local mode inside the Job.
 namespace: d25-after
+run_token: d25
 extends: ../manifest.yaml
 migrate: true
 azure: false

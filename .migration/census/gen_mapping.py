@@ -63,7 +63,7 @@ def fields(t, exclude=()):
 
 
 def coll(name, table, key_src, key_tgt="_id", embeds=None, root_where=None, target_where=None, **extra):
-    c = {"collection": name, "root_table": table,
+    c = {"collection": name, "root_table": "OW_BILLING." + table,  # schema-qualified: ow_billing_ro has no synonyms
          "key": {"source": key_src, "target": key_tgt},
          "fields": fields(table), "cardinality": f"docs = count({table}{' WHERE ' + root_where if root_where else ''})"}
     if root_where:
@@ -76,7 +76,7 @@ def coll(name, table, key_src, key_tgt="_id", embeds=None, root_where=None, targ
 
 
 def embed(path, child, parent_key, key_src, key_tgt, cardinality, child_where=None, **extra):
-    e = {"array_path": path, "shape": "array", "child_table": child, "parent_key": parent_key,
+    e = {"array_path": path, "shape": "array", "child_table": "OW_BILLING." + child, "parent_key": parent_key,
          "key": {"source": key_src, "target": key_tgt}, "fields": fields(child), "cardinality": cardinality}
     if child_where:
         e["child_where"] = child_where

@@ -12,7 +12,7 @@
  "collections": [
   {
    "collection": "customers",
-   "root_table": "CUSTOMER_MASTER",
+   "root_table": "OW_BILLING.CUSTOMER_MASTER",
    "key": {
     "source": [
      "CUST_ID"
@@ -1572,7 +1572,7 @@
     {
      "array_path": "attributes",
      "shape": "array",
-     "child_table": "ENTITY_ATTR_VALUE",
+     "child_table": "OW_BILLING.ENTITY_ATTR_VALUE",
      "parent_key": [
       "ENTITY_ID"
      ],

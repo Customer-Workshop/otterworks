@@ -12,7 +12,7 @@
  "collections": [
   {
    "collection": "dunning_attempts",
-   "root_table": "DUNNING_ATTEMPTS",
+   "root_table": "OW_BILLING.DUNNING_ATTEMPTS",
    "key": {
     "source": [
      "ID"
@@ -78,7 +78,7 @@
   },
   {
    "collection": "notifications",
-   "root_table": "NOTIFICATIONS",
+   "root_table": "OW_BILLING.NOTIFICATIONS",
    "key": {
     "source": [
      "ID"

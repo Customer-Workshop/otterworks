@@ -12,7 +12,7 @@
  "collections": [
   {
    "collection": "invoices",
-   "root_table": "INVOICES",
+   "root_table": "OW_BILLING.INVOICES",
    "key": {
     "source": [
      "ID"
@@ -96,7 +96,7 @@
     {
      "array_path": "lines",
      "shape": "array",
-     "child_table": "INVOICE_LINES",
+     "child_table": "OW_BILLING.INVOICE_LINES",
      "parent_key": [
       "INVOICE_ID"
      ],
@@ -169,7 +169,7 @@
   },
   {
    "collection": "credit_notes",
-   "root_table": "CREDIT_NOTES",
+   "root_table": "OW_BILLING.CREDIT_NOTES",
    "key": {
     "source": [
      "ID"

@@ -12,7 +12,7 @@
  "collections": [
   {
    "collection": "codes",
-   "root_table": "CODES",
+   "root_table": "OW_BILLING.CODES",
    "key": {
     "source": [
      "CODE_TYPE",
@@ -57,7 +57,7 @@
   },
   {
    "collection": "tenants",
-   "root_table": "TENANTS",
+   "root_table": "OW_BILLING.TENANTS",
    "key": {
     "source": [
      "ID"
@@ -108,7 +108,7 @@
   },
   {
    "collection": "plans",
-   "root_table": "PLANS",
+   "root_table": "OW_BILLING.PLANS",
    "key": {
     "source": [
      "ID"

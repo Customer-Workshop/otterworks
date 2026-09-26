@@ -12,7 +12,7 @@
  "collections": [
   {
    "collection": "invoice_headers",
-   "root_table": "INVOICE_HEADER",
+   "root_table": "OW_BILLING.INVOICE_HEADER",
    "key": {
     "source": [
      "INVOICE_ID"
@@ -115,7 +115,7 @@
     {
      "array_path": "lines",
      "shape": "array",
-     "child_table": "INVOICE_LINE",
+     "child_table": "OW_BILLING.INVOICE_LINE",
      "parent_key": [
       "INVOICE_ID"
      ],
@@ -336,7 +336,7 @@
   },
   {
    "collection": "invoice_line_orphans",
-   "root_table": "INVOICE_LINE",
+   "root_table": "OW_BILLING.INVOICE_LINE",
    "key": {
     "source": [
      "LINE_ID"

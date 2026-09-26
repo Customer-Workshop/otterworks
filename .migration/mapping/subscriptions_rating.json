@@ -12,7 +12,7 @@
  "collections": [
   {
    "collection": "subscriptions",
-   "root_table": "SUBSCRIPTIONS",
+   "root_table": "OW_BILLING.SUBSCRIPTIONS",
    "key": {
     "source": [
      "ID"
@@ -91,7 +91,7 @@
   },
   {
    "collection": "usage_events",
-   "root_table": "USAGE_EVENTS",
+   "root_table": "OW_BILLING.USAGE_EVENTS",
    "key": {
     "source": [
      "ID"
@@ -148,7 +148,7 @@
   },
   {
    "collection": "rating_periods",
-   "root_table": "RATING_PERIODS",
+   "root_table": "OW_BILLING.RATING_PERIODS",
    "key": {
     "source": [
      "ID"
@@ -198,7 +198,7 @@
     {
      "array_path": "results",
      "shape": "array",
-     "child_table": "RATING_RESULTS",
+     "child_table": "OW_BILLING.RATING_RESULTS",
      "parent_key": [
       "PERIOD_ID"
      ],

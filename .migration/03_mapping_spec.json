@@ -12,7 +12,7 @@
  "collections": [
   {
    "collection": "codes",
-   "root_table": "CODES",
+   "root_table": "OW_BILLING.CODES",
    "key": {
     "source": [
      "CODE_TYPE",
@@ -57,7 +57,7 @@
   },
   {
    "collection": "tenants",
-   "root_table": "TENANTS",
+   "root_table": "OW_BILLING.TENANTS",
    "key": {
     "source": [
      "ID"
@@ -108,7 +108,7 @@
   },
   {
    "collection": "plans",
-   "root_table": "PLANS",
+   "root_table": "OW_BILLING.PLANS",
    "key": {
     "source": [
      "ID"
@@ -184,7 +184,7 @@
   },
   {
    "collection": "customers",
-   "root_table": "CUSTOMER_MASTER",
+   "root_table": "OW_BILLING.CUSTOMER_MASTER",
    "key": {
     "source": [
      "CUST_ID"
@@ -1744,7 +1744,7 @@
     {
      "array_path": "attributes",
      "shape": "array",
-     "child_table": "ENTITY_ATTR_VALUE",
+     "child_table": "OW_BILLING.ENTITY_ATTR_VALUE",
      "parent_key": [
       "ENTITY_ID"
      ],
@@ -1832,7 +1832,7 @@
   },
   {
    "collection": "invoice_headers",
-   "root_table": "INVOICE_HEADER",
+   "root_table": "OW_BILLING.INVOICE_HEADER",
    "key": {
     "source": [
      "INVOICE_ID"
@@ -1935,7 +1935,7 @@
     {
      "array_path": "lines",
      "shape": "array",
-     "child_table": "INVOICE_LINE",
+     "child_table": "OW_BILLING.INVOICE_LINE",
      "parent_key": [
       "INVOICE_ID"
      ],
@@ -2156,7 +2156,7 @@
   },
   {
    "collection": "invoice_line_orphans",
-   "root_table": "INVOICE_LINE",
+   "root_table": "OW_BILLING.INVOICE_LINE",
    "key": {
     "source": [
      "LINE_ID"
@@ -2373,7 +2373,7 @@
   },
   {
    "collection": "subscriptions",
-   "root_table": "SUBSCRIPTIONS",
+   "root_table": "OW_BILLING.SUBSCRIPTIONS",
    "key": {
     "source": [
      "ID"
@@ -2452,7 +2452,7 @@
   },
   {
    "collection": "usage_events",
-   "root_table": "USAGE_EVENTS",
+   "root_table": "OW_BILLING.USAGE_EVENTS",
    "key": {
     "source": [
      "ID"
@@ -2509,7 +2509,7 @@
   },
   {
    "collection": "rating_periods",
-   "root_table": "RATING_PERIODS",
+   "root_table": "OW_BILLING.RATING_PERIODS",
    "key": {
     "source": [
      "ID"
@@ -2559,7 +2559,7 @@
     {
      "array_path": "results",
      "shape": "array",
-     "child_table": "RATING_RESULTS",
+     "child_table": "OW_BILLING.RATING_RESULTS",
      "parent_key": [
       "PERIOD_ID"
      ],
@@ -2653,7 +2653,7 @@
   },
   {
    "collection": "invoices",
-   "root_table": "INVOICES",
+   "root_table": "OW_BILLING.INVOICES",
    "key": {
     "source": [
      "ID"
@@ -2737,7 +2737,7 @@
     {
      "array_path": "lines",
      "shape": "array",
-     "child_table": "INVOICE_LINES",
+     "child_table": "OW_BILLING.INVOICE_LINES",
      "parent_key": [
       "INVOICE_ID"
      ],
@@ -2810,7 +2810,7 @@
   },
   {
    "collection": "credit_notes",
-   "root_table": "CREDIT_NOTES",
+   "root_table": "OW_BILLING.CREDIT_NOTES",
    "key": {
     "source": [
      "ID"
@@ -2871,7 +2871,7 @@
   },
   {
    "collection": "dunning_attempts",
-   "root_table": "DUNNING_ATTEMPTS",
+   "root_table": "OW_BILLING.DUNNING_ATTEMPTS",
    "key": {
     "source": [
      "ID"
@@ -2937,7 +2937,7 @@
   },
   {
    "collection": "notifications",
-   "root_table": "NOTIFICATIONS",
+   "root_table": "OW_BILLING.NOTIFICATIONS",
    "key": {
     "source": [
      "ID"

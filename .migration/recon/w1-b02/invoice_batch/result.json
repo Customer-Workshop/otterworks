@@ -1,0 +1,240 @@
+{
+  "unit": "w1-b02",
+  "mode": "live",
+  "target_class": "migration_cluster",
+  "mapping_version": "1.1.0",
+  "tolerance_version": "1.0.0",
+  "seed": 20260926,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-26T18:21:43.392082+00:00",
+  "redacted": true,
+  "redaction_salted": true,
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "source_counts": {
+          "invoice_headers": 18750,
+          "invoice_lines": 150000
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 5,
+      "stats": {
+        "deferred_to_tier3": [
+          "invoice_headers.invoiceId",
+          "invoice_headers.invoiceNo",
+          "invoice_headers.custId",
+          "invoice_headers.tenantId",
+          "invoice_headers.invoiceDt",
+          "invoice_headers.dueDt",
+          "invoice_headers.statusCd",
+          "invoice_headers.totalAmt",
+          "invoice_headers.batchNo",
+          "invoice_lines.lineId",
+          "invoice_lines.invoiceNo",
+          "invoice_lines.invoiceId",
+          "invoice_lines.custId",
+          "invoice_lines.custNo",
+          "invoice_lines.custName",
+          "invoice_lines.tenantId",
+          "invoice_lines.lineNo",
+          "invoice_lines.lineTypeCd",
+          "invoice_lines.itemDesc",
+          "invoice_lines.qty",
+          "invoice_lines.unitPrice",
+          "invoice_lines.amount",
+          "invoice_lines.taxAmt",
+          "invoice_lines.invoiceDt",
+          "invoice_lines.servicePeriod",
+          "invoice_lines.postedYn",
+          "invoice_lines.glAcctCsv",
+          "invoice_lines.batchNo",
+          "invoice_lines.srcSystem"
+        ],
+        "string_aggregates_deferred_to_tier3": [
+          {
+            "field": "invoice_headers.invoiceId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_headers.invoiceNo",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_headers.custId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_headers.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_headers.invoiceDt",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_headers.dueDt",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.lineId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.invoiceNo",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.invoiceId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.custId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.custNo",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.custName",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.itemDesc",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.invoiceDt",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.servicePeriod",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.glAcctCsv",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoice_lines.srcSystem",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          }
+        ],
+        "fields_fully_deferred": 24
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 19754,
+      "stats": {
+        "invoice_headers": {
+          "mode": "full_diff",
+          "population": 18750,
+          "duplicate_source_key_count": 0
+        },
+        "invoice_lines": {
+          "mode": "stratified_sample",
+          "population": 150000,
+          "sampled": 1004,
+          "coverage": 0.006693,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "error": null
+}

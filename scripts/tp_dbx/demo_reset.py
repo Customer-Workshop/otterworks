@@ -19,8 +19,7 @@ Stdlib only; uses client.py Databricks for REST + SQL.
 
   python3 scripts/tp_dbx/demo_reset.py            # print plan, do nothing
   python3 scripts/tp_dbx/demo_reset.py --apply    # execute, then verify
-  ... [--catalog ow_tp] [--schema-prefix mig_]
-      [--schema-prefix mig_] [--job-prefix ow_tp_] [--lakebase-project ow-tp-billing]
+  ... [--catalog ow_tp] [--schema-prefix mig_] [--job-prefix ow_tp_] [--lakebase-project ow-tp-billing]
       [--branch-prefix mig-] [--start-oracle i-0123...]
 """
 from __future__ import annotations
@@ -85,6 +84,7 @@ def _run_schemas(rows: list, opts: Opts) -> list[str]:
         catalog_part = full.split(".", 1)[0]
         if catalog_part != opts.catalog:
             continue
+        require_ident(short, "schema")
         out.append(full)
     return out
 

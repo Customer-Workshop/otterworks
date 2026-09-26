@@ -1,0 +1,310 @@
+{
+ "version": "1.0.0",
+ "generated_at": "2026-09-26T17:08:31+00:00",
+ "generator": ".migration/census/gen_mapping.py over .migration/census/discovery.json",
+ "source": {
+  "family": "oracle",
+  "schema": "OW_BILLING"
+ },
+ "target": {
+  "database": "mmp_rt_billing"
+ },
+ "collections": [
+  {
+   "collection": "invoices",
+   "root_table": "INVOICES",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "ID",
+     "target": "id",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "PERIOD_ID",
+     "target": "periodId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "ISSUED_AT",
+     "target": "issuedAt",
+     "source_type": "TIMESTAMP(6)",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    },
+    {
+     "source": "SUBTOTAL",
+     "target": "subtotal",
+     "source_type": "NUMBER(12,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round"
+     ]
+    },
+    {
+     "source": "TAX",
+     "target": "tax",
+     "source_type": "NUMBER(12,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round"
+     ]
+    },
+    {
+     "source": "TOTAL",
+     "target": "total",
+     "source_type": "NUMBER(12,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round"
+     ]
+    },
+    {
+     "source": "STATUS_CD",
+     "target": "statusCd",
+     "source_type": "NUMBER(4,0)",
+     "bson_type": "int",
+     "rules": []
+    }
+   ],
+   "cardinality": "docs = count(INVOICES)",
+   "embeds": [
+    {
+     "array_path": "lines",
+     "shape": "array",
+     "child_table": "INVOICE_LINES",
+     "parent_key": [
+      "INVOICE_ID"
+     ],
+     "key": {
+      "source": [
+       "ID"
+      ],
+      "target": "id"
+     },
+     "fields": [
+      {
+       "source": "ID",
+       "target": "id",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null"
+       ]
+      },
+      {
+       "source": "INVOICE_ID",
+       "target": "invoiceId",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null"
+       ]
+      },
+      {
+       "source": "LINE_NO",
+       "target": "lineNo",
+       "source_type": "NUMBER(6,0)",
+       "bson_type": "int",
+       "rules": []
+      },
+      {
+       "source": "LINE_TYPE",
+       "target": "lineType",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null"
+       ]
+      },
+      {
+       "source": "DESCRIPTION",
+       "target": "description",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null"
+       ]
+      },
+      {
+       "source": "AMOUNT",
+       "target": "amount",
+       "source_type": "NUMBER(12,2)",
+       "bson_type": "decimal",
+       "rules": [
+        "decimal_round"
+       ]
+      }
+     ],
+     "cardinality": "sum(lines[].length) = count(INVOICE_LINES) = 4"
+    }
+   ],
+   "unit": "invoicing",
+   "wave": 1,
+   "access_pattern": "pkg_invoicing.fn_invoice_lines(invoice_id); facade.py:243; UQ(invoice_id,line_no) -> embed lines"
+  },
+  {
+   "collection": "credit_notes",
+   "root_table": "CREDIT_NOTES",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "ID",
+     "target": "id",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "ISSUED_ON",
+     "target": "issuedOn",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    },
+    {
+     "source": "AMOUNT",
+     "target": "amount",
+     "source_type": "NUMBER(12,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round"
+     ]
+    },
+    {
+     "source": "REMAINING_AMOUNT",
+     "target": "remainingAmount",
+     "source_type": "NUMBER(12,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round"
+     ]
+    }
+   ],
+   "cardinality": "docs = count(CREDIT_NOTES)",
+   "unit": "invoicing",
+   "wave": 1,
+   "access_pattern": "pkg_invoicing.compute_preview consumes remaining_amount per tenant -> reference"
+  }
+ ],
+ "canonicalization": {
+  "rules": [
+   {
+    "rule": "decimal_round",
+    "applies_to": "NUMBER->Decimal128",
+    "params": {
+     "mode": "half_even"
+    }
+   },
+   {
+    "rule": "datetime_utc_truncate_ms",
+    "applies_to": "DATE,TIMESTAMP*->date",
+    "params": {
+     "precision": "ms"
+    }
+   },
+   {
+    "rule": "rstrip_spaces",
+    "applies_to": "CHAR->string",
+    "params": {}
+   },
+   {
+    "rule": "empty_string_is_null",
+    "applies_to": "VARCHAR2,NVARCHAR2,CHAR->string",
+    "params": {
+     "target_policy": "missing"
+    }
+   },
+   {
+    "rule": "null_missing_equiv",
+    "applies_to": "*",
+    "params": {
+     "policy": "null_missing_equiv"
+    }
+   },
+   {
+    "rule": "yn_to_bool",
+    "applies_to": "CHAR(1) *_YN->bool",
+    "params": {}
+   }
+  ]
+ },
+ "key_strategy": {
+  "VARCHAR2 ids": "natural key copied to _id (app-generated UUIDs; pkg_ow_util.f_md5_uuid)",
+  "CODES": "composite _id {codeType, codeVal}",
+  "seq_customer_master / seq_entity_attr_value / seq_billing_audit_log / seq_subscriptions_hist": "surrogate numbers copied as long; new inserts after cutover use a counters collection (PROPOSED)"
+ },
+ "index_plan": {
+  "customers": [
+   "{tenantId:1, custSeqNo:1}",
+   "{custNo:1}"
+  ],
+  "invoice_headers": [
+   "{batchNo:1, statusCd:1}",
+   "{custId:1}",
+   "{tenantId:1}"
+  ],
+  "usage_events": [
+   "{tenantId:1, occurredAt:-1}"
+  ],
+  "rating_periods": [
+   "{tenantId:1, periodStart:1} unique"
+  ],
+  "dunning_attempts": [
+   "{invoiceId:1, attemptNo:1} unique",
+   "{tenantId:1, scheduledFor:-1}"
+  ],
+  "notifications": [
+   "{tenantId:1, kindCd:1, sentAt:1} unique"
+  ],
+  "plans": [
+   "{code:1} unique"
+  ],
+  "tenants": [
+   "{name:1} unique"
+  ]
+ },
+ "derived_from": ".migration/03_mapping_spec.json v1.0.0 filtered to unit invoicing"
+}

@@ -1,0 +1,633 @@
+{
+ "version": "1.0.0",
+ "generated_at": "2026-09-26T17:08:31+00:00",
+ "generator": ".migration/census/gen_mapping.py over .migration/census/discovery.json",
+ "source": {
+  "family": "oracle",
+  "schema": "OW_BILLING"
+ },
+ "target": {
+  "database": "mmp_rt_billing"
+ },
+ "collections": [
+  {
+   "collection": "invoice_headers",
+   "root_table": "INVOICE_HEADER",
+   "key": {
+    "source": [
+     "INVOICE_ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "INVOICE_ID",
+     "target": "invoiceId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "INVOICE_NO",
+     "target": "invoiceNo",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "CUST_ID",
+     "target": "custId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "INVOICE_DT",
+     "target": "invoiceDt",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ],
+     "note": "trap column kept as string in v1 (PROPOSED conversion after cutover)"
+    },
+    {
+     "source": "DUE_DT",
+     "target": "dueDt",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ],
+     "note": "trap column kept as string in v1 (PROPOSED conversion after cutover)"
+    },
+    {
+     "source": "STATUS_CD",
+     "target": "statusCd",
+     "source_type": "NUMBER(4,0)",
+     "bson_type": "int",
+     "rules": [
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "TOTAL_AMT",
+     "target": "totalAmt",
+     "source_type": "NUMBER(14,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "BATCH_NO",
+     "target": "batchNo",
+     "source_type": "NUMBER(8,0)",
+     "bson_type": "int",
+     "rules": [
+      "null_missing_equiv"
+     ]
+    }
+   ],
+   "cardinality": "docs = count(INVOICE_HEADER)",
+   "embeds": [
+    {
+     "array_path": "lines",
+     "shape": "array",
+     "child_table": "INVOICE_LINE",
+     "parent_key": [
+      "INVOICE_ID"
+     ],
+     "key": {
+      "source": [
+       "LINE_ID"
+      ],
+      "target": "lineId"
+     },
+     "fields": [
+      {
+       "source": "LINE_ID",
+       "target": "lineId",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null"
+       ]
+      },
+      {
+       "source": "INVOICE_NO",
+       "target": "invoiceNo",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "INVOICE_ID",
+       "target": "invoiceId",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "CUST_ID",
+       "target": "custId",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "CUST_NO",
+       "target": "custNo",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "CUST_NAME",
+       "target": "custName",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "TENANT_ID",
+       "target": "tenantId",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "LINE_NO",
+       "target": "lineNo",
+       "source_type": "NUMBER(6,0)",
+       "bson_type": "int",
+       "rules": [
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "LINE_TYPE_CD",
+       "target": "lineTypeCd",
+       "source_type": "NUMBER(4,0)",
+       "bson_type": "int",
+       "rules": [
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "ITEM_DESC",
+       "target": "itemDesc",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "QTY",
+       "target": "qty",
+       "source_type": "NUMBER(12,3)",
+       "bson_type": "decimal",
+       "rules": [
+        "decimal_round",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "UNIT_PRICE",
+       "target": "unitPrice",
+       "source_type": "NUMBER(14,4)",
+       "bson_type": "decimal",
+       "rules": [
+        "decimal_round",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "AMOUNT",
+       "target": "amount",
+       "source_type": "NUMBER(14,2)",
+       "bson_type": "decimal",
+       "rules": [
+        "decimal_round",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "TAX_AMT",
+       "target": "taxAmt",
+       "source_type": "NUMBER(14,2)",
+       "bson_type": "decimal",
+       "rules": [
+        "decimal_round",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "INVOICE_DT",
+       "target": "invoiceDt",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ],
+       "note": "trap column kept as string in v1 (PROPOSED conversion after cutover)"
+      },
+      {
+       "source": "SERVICE_PERIOD",
+       "target": "servicePeriod",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "POSTED_YN",
+       "target": "postedYn",
+       "source_type": "CHAR",
+       "bson_type": "bool",
+       "rules": [
+        "rstrip_spaces",
+        "yn_to_bool",
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "GL_ACCT_CSV",
+       "target": "glAcctCsv",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ],
+       "note": "trap column kept as string in v1 (PROPOSED conversion after cutover)"
+      },
+      {
+       "source": "BATCH_NO",
+       "target": "batchNo",
+       "source_type": "NUMBER(8,0)",
+       "bson_type": "int",
+       "rules": [
+        "null_missing_equiv"
+       ]
+      },
+      {
+       "source": "SRC_SYSTEM",
+       "target": "srcSystem",
+       "source_type": "VARCHAR2",
+       "bson_type": "string",
+       "rules": [
+        "empty_string_is_null",
+        "null_missing_equiv"
+       ]
+      }
+     ],
+     "cardinality": "sum(lines[].length) = count(INVOICE_LINE) - 37 orphans = 149963; element key LINE_ID because LINE_NO repeats within an invoice (19415 duplicates)",
+     "child_where": "EXISTS (SELECT 1 FROM OW_BILLING.INVOICE_HEADER h WHERE h.INVOICE_ID = INVOICE_LINE.INVOICE_ID)"
+    }
+   ],
+   "unit": "invoice_batch",
+   "wave": 1,
+   "access_pattern": "reports.py:46-67 header x line aggregates by batch_no; max 21 lines/header -> embed lines"
+  },
+  {
+   "collection": "invoice_line_orphans",
+   "root_table": "INVOICE_LINE",
+   "key": {
+    "source": [
+     "LINE_ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "LINE_ID",
+     "target": "lineId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "INVOICE_NO",
+     "target": "invoiceNo",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "INVOICE_ID",
+     "target": "invoiceId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "CUST_ID",
+     "target": "custId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "CUST_NO",
+     "target": "custNo",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "CUST_NAME",
+     "target": "custName",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "LINE_NO",
+     "target": "lineNo",
+     "source_type": "NUMBER(6,0)",
+     "bson_type": "int",
+     "rules": [
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "LINE_TYPE_CD",
+     "target": "lineTypeCd",
+     "source_type": "NUMBER(4,0)",
+     "bson_type": "int",
+     "rules": [
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "ITEM_DESC",
+     "target": "itemDesc",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "QTY",
+     "target": "qty",
+     "source_type": "NUMBER(12,3)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "UNIT_PRICE",
+     "target": "unitPrice",
+     "source_type": "NUMBER(14,4)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "AMOUNT",
+     "target": "amount",
+     "source_type": "NUMBER(14,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "TAX_AMT",
+     "target": "taxAmt",
+     "source_type": "NUMBER(14,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "INVOICE_DT",
+     "target": "invoiceDt",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ],
+     "note": "trap column kept as string in v1 (PROPOSED conversion after cutover)"
+    },
+    {
+     "source": "SERVICE_PERIOD",
+     "target": "servicePeriod",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "POSTED_YN",
+     "target": "postedYn",
+     "source_type": "CHAR",
+     "bson_type": "bool",
+     "rules": [
+      "rstrip_spaces",
+      "yn_to_bool",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "GL_ACCT_CSV",
+     "target": "glAcctCsv",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ],
+     "note": "trap column kept as string in v1 (PROPOSED conversion after cutover)"
+    },
+    {
+     "source": "BATCH_NO",
+     "target": "batchNo",
+     "source_type": "NUMBER(8,0)",
+     "bson_type": "int",
+     "rules": [
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "SRC_SYSTEM",
+     "target": "srcSystem",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    }
+   ],
+   "cardinality": "docs = count(INVOICE_LINE WHERE NOT EXISTS (SELECT 1 FROM OW_BILLING.INVOICE_HEADER h WHERE h.INVOICE_ID = INVOICE_LINE.INVOICE_ID))",
+   "root_where": "NOT EXISTS (SELECT 1 FROM OW_BILLING.INVOICE_HEADER h WHERE h.INVOICE_ID = INVOICE_LINE.INVOICE_ID)",
+   "target_where": "{\"orphan\": true}",
+   "unit": "invoice_batch",
+   "wave": 1,
+   "access_pattern": "37 INVOICE_LINE rows have no INVOICE_HEADER (planted orphaned_rows); kept verbatim in a sibling collection, flagged orphan:true"
+  }
+ ],
+ "canonicalization": {
+  "rules": [
+   {
+    "rule": "decimal_round",
+    "applies_to": "NUMBER->Decimal128",
+    "params": {
+     "mode": "half_even"
+    }
+   },
+   {
+    "rule": "datetime_utc_truncate_ms",
+    "applies_to": "DATE,TIMESTAMP*->date",
+    "params": {
+     "precision": "ms"
+    }
+   },
+   {
+    "rule": "rstrip_spaces",
+    "applies_to": "CHAR->string",
+    "params": {}
+   },
+   {
+    "rule": "empty_string_is_null",
+    "applies_to": "VARCHAR2,NVARCHAR2,CHAR->string",
+    "params": {
+     "target_policy": "missing"
+    }
+   },
+   {
+    "rule": "null_missing_equiv",
+    "applies_to": "*",
+    "params": {
+     "policy": "null_missing_equiv"
+    }
+   },
+   {
+    "rule": "yn_to_bool",
+    "applies_to": "CHAR(1) *_YN->bool",
+    "params": {}
+   }
+  ]
+ },
+ "key_strategy": {
+  "VARCHAR2 ids": "natural key copied to _id (app-generated UUIDs; pkg_ow_util.f_md5_uuid)",
+  "CODES": "composite _id {codeType, codeVal}",
+  "seq_customer_master / seq_entity_attr_value / seq_billing_audit_log / seq_subscriptions_hist": "surrogate numbers copied as long; new inserts after cutover use a counters collection (PROPOSED)"
+ },
+ "index_plan": {
+  "customers": [
+   "{tenantId:1, custSeqNo:1}",
+   "{custNo:1}"
+  ],
+  "invoice_headers": [
+   "{batchNo:1, statusCd:1}",
+   "{custId:1}",
+   "{tenantId:1}"
+  ],
+  "usage_events": [
+   "{tenantId:1, occurredAt:-1}"
+  ],
+  "rating_periods": [
+   "{tenantId:1, periodStart:1} unique"
+  ],
+  "dunning_attempts": [
+   "{invoiceId:1, attemptNo:1} unique",
+   "{tenantId:1, scheduledFor:-1}"
+  ],
+  "notifications": [
+   "{tenantId:1, kindCd:1, sentAt:1} unique"
+  ],
+  "plans": [
+   "{code:1} unique"
+  ],
+  "tenants": [
+   "{name:1} unique"
+  ]
+ },
+ "derived_from": ".migration/03_mapping_spec.json v1.0.0 filtered to unit invoice_batch"
+}

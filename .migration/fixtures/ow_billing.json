@@ -1,6 +1,6 @@
 {
  "source": "oracle",
- "method": "synthetic seed: `make oracle-billing-seed NS=mmprt SCALE=demo` (repo generator, seed 2443531857, manifest testdata/legacy/manifests/mmprt.json). The fixture IS the demo-scale synthetic estate on this VM (localhost:52521/FREEPDB1, schema OW_BILLING); no production rows exist, so no sampled copy was built and no column needed masking. DSN secret for fixture reads: ORACLE_BILLING_RO_DSN (same instance as the live source; see 05_decisions STOP B).",
+ "method": "synthetic",
  "masked_columns": [],
  "produced_at": "2026-09-26T17:10:25+00:00",
  "produced_by": "orchestrator (Devin session 96b8955d22a2477ba2cffcbc67cab7a9), from census/discovery.json COUNT(*)",
@@ -43,5 +43,6 @@
    "target": "INVOICE_LINE",
    "count": 37
   }
- ]
+ ],
+ "method_detail": "synthetic seed: `make oracle-billing-seed NS=mmprt SCALE=demo` (repo generator, seed 2443531857, manifest testdata/legacy/manifests/mmprt.json). The fixture IS the demo-scale synthetic estate on this VM (localhost:52521/FREEPDB1, schema OW_BILLING); no production rows exist, so no sampled copy was built and no column needed masking. DSN secret for fixture reads: ORACLE_BILLING_RO_DSN (same instance as the live source; see 05_decisions STOP B)."
 }

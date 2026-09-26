@@ -1,0 +1,264 @@
+{
+ "version": "1.0.0",
+ "generated_at": "2026-09-26T17:08:31+00:00",
+ "generator": ".migration/census/gen_mapping.py over .migration/census/discovery.json",
+ "source": {
+  "family": "oracle",
+  "schema": "OW_BILLING"
+ },
+ "target": {
+  "database": "mmp_rt_billing"
+ },
+ "collections": [
+  {
+   "collection": "codes",
+   "root_table": "CODES",
+   "key": {
+    "source": [
+     "CODE_TYPE",
+     "CODE_VAL"
+    ],
+    "target": [
+     "codeType",
+     "codeVal"
+    ]
+   },
+   "fields": [
+    {
+     "source": "CODE_TYPE",
+     "target": "codeType",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "CODE_VAL",
+     "target": "codeVal",
+     "source_type": "NUMBER(4,0)",
+     "bson_type": "int",
+     "rules": []
+    },
+    {
+     "source": "CODE_DESC",
+     "target": "codeDesc",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    }
+   ],
+   "cardinality": "docs = count(CODES)",
+   "unit": "shared-reference",
+   "wave": 0,
+   "access_pattern": "facade.py:114,215,245,342,394 LEFT JOIN codes on (code_type, code_val); read-only lookup"
+  },
+  {
+   "collection": "tenants",
+   "root_table": "TENANTS",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "ID",
+     "target": "id",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "NAME",
+     "target": "name",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "TAX_EXEMPT_YN",
+     "target": "taxExemptYn",
+     "source_type": "CHAR",
+     "bson_type": "bool",
+     "rules": [
+      "rstrip_spaces",
+      "yn_to_bool"
+     ]
+    },
+    {
+     "source": "STATUS_CD",
+     "target": "statusCd",
+     "source_type": "NUMBER(4,0)",
+     "bson_type": "int",
+     "rules": []
+    }
+   ],
+   "cardinality": "docs = count(TENANTS)",
+   "unit": "shared-reference",
+   "wave": 0,
+   "access_pattern": "facade.py:113 tenant list; backends/oracle.py:136,141 ensure-tenant; FK target of 8 tables"
+  },
+  {
+   "collection": "plans",
+   "root_table": "PLANS",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "ID",
+     "target": "id",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "CODE",
+     "target": "code",
+     "source_type": "VARCHAR2",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "TIER_CD",
+     "target": "tierCd",
+     "source_type": "NUMBER(4,0)",
+     "bson_type": "int",
+     "rules": []
+    },
+    {
+     "source": "MONTHLY_FEE",
+     "target": "monthlyFee",
+     "source_type": "NUMBER(12,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round"
+     ]
+    },
+    {
+     "source": "INCLUDED_UNITS",
+     "target": "includedUnits",
+     "source_type": "NUMBER(10,0)",
+     "bson_type": "long",
+     "rules": []
+    },
+    {
+     "source": "OVERAGE_RATE",
+     "target": "overageRate",
+     "source_type": "NUMBER(12,6)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round"
+     ]
+    },
+    {
+     "source": "ACTIVE_YN",
+     "target": "activeYn",
+     "source_type": "CHAR",
+     "bson_type": "bool",
+     "rules": [
+      "rstrip_spaces",
+      "yn_to_bool"
+     ]
+    }
+   ],
+   "cardinality": "docs = count(PLANS)",
+   "unit": "shared-reference",
+   "wave": 0,
+   "access_pattern": "pkg_plans.fn_list_plans; backends/oracle.py:150; 3 rows, referenced by subscriptions"
+  }
+ ],
+ "canonicalization": {
+  "rules": [
+   {
+    "rule": "decimal_round",
+    "applies_to": "NUMBER->Decimal128",
+    "params": {
+     "mode": "half_even"
+    }
+   },
+   {
+    "rule": "datetime_utc_truncate_ms",
+    "applies_to": "DATE,TIMESTAMP*->date",
+    "params": {
+     "precision": "ms"
+    }
+   },
+   {
+    "rule": "rstrip_spaces",
+    "applies_to": "CHAR->string",
+    "params": {}
+   },
+   {
+    "rule": "empty_string_is_null",
+    "applies_to": "VARCHAR2,NVARCHAR2,CHAR->string",
+    "params": {
+     "target_policy": "missing"
+    }
+   },
+   {
+    "rule": "null_missing_equiv",
+    "applies_to": "*",
+    "params": {
+     "policy": "null_missing_equiv"
+    }
+   },
+   {
+    "rule": "yn_to_bool",
+    "applies_to": "CHAR(1) *_YN->bool",
+    "params": {}
+   }
+  ]
+ },
+ "key_strategy": {
+  "VARCHAR2 ids": "natural key copied to _id (app-generated UUIDs; pkg_ow_util.f_md5_uuid)",
+  "CODES": "composite _id {codeType, codeVal}",
+  "seq_customer_master / seq_entity_attr_value / seq_billing_audit_log / seq_subscriptions_hist": "surrogate numbers copied as long; new inserts after cutover use a counters collection (PROPOSED)"
+ },
+ "index_plan": {
+  "customers": [
+   "{tenantId:1, custSeqNo:1}",
+   "{custNo:1}"
+  ],
+  "invoice_headers": [
+   "{batchNo:1, statusCd:1}",
+   "{custId:1}",
+   "{tenantId:1}"
+  ],
+  "usage_events": [
+   "{tenantId:1, occurredAt:-1}"
+  ],
+  "rating_periods": [
+   "{tenantId:1, periodStart:1} unique"
+  ],
+  "dunning_attempts": [
+   "{invoiceId:1, attemptNo:1} unique",
+   "{tenantId:1, scheduledFor:-1}"
+  ],
+  "notifications": [
+   "{tenantId:1, kindCd:1, sentAt:1} unique"
+  ],
+  "plans": [
+   "{code:1} unique"
+  ],
+  "tenants": [
+   "{name:1} unique"
+  ]
+ },
+ "derived_from": ".migration/03_mapping_spec.json v1.0.0 filtered to unit shared-reference"
+}

@@ -1,0 +1,655 @@
+{
+ "version": "map-draft-3.1",
+ "collections": [
+  {
+   "collection": "tenants",
+   "root_table": "TENANTS",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "NAME",
+     "target": "name",
+     "source_type": "VARCHAR2(200)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "TAX_EXEMPT_YN",
+     "target": "taxExempt",
+     "source_type": "CHAR(1)",
+     "bson_type": "bool",
+     "rules": [
+      "yn_to_bool"
+     ]
+    },
+    {
+     "source": "STATUS_CD",
+     "target": "statusCd",
+     "source_type": "NUMBER(4)",
+     "bson_type": "long",
+     "rules": []
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "natural primary key",
+    "key_fields": [
+     {
+      "source": "ID",
+      "target": "id",
+      "source_type": "VARCHAR2(36)",
+      "bson_type": "string",
+      "rules": [
+       "empty_string_is_null"
+      ]
+     }
+    ],
+    "natural_keys": [
+     {
+      "name": "UQ_TENANTS_NAME",
+      "columns": [
+       "NAME"
+      ]
+     }
+    ],
+    "references": [],
+    "open_questions": [],
+    "patterns": [
+     {
+      "pattern": "extended_reference",
+      "detail": "keep codes as reference data; statusCd stays numeric and statusDesc is NOT denormalised (the facade joins codes on every /me read but the packages hardcode DECODE; the loader stores the code only, parity is on the code)",
+      "evidence": "services/legacy-billing/app/facade.py: LEFT JOIN codes ts ON ts.code_type = 'TENANT_STATUS' AND ts.code_val = t.status_cd"
+     }
+    ],
+    "pattern": "extended_reference",
+    "proposal": "keep codes as reference data; statusCd stays numeric and statusDesc is NOT denormalised (the facade joins codes on every /me read but the packages hardcode DECODE; the loader stores the code only, parity is on the code)",
+    "pattern_evidence": "services/legacy-billing/app/facade.py: LEFT JOIN codes ts ON ts.code_type = 'TENANT_STATUS' AND ts.code_val = t.status_cd",
+    "resolved_questions": [
+     {
+      "kind": "code_lookup",
+      "table": "TENANTS",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+       "STATUS_CD"
+      ],
+      "proposal": "keep the numeric code; resolve to a label in the app or a codes collection",
+      "resolution": "keep numeric *_CD fields; codes is a reference_data collection resolved at read time (facade joins, packages DECODE)",
+      "cited": "services/legacy-billing/db/oracle/packages/01_pkg_util.sql: SELECT code_desc FROM codes WHERE code_type = :1 AND code_val = :2"
+     }
+    ]
+   }
+  },
+  {
+   "collection": "subscriptions",
+   "root_table": "SUBSCRIPTIONS",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "PLAN_ID",
+     "target": "planId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "STARTS_ON",
+     "target": "startsOn",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    },
+    {
+     "source": "ENDS_ON",
+     "target": "endsOn",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "STATUS_CD",
+     "target": "statusCd",
+     "source_type": "NUMBER(4)",
+     "bson_type": "long",
+     "rules": []
+    },
+    {
+     "source": "SUSPENDED_ON",
+     "target": "suspendedOn",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms",
+      "null_missing_equiv"
+     ]
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "natural primary key",
+    "key_fields": [
+     {
+      "source": "ID",
+      "target": "id",
+      "source_type": "VARCHAR2(36)",
+      "bson_type": "string",
+      "rules": [
+       "empty_string_is_null"
+      ]
+     }
+    ],
+    "natural_keys": [],
+    "references": [
+     {
+      "column": [
+       "TENANT_ID"
+      ],
+      "to": "tenants",
+      "to_columns": [
+       "ID"
+      ],
+      "why": "parent is shared by several tables"
+     },
+     {
+      "column": [
+       "PLAN_ID"
+      ],
+      "to": "plans",
+      "to_columns": [
+       "ID"
+      ],
+      "why": "child owns its own lifecycle"
+     }
+    ],
+    "open_questions": [],
+    "resolved_questions": [
+     {
+      "kind": "code_lookup",
+      "table": "SUBSCRIPTIONS",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+       "STATUS_CD"
+      ],
+      "proposal": "keep the numeric code; resolve to a label in the app or a codes collection",
+      "resolution": "keep numeric *_CD fields; codes stays reference data",
+      "cited": "services/legacy-billing/db/oracle/packages/02_pkg_plans.sql: status_cd = DECODE(r.status_cd,30,30,10)"
+     }
+    ]
+   }
+  },
+  {
+   "collection": "dunningAttempts",
+   "root_table": "DUNNING_ATTEMPTS",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "INVOICE_ID",
+     "target": "invoiceId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "ATTEMPT_NO",
+     "target": "attemptNo",
+     "source_type": "NUMBER(4)",
+     "bson_type": "long",
+     "rules": []
+    },
+    {
+     "source": "SCHEDULED_FOR",
+     "target": "scheduledFor",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    },
+    {
+     "source": "STATUS_CD",
+     "target": "statusCd",
+     "source_type": "NUMBER(4)",
+     "bson_type": "long",
+     "rules": []
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "natural primary key",
+    "key_fields": [
+     {
+      "source": "ID",
+      "target": "id",
+      "source_type": "VARCHAR2(36)",
+      "bson_type": "string",
+      "rules": [
+       "empty_string_is_null"
+      ]
+     }
+    ],
+    "natural_keys": [
+     {
+      "name": "UQ_DUNNING_ATTEMPTS",
+      "columns": [
+       "INVOICE_ID",
+       "ATTEMPT_NO"
+      ]
+     }
+    ],
+    "references": [
+     {
+      "column": [
+       "TENANT_ID"
+      ],
+      "to": "tenants",
+      "to_columns": [
+       "ID"
+      ],
+      "why": "parent is shared by several tables"
+     },
+     {
+      "column": [
+       "INVOICE_ID"
+      ],
+      "to": "invoices",
+      "to_columns": [
+       "ID"
+      ],
+      "why": "parent is shared by several tables"
+     }
+    ],
+    "open_questions": [],
+    "resolved_questions": [
+     {
+      "kind": "code_lookup",
+      "table": "DUNNING_ATTEMPTS",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+       "STATUS_CD"
+      ],
+      "proposal": "keep the numeric code; resolve to a label in the app or a codes collection",
+      "resolution": "keep numeric statusCd; codes stays reference data",
+      "cited": "services/legacy-billing/app/facade.py: LEFT JOIN codes c ON c.code_type = 'DUN_STATUS'"
+     }
+    ]
+   }
+  },
+  {
+   "collection": "notifications",
+   "root_table": "NOTIFICATIONS",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "KIND_CD",
+     "target": "kindCd",
+     "source_type": "NUMBER(4)",
+     "bson_type": "long",
+     "rules": []
+    },
+    {
+     "source": "SENT_AT",
+     "target": "sentAt",
+     "source_type": "TIMESTAMP",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "natural primary key",
+    "key_fields": [
+     {
+      "source": "ID",
+      "target": "id",
+      "source_type": "VARCHAR2(36)",
+      "bson_type": "string",
+      "rules": [
+       "empty_string_is_null"
+      ]
+     }
+    ],
+    "natural_keys": [
+     {
+      "name": "UQ_NOTIFICATIONS",
+      "columns": [
+       "TENANT_ID",
+       "KIND_CD",
+       "SENT_AT"
+      ]
+     }
+    ],
+    "references": [
+     {
+      "column": [
+       "TENANT_ID"
+      ],
+      "to": "tenants",
+      "to_columns": [
+       "ID"
+      ],
+      "why": "parent is shared by several tables"
+     }
+    ],
+    "open_questions": [],
+    "resolved_questions": [
+     {
+      "kind": "code_lookup",
+      "table": "NOTIFICATIONS",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+       "KIND_CD"
+      ],
+      "proposal": "keep the numeric code; resolve to a label in the app or a codes collection",
+      "resolution": "keep numeric kindCd; codes stays reference data",
+      "cited": "services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql: INSERT INTO notifications (id, tenant_id, kind_cd, sent_at)"
+     }
+    ]
+   }
+  },
+  {
+   "collection": "subscriptionsHist",
+   "root_table": "SUBSCRIPTIONS_HIST",
+   "key": {
+    "source": [
+     "HIST_ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "HIST_DT",
+     "target": "histDt",
+     "source_type": "VARCHAR2(20)",
+     "bson_type": "date",
+     "rules": [
+      "date_string_to_date:dbyHMS-30dd8b",
+      "null_missing_equiv"
+     ],
+     "date_format": "%d-%b-%y %H:%M:%S",
+     "date_format_evidence": "services/legacy-billing/db/oracle/schema/01_tables.sql: TO_CHAR(SYSDATE,'DD-MON-YY HH24:MI:SS')"
+    },
+    {
+     "source": "HIST_OP",
+     "target": "histOp",
+     "source_type": "VARCHAR2(3)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "ID",
+     "target": "id",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "PLAN_ID",
+     "target": "planId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "STARTS_ON",
+     "target": "startsOn",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "ENDS_ON",
+     "target": "endsOn",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "STATUS_CD",
+     "target": "statusCd",
+     "source_type": "NUMBER(4)",
+     "bson_type": "long",
+     "rules": [
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "SUSPENDED_ON",
+     "target": "suspendedOn",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms",
+      "null_missing_equiv"
+     ]
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "natural primary key",
+    "key_fields": [
+     {
+      "source": "HIST_ID",
+      "target": "histId",
+      "source_type": "NUMBER(12)",
+      "bson_type": "long",
+      "rules": []
+     }
+    ],
+    "natural_keys": [],
+    "references": [],
+    "open_questions": [],
+    "pattern": "history_copy",
+    "of_table": "SUBSCRIPTIONS",
+    "proposal": "separate versions collection keyed by history id; do not embed unbounded history",
+    "patterns": [
+     {
+      "pattern": "history_copy",
+      "detail": "separate versions collection keyed by history id; do not embed unbounded history",
+      "evidence": "proposed from census trap"
+     },
+     {
+      "pattern": "document_versioning",
+      "detail": "append-only trigger copy of SUBSCRIPTIONS; no reader in the repo; migrate as its own collection (history), never embedded",
+      "evidence": "services/legacy-billing/db/oracle/schema/01_tables.sql: AFTER UPDATE OR DELETE ON subscriptions ... INSERT INTO subscriptions_hist"
+     }
+    ],
+    "resolved_questions": [
+     {
+      "kind": "code_lookup",
+      "table": "SUBSCRIPTIONS_HIST",
+      "evidence": "*_CD numeric columns; resolve through the codes table",
+      "columns": [
+       "STATUS_CD"
+      ],
+      "proposal": "keep the numeric code; resolve to a label in the app or a codes collection",
+      "resolution": "keep numeric statusCd (history copy, verbatim)",
+      "cited": "services/legacy-billing/db/oracle/schema/01_tables.sql: INSERT INTO subscriptions_hist"
+     },
+     {
+      "kind": "unenforced_pointer",
+      "table": "SUBSCRIPTIONS_HIST",
+      "evidence": "*_ID column with a matching table and no FK",
+      "columns": [
+       "TENANT_ID",
+       "PLAN_ID"
+      ],
+      "targets": [
+       "TENANTS",
+       "PLANS"
+      ],
+      "proposal": "treat as reference; verify pointer resolves before embedding anything",
+      "resolution": "TENANT_ID/PLAN_ID kept as plain string references (history rows may point at deleted tenants/plans; no lookup at load)",
+      "cited": "services/legacy-billing/db/oracle/schema/01_tables.sql: subscriptions_hist ... no FK"
+     },
+     {
+      "kind": "date_as_string",
+      "table": "SUBSCRIPTIONS_HIST",
+      "evidence": "date kept as text",
+      "columns": [
+       "HIST_DT"
+      ],
+      "resolution": "HIST_DT is 'DD-MON-YY HH24:MI:SS' text; converted by date_format decision",
+      "cited": "services/legacy-billing/db/oracle/schema/01_tables.sql: TO_CHAR(SYSDATE,'DD-MON-YY HH24:MI:SS')"
+     }
+    ]
+   }
+  }
+ ],
+ "canonicalization": {
+  "version": "map-draft-3.1-canon",
+  "rules": [
+   {
+    "rule": "decimal_round",
+    "applies_to": "decimal",
+    "params": {}
+   },
+   {
+    "rule": "datetime_utc_truncate_ms",
+    "applies_to": "date",
+    "params": {}
+   },
+   {
+    "rule": "rstrip_spaces",
+    "applies_to": "string",
+    "params": {}
+   },
+   {
+    "rule": "null_missing_equiv",
+    "applies_to": "*",
+    "params": {}
+   },
+   {
+    "rule": "yn_to_bool",
+    "applies_to": "bool",
+    "params": {}
+   },
+   {
+    "rule": "int_to_bool",
+    "applies_to": "bool",
+    "params": {}
+   },
+   {
+    "rule": "csv_to_array",
+    "applies_to": "array",
+    "params": {}
+   },
+   {
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y"
+    }
+   },
+   {
+    "rule": "empty_string_is_null",
+    "applies_to": "string",
+    "params": {}
+   },
+   {
+    "name": "date_string_to_date:dbyHMS-30dd8b",
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y %H:%M:%S"
+    }
+   },
+   {
+    "name": "date_string_to_date:dby-b3d57e",
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y"
+    }
+   }
+  ]
+ }
+}

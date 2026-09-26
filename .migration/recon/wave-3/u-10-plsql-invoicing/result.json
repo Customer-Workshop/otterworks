@@ -1,0 +1,153 @@
+{
+  "unit": "u-10-plsql-invoicing",
+  "mode": "fixture",
+  "target_class": "local",
+  "mapping_version": "map-draft-3.1",
+  "tolerance_version": "tol-2",
+  "seed": 1,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-26T18:56:24.750670+00:00",
+  "redacted": true,
+  "redaction_salted": false,
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 5,
+      "stats": {
+        "source_counts": {
+          "ratingPeriods": 3,
+          "ratingResults": 3,
+          "invoices": 4,
+          "creditNotes": 5
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 16,
+      "stats": {
+        "deferred_to_tier3": [
+          "ratingPeriods.tenantId",
+          "ratingPeriods.periodStart",
+          "ratingPeriods.periodEnd",
+          "ratingResults.periodId",
+          "ratingResults.subscriptionId",
+          "ratingResults.overageAmount",
+          "ratingResults.createdAt",
+          "invoices.tenantId",
+          "invoices.periodId",
+          "invoices.issuedAt",
+          "invoices.subtotal",
+          "invoices.tax",
+          "invoices.total",
+          "creditNotes.tenantId",
+          "creditNotes.issuedOn",
+          "creditNotes.amount",
+          "creditNotes.remainingAmount"
+        ],
+        "string_aggregates_deferred_to_tier3": [
+          {
+            "field": "ratingPeriods.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "ratingResults.periodId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "ratingResults.subscriptionId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoices.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "invoices.periodId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "creditNotes.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          }
+        ],
+        "fields_fully_deferred": 6
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 19,
+      "stats": {
+        "ratingPeriods": {
+          "mode": "full_diff",
+          "population": 3,
+          "duplicate_source_key_count": 0
+        },
+        "ratingResults": {
+          "mode": "full_diff",
+          "population": 3,
+          "duplicate_source_key_count": 0
+        },
+        "invoices": {
+          "mode": "full_diff",
+          "population": 4,
+          "duplicate_source_key_count": 0
+        },
+        "embeds_graded": {
+          "invoices.lines": 4
+        },
+        "creditNotes": {
+          "mode": "full_diff",
+          "population": 5,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 3,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": false,
+  "error": null
+}

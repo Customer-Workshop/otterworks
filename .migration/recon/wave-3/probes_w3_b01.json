@@ -1,0 +1,82 @@
+[
+ {
+  "probe": "P1 TRG_SUB_NO_UNCANCEL: cancelled never reopens on change_plan; suspended->active per DECODE",
+  "result": "PASS",
+  "detail": {
+   "cancelled": {
+    "synthetic_cancel": true,
+    "old_status": 30,
+    "after_status": 30,
+    "after_endsOn": "2027-05-31",
+    "new_sub_status": 10
+   },
+   "suspended": {
+    "synthetic_cancel": false,
+    "old_status": 20,
+    "after_status": 10,
+    "after_endsOn": "2027-05-31",
+    "new_sub_status": 10
+   }
+  }
+ },
+ {
+  "probe": "P2 TRG_SUBSCRIPTIONS_HIST: one UPD row per closed sub, OLD copy, monotonic hist_id",
+  "result": "PASS",
+  "detail": {
+   "closed": 1,
+   "hist_after_1st": 1,
+   "hist_after_2nd": 2,
+   "ids": [
+    1,
+    2
+   ],
+   "full_old_copy": true
+  }
+ },
+ {
+  "probe": "P3 replayed change_plan with identical args raises duplicate-key (Oracle PK ORA-00001 equivalent)",
+  "result": "PASS",
+  "detail": {
+   "outcome": "DuplicateKeyError"
+  }
+ },
+ {
+  "probe": "P4 fn_entitlement boundaries (endsOn inclusive, GREATEST effective_on, unknown tenant -> empty)",
+  "result": "PASS",
+  "detail": {
+   "on_end": [
+    {
+     "tenant_id": "7f0620c4-4161-2f50-3869-0805321b660a",
+     "plan_code": "SCALE",
+     "tier": "scale",
+     "monthly_fee": "499",
+     "included_units": 2000,
+     "subscription_status": "active",
+     "effective_on": "2027-05-31"
+    }
+   ],
+   "day_after_empty_or_later_sub": true,
+   "day_before": [],
+   "unknown": []
+  }
+ },
+ {
+  "probe": "P5 PKG_OW_UTIL edge inputs (empty/unicode/300-char md5, NULL dates, NULL code)",
+  "result": "FAIL",
+  "detail": {
+   "md5_uuid(len=0)": true,
+   "md5_uuid(len=1)": true,
+   "md5_uuid(len=7)": true,
+   "md5_uuid(len=300)": true,
+   "dt2str(NULL)": true,
+   "str2dt(NULL)": true,
+   "dt2str(1999-12-31)": true,
+   "code_desc(STATUS,NULL)": false,
+   "code_desc(STATUS,NULL)_values": {
+    "oracle": "UNKNOWN(-1)",
+    "mongo": "raised TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'"
+   },
+   "code_desc(STATUS,10)": true
+  }
+ }
+]

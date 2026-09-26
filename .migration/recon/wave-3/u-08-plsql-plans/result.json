@@ -1,0 +1,169 @@
+{
+  "unit": "u-08-plsql-plans",
+  "mode": "fixture",
+  "target_class": "local",
+  "mapping_version": "map-draft-3.1",
+  "tolerance_version": "tol-2",
+  "seed": 1,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-26T18:53:55.495124+00:00",
+  "redacted": true,
+  "redaction_salted": false,
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 4,
+      "stats": {
+        "source_counts": {
+          "tenants": 70,
+          "plans": 3,
+          "subscriptions": 70,
+          "subscriptionsHist": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 10,
+      "stats": {
+        "deferred_to_tier3": [
+          "tenants.name",
+          "tenants.taxExempt",
+          "plans.code",
+          "plans.monthlyFee",
+          "plans.overageRate",
+          "plans.active",
+          "subscriptions.tenantId",
+          "subscriptions.planId",
+          "subscriptions.startsOn",
+          "subscriptions.endsOn",
+          "subscriptions.suspendedOn",
+          "subscriptionsHist.histDt",
+          "subscriptionsHist.histOp",
+          "subscriptionsHist.id",
+          "subscriptionsHist.tenantId",
+          "subscriptionsHist.planId",
+          "subscriptionsHist.startsOn",
+          "subscriptionsHist.endsOn",
+          "subscriptionsHist.statusCd",
+          "subscriptionsHist.suspendedOn"
+        ],
+        "string_aggregates_deferred_to_tier3": [
+          {
+            "field": "tenants.name",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "plans.code",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "subscriptions.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "subscriptions.planId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "subscriptionsHist.histOp",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "subscriptionsHist.id",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "subscriptionsHist.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "subscriptionsHist.planId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          }
+        ],
+        "fields_fully_deferred": 14
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 143,
+      "stats": {
+        "tenants": {
+          "mode": "full_diff",
+          "population": 70,
+          "duplicate_source_key_count": 0
+        },
+        "plans": {
+          "mode": "full_diff",
+          "population": 3,
+          "duplicate_source_key_count": 0
+        },
+        "subscriptions": {
+          "mode": "full_diff",
+          "population": 70,
+          "duplicate_source_key_count": 0
+        },
+        "subscriptionsHist": {
+          "mode": "full_diff",
+          "population": 0,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 4,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": false,
+  "error": null
+}

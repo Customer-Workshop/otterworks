@@ -1,0 +1,154 @@
+{
+ "batch": "w3-b02",
+ "target_class": "local",
+ "not_merge_evidence": true,
+ "units": {
+  "u-09-plsql-rating": {
+   "verdict": "PASS",
+   "scenarios_pass": 8,
+   "scenarios_total": 8
+  },
+  "u-10-plsql-invoicing": {
+   "verdict": "PASS",
+   "scenarios_pass": 6,
+   "scenarios_total": 6
+  },
+  "u-11-plsql-dunning": {
+   "verdict": "PASS",
+   "scenarios_pass": 5,
+   "scenarios_total": 5
+  }
+ },
+ "scenarios": [
+  {
+   "unit": "u-09-plsql-rating",
+   "scenario": "RATING-001",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-09-plsql-rating",
+   "scenario": "RATING-002",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-09-plsql-rating",
+   "scenario": "RATING-003",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-09-plsql-rating",
+   "scenario": "RATING-004",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-09-plsql-rating",
+   "scenario": "RATING-005",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-09-plsql-rating",
+   "scenario": "RATING-006",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-09-plsql-rating",
+   "scenario": "RATING-007",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-09-plsql-rating",
+   "scenario": "RATING-008",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-10-plsql-invoicing",
+   "scenario": "INVOICE-001",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-10-plsql-invoicing",
+   "scenario": "INVOICE-002",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-10-plsql-invoicing",
+   "scenario": "INVOICE-003",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-10-plsql-invoicing",
+   "scenario": "INVOICE-004",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-10-plsql-invoicing",
+   "scenario": "INVOICE-005",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-10-plsql-invoicing",
+   "scenario": "INVOICE-006",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-11-plsql-dunning",
+   "scenario": "DUNNING-001",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-11-plsql-dunning",
+   "scenario": "DUNNING-002",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-11-plsql-dunning",
+   "scenario": "DUNNING-003",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-11-plsql-dunning",
+   "scenario": "DUNNING-004",
+   "verdict": "PASS",
+   "diffs": null
+  },
+  {
+   "unit": "u-11-plsql-dunning",
+   "scenario": "DUNNING-005",
+   "verdict": "PASS",
+   "diffs": null
+  }
+ ],
+ "fixture_loaded": {
+  "codes": 32,
+  "plans": 3,
+  "tenants": 70,
+  "subscriptions": 70,
+  "subscriptionsHist": 0,
+  "billingAuditLog": 0,
+  "usageEvents": 817,
+  "ratingPeriods": 3,
+  "ratingResults": 3,
+  "invoices": 4,
+  "creditNotes": 5,
+  "dunningAttempts": 1,
+  "notifications": 1
+ },
+ "verdict": "PASS"
+}

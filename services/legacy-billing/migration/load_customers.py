@@ -1,11 +1,12 @@
 """Wave 1 / batch w1-b01 loader: OW_BILLING CUSTOMER_MASTER (+ ENTITY_ATTR_VALUE
-WHERE ENTITY_TYPE='CUSTOMER' embedded as attributes[], element key eavId, never
-collapsed to a map: (ENTITY_ID, ATTR_NAME) repeats) -> mmp_rt_billing.customers.
+embedded as attributes[] keyed by ENTITY_ID -- mapping v1.1.0 embeds it unscoped
+because the census shows every row is ENTITY_TYPE='CUSTOMER'; element key eavId,
+never collapsed to a map: (ENTITY_ID, ATTR_NAME) repeats) -> mmp_rt_billing.customers.
 
 Idempotent: the single declared write target is dropped and recreated per run
 (playbook 3 step 4), then written by replace-upsert on _id via the shared wave-0
 helpers (common.load_unit). Orphan attribute rows (no CUSTOMER_MASTER parent) are
-counted and reported, never written. Mapping: .migration/mapping/customers.json v1.0.0.
+counted and reported, never written. Mapping: .migration/mapping/customers.json v1.1.0.
 Usage: ~/.venvs/recon/bin/python services/legacy-billing/migration/load_customers.py
 """
 import sys

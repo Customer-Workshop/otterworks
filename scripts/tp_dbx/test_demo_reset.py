@@ -12,7 +12,7 @@ OPTS = demo_reset.Opts()
 
 def inv(**kw):
     base = {"jobs": [], "pipelines": [], "dashboards": [],
-            "schemas": ["ow_tp.bronze", "ow_tp.silver", "ow_tp.gold", "ow_tp.ops"],
+            "schemas": [["ow_tp.bronze"], ["ow_tp.silver"], ["ow_tp.gold"], ["ow_tp.ops"]],
             "lakebase_branches": []}
     base.update(kw)
     return base
@@ -88,17 +88,26 @@ class PlanTest(unittest.TestCase):
         self.assertEqual([i.name for i in p.items if i.kind == "lakebase_branch"],
                          ["mig-new", "mig-old"])
 
-    def test_only_listed_schemas_planned(self):
+    def test_run_scoped_schemas_planned_shared_never(self):
         p = demo_reset.plan(inv(schemas=[
-            "ow_tp.bronze", "ow_tp.silver", "ow_tp.gold", "ow_tp.ops",
-            "ow_tp.airbyte_demo", "ow_tp.fivetran_metadata", "ow_tp.default",
+            ["ow_tp.mig_x_bronze"], ["ow_tp.mig_x_gold"],
+            ["ow_tp.bronze"], ["ow_tp.silver"],
+            ["ow_tp.airbyte_demo"], ["ow_tp.information_schema"], ["ow_tp.default"],
         ]), OPTS)
         self.assertEqual([i.name for i in p.items],
-                         ["ow_tp.bronze", "ow_tp.silver", "ow_tp.gold", "ow_tp.ops"])
+                         ["ow_tp.mig_x_bronze", "ow_tp.mig_x_gold"])
+        self.assertTrue(all(i.action.startswith("DROP SCHEMA") for i in p.items))
 
-    def test_missing_schema_not_planned(self):
-        p = demo_reset.plan(inv(schemas=["ow_tp.bronze"]), OPTS)
-        self.assertEqual([i.name for i in p.items], ["ow_tp.bronze"])
+    def test_run_schemas_helper_short_names_and_verify_filter(self):
+        # rows as short names (SHOW SCHEMAS shape) and full names both work;
+        # the same helper drives inventory matching and verify() survivors
+        rows = [["mig_r1_bronze"], ["bronze"], ["information_schema"],
+                ["mig_r1_gold"], ["default"], ["migOTHERx"]]  # migOTHERx: no underscore boundary still matches prefix 'mig_'
+        got = demo_reset._run_schemas(rows, OPTS)
+        self.assertEqual(got, ["ow_tp.mig_r1_bronze", "ow_tp.mig_r1_gold"])
+        # rows already fully qualified and scoped to another catalog are dropped
+        got = demo_reset._run_schemas([["other_cat.mig_x"]], OPTS)
+        self.assertEqual(got, [])
 
 
 if __name__ == "__main__":

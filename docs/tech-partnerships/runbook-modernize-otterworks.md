@@ -17,6 +17,8 @@ This runbook composes the three standalone tracks — read them first:
   smoke gate runs on `tp-run/*` PRs too.
   Before cutting the branch, reset leftover Databricks state from the prior
   run with `make tp-demo-reset` (dry-run by default; `APPLY=1` deletes).
+  Runs write to run-scoped schemas `ow_tp.mig_<run>_*`; the shared
+  `bronze`/`silver`/`gold` schemas are never reset.
 - `tech-partnerships-solutions` is a fallback recording of a prior completed
   run. Consult it only if a live run fails; never merge it into
   `tech-partnerships`, and never treat it as the correctness reference — the

@@ -10,13 +10,17 @@ pipeline materialization tables (`__materialization_mat_*`), leaving schemas
 non-empty, and because Lakebase read-write endpoints cannot be deleted while
 their branches can.
 
+Only run-scoped schemas (`<catalog>.<schema-prefix>*`, e.g. `mig_20260926_bronze`)
+are dropped — the shared `ow_tp.bronze/silver/gold` hold the persistent showcase
+namespace and are never touched.
+
 Plan -> act -> negative verification, modelled on showcase.py cmd_teardown.
 Stdlib only; uses client.py Databricks for REST + SQL.
 
   python3 scripts/tp_dbx/demo_reset.py            # print plan, do nothing
   python3 scripts/tp_dbx/demo_reset.py --apply    # execute, then verify
-  ... [--catalog ow_tp] [--schemas bronze,silver,gold,ops]
-      [--job-prefix ow_tp_] [--lakebase-project ow-tp-billing]
+  ... [--catalog ow_tp] [--schema-prefix mig_]
+      [--schema-prefix mig_] [--job-prefix ow_tp_] [--lakebase-project ow-tp-billing]
       [--branch-prefix mig-] [--start-oracle i-0123...]
 """
 from __future__ import annotations
@@ -44,7 +48,7 @@ KINDS = ("job", "pipeline", "dashboard", "schema", "lakebase_branch", "oracle")
 @dataclass
 class Opts:
     catalog: str = "ow_tp"
-    schemas: tuple = ("bronze", "silver", "gold", "ops")
+    schema_prefix: str = "mig_"
     job_prefix: str = "ow_tp_"
     lakebase_project: str = "ow-tp-billing"
     branch_prefix: str = "mig-"
@@ -65,6 +69,24 @@ class Plan:
 
     def add(self, kind: str, name: str, action: str) -> None:
         self.items.append(Item(kind, name, action))
+
+
+def _run_schemas(rows: list, opts: Opts) -> list[str]:
+    """Full schema names under opts.catalog carrying the run prefix. Shared
+    schemas (bronze/silver/gold, airbyte_demo, ...) lack the prefix and are
+    never returned; information_schema and default are excluded outright."""
+    out = []
+    for row in rows:
+        name = row[0] if isinstance(row, (list, tuple)) else row
+        short = str(name).split(".")[-1]
+        if short in {"information_schema", "default"} or not short.startswith(opts.schema_prefix):
+            continue
+        full = str(name) if "." in str(name) else f"{opts.catalog}.{name}"
+        catalog_part = full.split(".", 1)[0]
+        if catalog_part != opts.catalog:
+            continue
+        out.append(full)
+    return out
 
 
 def _strip_dev_prefix(name: str) -> str:
@@ -128,11 +150,8 @@ def plan(inventory: dict, opts: Opts) -> Plan:
         if name.startswith("ow_tp") and not name.startswith(SHOWCASE_DASHBOARD_PREFIX):
             p.add("dashboard", name, f"DELETE /api/2.0/lakeview/dashboards/{dash['dashboard_id']}")
 
-    existing = set(inventory.get("schemas", []))
-    for schema in opts.schemas:
-        full = f"{opts.catalog}.{schema}"
-        if full in existing:
-            p.add("schema", full, f"DROP SCHEMA {full} CASCADE")
+    for full in _run_schemas(inventory.get("schemas", []), opts):
+        p.add("schema", full, f"DROP SCHEMA {full} CASCADE")
 
     branches = []
     for branch in inventory.get("lakebase_branches", []):
@@ -178,8 +197,7 @@ def inventory(dbx: Databricks, opts: Opts) -> dict:
     inv["pipelines"] = dbx.list_all("/api/2.0/pipelines", "statuses", "pipelines")
     inv["dashboards"] = dbx.list_all("/api/2.0/lakeview/dashboards", "dashboards")
     result = dbx.sql(f"SHOW SCHEMAS IN {opts.catalog}")
-    inv["schemas"] = [row[0] if "." in str(row[0]) else f"{opts.catalog}.{row[0]}"
-                      for row in result.rows] if result.ok else []
+    inv["schemas"] = result.rows if result.ok else []
     if opts.lakebase_project:
         status, payload = dbx.call("GET", f"/api/2.0/postgres/projects/{opts.lakebase_project}/branches")
         inv["lakebase_branches"] = payload.get("branches", payload.get("_list", [])) if 200 <= status < 300 else []
@@ -273,8 +291,7 @@ def verify(dbx: Databricks, opts: Opts) -> dict:
         survivors["dashboards"] = dashes
     result = dbx.sql(f"SHOW SCHEMAS IN {opts.catalog}")
     if result.ok:
-        remaining = [s for s in opts.schemas
-                     if s in [r[0].split(".")[-1] for r in result.rows]]
+        remaining = _run_schemas(result.rows, opts)
         if remaining:
             survivors["schemas"] = remaining
     else:
@@ -296,7 +313,8 @@ def main() -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--apply", action="store_true", help="execute the plan (default: print only)")
     parser.add_argument("--catalog", default="ow_tp")
-    parser.add_argument("--schemas", default="bronze,silver,gold,ops")
+    parser.add_argument("--schema-prefix", default="mig_",
+                        help="drop every schema in --catalog whose name carries this prefix")
     parser.add_argument("--job-prefix", default="ow_tp_")
     parser.add_argument("--lakebase-project", default="ow-tp-billing")
     parser.add_argument("--branch-prefix", default="mig-")
@@ -306,12 +324,14 @@ def main() -> int:
     require_ident(args.catalog, "catalog")
     opts = Opts(
         catalog=args.catalog,
-        schemas=tuple(require_ident(s.strip(), "schema") for s in args.schemas.split(",") if s.strip()),
+        schema_prefix=args.schema_prefix,
         job_prefix=args.job_prefix,
         lakebase_project=args.lakebase_project,
         branch_prefix=args.branch_prefix,
         start_oracle=args.start_oracle,
     )
+    if not args.schema_prefix or "." in args.schema_prefix:
+        raise SystemExit("--schema-prefix must be a non-empty schema-name prefix (no dots)")
     if args.start_oracle and not args.start_oracle.startswith("i-"):
         raise SystemExit("--start-oracle expects an EC2 instance id (i-...)")
 

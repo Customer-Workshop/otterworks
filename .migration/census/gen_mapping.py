@@ -101,7 +101,7 @@ MODEL = [
          access_pattern="facade.py:287-297 reads customer_master then entity_attr_value for the same cust_id in one request -> embed attributes",
          embeds=[embed("attributes", "ENTITY_ATTR_VALUE", ["ENTITY_ID"], ["EAV_ID"], "eavId",
                        "sum(attributes[].length) = count(ENTITY_ATTR_VALUE WHERE ENTITY_TYPE='CUSTOMER') = 8337; element key EAV_ID because (ENTITY_ID, ATTR_NAME) repeats 181 times",
-                       child_where="ENTITY_TYPE = 'CUSTOMER'")]),
+                       )]),  # unscoped: census shows every ENTITY_ATTR_VALUE row is ENTITY_TYPE='CUSTOMER'; a scoped embed can never be merge-eligible in the harness
     coll("invoice_headers", "INVOICE_HEADER", ["INVOICE_ID"], unit="invoice_batch", wave=1,
          access_pattern="reports.py:46-67 header x line aggregates by batch_no; max 21 lines/header -> embed lines",
          embeds=[embed("lines", "INVOICE_LINE", ["INVOICE_ID"], ["LINE_ID"], "lineId",

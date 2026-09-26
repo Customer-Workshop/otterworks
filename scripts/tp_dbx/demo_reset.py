@@ -3,7 +3,8 @@
 OtterWorks OW_BILLING migration run, so the estate can be rerun from clean.
 
 This is an operator action run by the workspace admin (the PAT identity behind
-DATABRICKS_DEMO_HOST / DATABRICKS_DEMO_TOKEN), not a factory action: it deletes
+DATABRICKS_DEMO_HOST / DATABRICKS_DEMO_TOKEN — though any identity that owns or
+administers the objects works, including a service principal), not a factory action: it deletes
 whole schemas with DROP SCHEMA CASCADE and is deliberately outside the
 .migration allowlist machinery. It exists because `tables delete` misses
 pipeline materialization tables (`__materialization_mat_*`), leaving schemas

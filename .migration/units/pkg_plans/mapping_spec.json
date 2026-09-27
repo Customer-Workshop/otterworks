@@ -1,0 +1,142 @@
+{
+  "version": "map-20260927c-pkg_plans-v1",
+  "note": "state tables owned by pkg_plans (sp_change_plan + trg_subscriptions_hist); loaded from Oracle once, recon exact",
+  "objects": [
+    {
+      "object": "ow_tp.billing.subscriptions",
+      "root_table": "OW_BILLING.SUBSCRIPTIONS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "ID",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "PLAN_ID",
+          "target": "plan_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "STARTS_ON",
+          "target": "starts_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)"
+        },
+        {
+          "source": "ENDS_ON",
+          "target": "ends_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)"
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "bigint"
+        },
+        {
+          "source": "SUSPENDED_ON",
+          "target": "suspended_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)"
+        }
+      ]
+    },
+    {
+      "object": "ow_tp.billing.subscriptions_hist",
+      "root_table": "OW_BILLING.SUBSCRIPTIONS_HIST",
+      "key": {
+        "source": [
+          "HIST_ID"
+        ],
+        "target": [
+          "hist_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "HIST_ID",
+          "target": "hist_id",
+          "source_type": "NUMBER(12)",
+          "target_type": "bigint"
+        },
+        {
+          "source": "HIST_DT",
+          "target": "hist_dt",
+          "source_type": "VARCHAR2(20)",
+          "target_type": "varchar(20)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "HIST_OP",
+          "target": "hist_op",
+          "source_type": "VARCHAR2(3)",
+          "target_type": "varchar(3)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ID",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "PLAN_ID",
+          "target": "plan_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "STARTS_ON",
+          "target": "starts_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)"
+        },
+        {
+          "source": "ENDS_ON",
+          "target": "ends_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)"
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "bigint"
+        },
+        {
+          "source": "SUSPENDED_ON",
+          "target": "suspended_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)"
+        }
+      ]
+    }
+  ]
+}

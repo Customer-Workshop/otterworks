@@ -1,0 +1,26 @@
+{
+  "mode": "live",
+  "depth": "full",
+  "tier3_mode": {
+    "OW_BILLING.INVOICES": "full_diff",
+    "OW_BILLING.INVOICE_LINES": "full_diff",
+    "OW_BILLING.CREDIT_NOTES": "full_diff"
+  },
+  "source_statements": {
+    "tier1": 3,
+    "tier2": 3,
+    "tier3": 9,
+    "tier4": 0,
+    "total": 15
+  },
+  "target_statements": {
+    "tier1": 3,
+    "tier2": 3,
+    "tier3": 6,
+    "tier4": 0,
+    "total": 12
+  },
+  "source_rows_fetched": 5,
+  "target_rows_fetched": 5,
+  "row_counts_known": true
+}

@@ -1,0 +1,50 @@
+{
+  "version": "map-20260927c-pkg_ow_util-v1",
+  "note": "audit table written by log_msg / purged by job_purge_audit_log; LOGGED_AT excluded from value grading (D-009)",
+  "objects": [
+    {
+      "object": "ow_tp.billing.billing_audit_log",
+      "root_table": "OW_BILLING.BILLING_AUDIT_LOG",
+      "key": {
+        "source": [
+          "LOG_ID"
+        ],
+        "target": [
+          "log_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "LOG_ID",
+          "target": "log_id",
+          "source_type": "NUMBER(12)",
+          "target_type": "bigint"
+        },
+        {
+          "source": "LOGGED_AT",
+          "target": "logged_at",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)"
+        },
+        {
+          "source": "MODULE",
+          "target": "module",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "varchar(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MESSAGE",
+          "target": "message",
+          "source_type": "VARCHAR2(4000)",
+          "target_type": "varchar(4000)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    }
+  ]
+}

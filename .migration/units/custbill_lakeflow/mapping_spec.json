@@ -1,0 +1,1627 @@
+{
+  "version": "map-20260927c-custbill_lakeflow-v1",
+  "note": "bronze landing of the CUSTBILL chain inputs, whole tables, exact; silver/quarantine/file are graded by the unit's export_file + custom gates",
+  "objects": [
+    {
+      "object": "ow_tp.mig_20260927c_bronze.invoice_header",
+      "root_table": "OW_BILLING.INVOICE_HEADER",
+      "key": {
+        "source": [
+          "INVOICE_ID"
+        ],
+        "target": [
+          "invoice_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "INVOICE_ID",
+          "target": "invoice_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "INVOICE_NO",
+          "target": "invoice_no",
+          "source_type": "VARCHAR2(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_ID",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "INVOICE_DT",
+          "target": "invoice_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "DUE_DT",
+          "target": "due_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "TOTAL_AMT",
+          "target": "total_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "BATCH_NO",
+          "target": "batch_no",
+          "source_type": "NUMBER(8)"
+        }
+      ],
+      "intended_target_types": {
+        "invoice_id": "string",
+        "invoice_no": "string",
+        "cust_id": "string",
+        "tenant_id": "string",
+        "invoice_dt": "string",
+        "due_dt": "string",
+        "status_cd": "bigint",
+        "total_amt": "decimal(14,2)",
+        "batch_no": "bigint"
+      }
+    },
+    {
+      "object": "ow_tp.mig_20260927c_bronze.invoice_line",
+      "root_table": "OW_BILLING.INVOICE_LINE",
+      "key": {
+        "source": [
+          "LINE_ID"
+        ],
+        "target": [
+          "line_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "LINE_ID",
+          "target": "line_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "INVOICE_NO",
+          "target": "invoice_no",
+          "source_type": "VARCHAR2(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "INVOICE_ID",
+          "target": "invoice_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "CUST_ID",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "CUST_NO",
+          "target": "cust_no",
+          "source_type": "VARCHAR2(20)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_NAME",
+          "target": "cust_name",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "LINE_NO",
+          "target": "line_no",
+          "source_type": "NUMBER(6)"
+        },
+        {
+          "source": "LINE_TYPE_CD",
+          "target": "line_type_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "ITEM_DESC",
+          "target": "item_desc",
+          "source_type": "VARCHAR2(400)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "QTY",
+          "target": "qty",
+          "source_type": "NUMBER(12,3)"
+        },
+        {
+          "source": "UNIT_PRICE",
+          "target": "unit_price",
+          "source_type": "NUMBER(14,4)"
+        },
+        {
+          "source": "AMOUNT",
+          "target": "amount",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "TAX_AMT",
+          "target": "tax_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "INVOICE_DT",
+          "target": "invoice_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "SERVICE_PERIOD",
+          "target": "service_period",
+          "source_type": "VARCHAR2(20)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "POSTED_YN",
+          "target": "posted_yn",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "GL_ACCT_CSV",
+          "target": "gl_acct_csv",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "BATCH_NO",
+          "target": "batch_no",
+          "source_type": "NUMBER(8)"
+        },
+        {
+          "source": "SRC_SYSTEM",
+          "target": "src_system",
+          "source_type": "VARCHAR2(10)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ],
+      "intended_target_types": {
+        "line_id": "string",
+        "invoice_no": "string",
+        "invoice_id": "string",
+        "cust_id": "string",
+        "cust_no": "string",
+        "cust_name": "string",
+        "tenant_id": "string",
+        "line_no": "bigint",
+        "line_type_cd": "bigint",
+        "item_desc": "string",
+        "qty": "decimal(12,3)",
+        "unit_price": "decimal(14,4)",
+        "amount": "decimal(14,2)",
+        "tax_amt": "decimal(14,2)",
+        "invoice_dt": "string",
+        "service_period": "string",
+        "posted_yn": "string",
+        "gl_acct_csv": "string",
+        "batch_no": "bigint",
+        "src_system": "string"
+      }
+    },
+    {
+      "object": "ow_tp.mig_20260927c_bronze.customer_master",
+      "root_table": "OW_BILLING.CUSTOMER_MASTER",
+      "key": {
+        "source": [
+          "CUST_ID"
+        ],
+        "target": [
+          "cust_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "CUST_ID",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "CUST_SEQ_NO",
+          "target": "cust_seq_no",
+          "source_type": "NUMBER(12)"
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "CUST_NO",
+          "target": "cust_no",
+          "source_type": "VARCHAR2(20)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_NAME",
+          "target": "cust_name",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_NAME_UPPER",
+          "target": "cust_name_upper",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LEGAL_NAME",
+          "target": "legal_name",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "DBA_NAME",
+          "target": "dba_name",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_1",
+          "target": "addr_line_1",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_2",
+          "target": "addr_line_2",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_3",
+          "target": "addr_line_3",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_4",
+          "target": "addr_line_4",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_5",
+          "target": "addr_line_5",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_6",
+          "target": "addr_line_6",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CITY",
+          "target": "city",
+          "source_type": "VARCHAR2(80)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "STATE_CD",
+          "target": "state_cd",
+          "source_type": "VARCHAR2(4)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ZIP",
+          "target": "zip",
+          "source_type": "VARCHAR2(12)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ZIP4",
+          "target": "zip4",
+          "source_type": "VARCHAR2(6)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "COUNTRY_CD",
+          "target": "country_cd",
+          "source_type": "VARCHAR2(4)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_ADDR_LINE_1",
+          "target": "mail_addr_line_1",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_ADDR_LINE_2",
+          "target": "mail_addr_line_2",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_ADDR_LINE_3",
+          "target": "mail_addr_line_3",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_ADDR_LINE_4",
+          "target": "mail_addr_line_4",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_ADDR_LINE_5",
+          "target": "mail_addr_line_5",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_ADDR_LINE_6",
+          "target": "mail_addr_line_6",
+          "source_type": "VARCHAR2(120)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_CITY",
+          "target": "mail_city",
+          "source_type": "VARCHAR2(80)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_STATE_CD",
+          "target": "mail_state_cd",
+          "source_type": "VARCHAR2(4)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAIL_ZIP",
+          "target": "mail_zip",
+          "source_type": "VARCHAR2(12)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PHONE1",
+          "target": "phone1",
+          "source_type": "VARCHAR2(25)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PHONE2",
+          "target": "phone2",
+          "source_type": "VARCHAR2(25)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PHONE3",
+          "target": "phone3",
+          "source_type": "VARCHAR2(25)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PHONE4",
+          "target": "phone4",
+          "source_type": "VARCHAR2(25)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PHONE1_TYPE_CD",
+          "target": "phone1_type_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "PHONE2_TYPE_CD",
+          "target": "phone2_type_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "PHONE3_TYPE_CD",
+          "target": "phone3_type_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "PHONE4_TYPE_CD",
+          "target": "phone4_type_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "FAX",
+          "target": "fax",
+          "source_type": "VARCHAR2(25)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "EMAIL_1",
+          "target": "email_1",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "EMAIL_2",
+          "target": "email_2",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "EMAIL_3",
+          "target": "email_3",
+          "source_type": "VARCHAR2(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "SIGNUP_DT",
+          "target": "signup_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LAST_ACTIVITY_DT",
+          "target": "last_activity_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LAST_INVOICE_DT",
+          "target": "last_invoice_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LAST_PAYMENT_DT",
+          "target": "last_payment_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TERMINATE_DT",
+          "target": "terminate_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "SUB_STATUS_CD",
+          "target": "sub_status_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "CUST_TYPE_CD",
+          "target": "cust_type_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "SEGMENT_CD",
+          "target": "segment_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "REGION_CD",
+          "target": "region_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "TERRITORY_CD",
+          "target": "territory_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "CHANNEL_CD",
+          "target": "channel_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "RATE_CLASS_CD",
+          "target": "rate_class_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "TAX_EXEMPT_YN",
+          "target": "tax_exempt_yn",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "CREDIT_HOLD_YN",
+          "target": "credit_hold_yn",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "DUNNING_EXEMPT_YN",
+          "target": "dunning_exempt_yn",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "VIP_YN",
+          "target": "vip_yn",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "CUR_BAL_AMT",
+          "target": "cur_bal_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "PAST_DUE_AMT",
+          "target": "past_due_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "YTD_BILLED_AMT",
+          "target": "ytd_billed_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "LTD_BILLED_AMT",
+          "target": "ltd_billed_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "YTD_PAID_AMT",
+          "target": "ytd_paid_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "CREDIT_LIMIT_AMT",
+          "target": "credit_limit_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "RELATED_ACCT_IDS",
+          "target": "related_acct_ids",
+          "source_type": "VARCHAR2(2000)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CHILD_ACCT_IDS",
+          "target": "child_acct_ids",
+          "source_type": "VARCHAR2(2000)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PROMO_CODES_CSV",
+          "target": "promo_codes_csv",
+          "source_type": "VARCHAR2(1000)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CONTACT_NOTES",
+          "target": "contact_notes",
+          "source_type": "VARCHAR2(4000)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LEGACY_SYS_KEY",
+          "target": "legacy_sys_key",
+          "source_type": "VARCHAR2(50)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAINFRAME_ACCT_NO",
+          "target": "mainframe_acct_no",
+          "source_type": "VARCHAR2(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CONVERSION_BATCH_NO",
+          "target": "conversion_batch_no",
+          "source_type": "NUMBER(8)"
+        },
+        {
+          "source": "FLAG_01",
+          "target": "flag_01",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_02",
+          "target": "flag_02",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_03",
+          "target": "flag_03",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_04",
+          "target": "flag_04",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_05",
+          "target": "flag_05",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_06",
+          "target": "flag_06",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_07",
+          "target": "flag_07",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_08",
+          "target": "flag_08",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_09",
+          "target": "flag_09",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_10",
+          "target": "flag_10",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_11",
+          "target": "flag_11",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_12",
+          "target": "flag_12",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_13",
+          "target": "flag_13",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_14",
+          "target": "flag_14",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_15",
+          "target": "flag_15",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_16",
+          "target": "flag_16",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_17",
+          "target": "flag_17",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_18",
+          "target": "flag_18",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_19",
+          "target": "flag_19",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "FLAG_20",
+          "target": "flag_20",
+          "source_type": "CHAR(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "UDF_01",
+          "target": "udf_01",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_02",
+          "target": "udf_02",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_03",
+          "target": "udf_03",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_04",
+          "target": "udf_04",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_05",
+          "target": "udf_05",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_06",
+          "target": "udf_06",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_07",
+          "target": "udf_07",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_08",
+          "target": "udf_08",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_09",
+          "target": "udf_09",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_10",
+          "target": "udf_10",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_11",
+          "target": "udf_11",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_12",
+          "target": "udf_12",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_13",
+          "target": "udf_13",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_14",
+          "target": "udf_14",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_15",
+          "target": "udf_15",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_16",
+          "target": "udf_16",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_17",
+          "target": "udf_17",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_18",
+          "target": "udf_18",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_19",
+          "target": "udf_19",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_20",
+          "target": "udf_20",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_21",
+          "target": "udf_21",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_22",
+          "target": "udf_22",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_23",
+          "target": "udf_23",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_24",
+          "target": "udf_24",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_25",
+          "target": "udf_25",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_26",
+          "target": "udf_26",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_27",
+          "target": "udf_27",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_28",
+          "target": "udf_28",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_29",
+          "target": "udf_29",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_30",
+          "target": "udf_30",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_31",
+          "target": "udf_31",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_32",
+          "target": "udf_32",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_33",
+          "target": "udf_33",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_34",
+          "target": "udf_34",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_35",
+          "target": "udf_35",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_36",
+          "target": "udf_36",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_37",
+          "target": "udf_37",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_38",
+          "target": "udf_38",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_39",
+          "target": "udf_39",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_40",
+          "target": "udf_40",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_AMT_01",
+          "target": "udf_amt_01",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_02",
+          "target": "udf_amt_02",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_03",
+          "target": "udf_amt_03",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_04",
+          "target": "udf_amt_04",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_05",
+          "target": "udf_amt_05",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_06",
+          "target": "udf_amt_06",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_07",
+          "target": "udf_amt_07",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_08",
+          "target": "udf_amt_08",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_09",
+          "target": "udf_amt_09",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_AMT_10",
+          "target": "udf_amt_10",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "UDF_DT_01",
+          "target": "udf_dt_01",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_02",
+          "target": "udf_dt_02",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_03",
+          "target": "udf_dt_03",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_04",
+          "target": "udf_dt_04",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_05",
+          "target": "udf_dt_05",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_06",
+          "target": "udf_dt_06",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_07",
+          "target": "udf_dt_07",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_08",
+          "target": "udf_dt_08",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_09",
+          "target": "udf_dt_09",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UDF_DT_10",
+          "target": "udf_dt_10",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CREATED_BY",
+          "target": "created_by",
+          "source_type": "VARCHAR2(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CREATED_DT",
+          "target": "created_dt",
+          "source_type": "DATE"
+        },
+        {
+          "source": "UPDATED_BY",
+          "target": "updated_by",
+          "source_type": "VARCHAR2(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UPDATED_DT",
+          "target": "updated_dt",
+          "source_type": "DATE"
+        },
+        {
+          "source": "ROW_VERSION_NO",
+          "target": "row_version_no",
+          "source_type": "NUMBER(8)"
+        }
+      ],
+      "intended_target_types": {
+        "cust_id": "string",
+        "cust_seq_no": "bigint",
+        "tenant_id": "string",
+        "cust_no": "string",
+        "cust_name": "string",
+        "cust_name_upper": "string",
+        "legal_name": "string",
+        "dba_name": "string",
+        "addr_line_1": "string",
+        "addr_line_2": "string",
+        "addr_line_3": "string",
+        "addr_line_4": "string",
+        "addr_line_5": "string",
+        "addr_line_6": "string",
+        "city": "string",
+        "state_cd": "string",
+        "zip": "string",
+        "zip4": "string",
+        "country_cd": "string",
+        "mail_addr_line_1": "string",
+        "mail_addr_line_2": "string",
+        "mail_addr_line_3": "string",
+        "mail_addr_line_4": "string",
+        "mail_addr_line_5": "string",
+        "mail_addr_line_6": "string",
+        "mail_city": "string",
+        "mail_state_cd": "string",
+        "mail_zip": "string",
+        "phone1": "string",
+        "phone2": "string",
+        "phone3": "string",
+        "phone4": "string",
+        "phone1_type_cd": "bigint",
+        "phone2_type_cd": "bigint",
+        "phone3_type_cd": "bigint",
+        "phone4_type_cd": "bigint",
+        "fax": "string",
+        "email_1": "string",
+        "email_2": "string",
+        "email_3": "string",
+        "signup_dt": "string",
+        "last_activity_dt": "string",
+        "last_invoice_dt": "string",
+        "last_payment_dt": "string",
+        "terminate_dt": "string",
+        "status_cd": "bigint",
+        "sub_status_cd": "bigint",
+        "cust_type_cd": "bigint",
+        "segment_cd": "bigint",
+        "region_cd": "bigint",
+        "territory_cd": "bigint",
+        "channel_cd": "bigint",
+        "rate_class_cd": "bigint",
+        "tax_exempt_yn": "string",
+        "credit_hold_yn": "string",
+        "dunning_exempt_yn": "string",
+        "vip_yn": "string",
+        "cur_bal_amt": "decimal(14,2)",
+        "past_due_amt": "decimal(14,2)",
+        "ytd_billed_amt": "decimal(14,2)",
+        "ltd_billed_amt": "decimal(14,2)",
+        "ytd_paid_amt": "decimal(14,2)",
+        "credit_limit_amt": "decimal(14,2)",
+        "related_acct_ids": "string",
+        "child_acct_ids": "string",
+        "promo_codes_csv": "string",
+        "contact_notes": "string",
+        "legacy_sys_key": "string",
+        "mainframe_acct_no": "string",
+        "conversion_batch_no": "bigint",
+        "flag_01": "string",
+        "flag_02": "string",
+        "flag_03": "string",
+        "flag_04": "string",
+        "flag_05": "string",
+        "flag_06": "string",
+        "flag_07": "string",
+        "flag_08": "string",
+        "flag_09": "string",
+        "flag_10": "string",
+        "flag_11": "string",
+        "flag_12": "string",
+        "flag_13": "string",
+        "flag_14": "string",
+        "flag_15": "string",
+        "flag_16": "string",
+        "flag_17": "string",
+        "flag_18": "string",
+        "flag_19": "string",
+        "flag_20": "string",
+        "udf_01": "string",
+        "udf_02": "string",
+        "udf_03": "string",
+        "udf_04": "string",
+        "udf_05": "string",
+        "udf_06": "string",
+        "udf_07": "string",
+        "udf_08": "string",
+        "udf_09": "string",
+        "udf_10": "string",
+        "udf_11": "string",
+        "udf_12": "string",
+        "udf_13": "string",
+        "udf_14": "string",
+        "udf_15": "string",
+        "udf_16": "string",
+        "udf_17": "string",
+        "udf_18": "string",
+        "udf_19": "string",
+        "udf_20": "string",
+        "udf_21": "string",
+        "udf_22": "string",
+        "udf_23": "string",
+        "udf_24": "string",
+        "udf_25": "string",
+        "udf_26": "string",
+        "udf_27": "string",
+        "udf_28": "string",
+        "udf_29": "string",
+        "udf_30": "string",
+        "udf_31": "string",
+        "udf_32": "string",
+        "udf_33": "string",
+        "udf_34": "string",
+        "udf_35": "string",
+        "udf_36": "string",
+        "udf_37": "string",
+        "udf_38": "string",
+        "udf_39": "string",
+        "udf_40": "string",
+        "udf_amt_01": "decimal(14,2)",
+        "udf_amt_02": "decimal(14,2)",
+        "udf_amt_03": "decimal(14,2)",
+        "udf_amt_04": "decimal(14,2)",
+        "udf_amt_05": "decimal(14,2)",
+        "udf_amt_06": "decimal(14,2)",
+        "udf_amt_07": "decimal(14,2)",
+        "udf_amt_08": "decimal(14,2)",
+        "udf_amt_09": "decimal(14,2)",
+        "udf_amt_10": "decimal(14,2)",
+        "udf_dt_01": "string",
+        "udf_dt_02": "string",
+        "udf_dt_03": "string",
+        "udf_dt_04": "string",
+        "udf_dt_05": "string",
+        "udf_dt_06": "string",
+        "udf_dt_07": "string",
+        "udf_dt_08": "string",
+        "udf_dt_09": "string",
+        "udf_dt_10": "string",
+        "created_by": "string",
+        "created_dt": "timestamp_ntz",
+        "updated_by": "string",
+        "updated_dt": "timestamp_ntz",
+        "row_version_no": "bigint"
+      }
+    },
+    {
+      "object": "ow_tp.mig_20260927c_bronze.entity_attr_value",
+      "root_table": "OW_BILLING.ENTITY_ATTR_VALUE",
+      "key": {
+        "source": [
+          "EAV_ID"
+        ],
+        "target": [
+          "eav_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "EAV_ID",
+          "target": "eav_id",
+          "source_type": "NUMBER(14)"
+        },
+        {
+          "source": "ENTITY_TYPE",
+          "target": "entity_type",
+          "source_type": "VARCHAR2(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ENTITY_ID",
+          "target": "entity_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "ATTR_NAME",
+          "target": "attr_name",
+          "source_type": "VARCHAR2(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ATTR_VALUE",
+          "target": "attr_value",
+          "source_type": "VARCHAR2(4000)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ATTR_TYPE",
+          "target": "attr_type",
+          "source_type": "VARCHAR2(10)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CREATED_DT",
+          "target": "created_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ],
+      "intended_target_types": {
+        "eav_id": "bigint",
+        "entity_type": "string",
+        "entity_id": "string",
+        "attr_name": "string",
+        "attr_value": "string",
+        "attr_type": "string",
+        "created_dt": "string"
+      }
+    }
+  ]
+}

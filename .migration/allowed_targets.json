@@ -1,23 +1,45 @@
 {
   "run_id": "20260927",
-  "catalogs": ["ow_tp"],
+  "catalogs": [
+    "ow_tp"
+  ],
   "schema_prefix": "mig_20260927_",
   "job_prefix": "ow_tp_20260927_",
-  "legacy_sources": ["OW_BILLING_RO_DSN"],
+  "legacy_sources": [
+    "OW_BILLING_RO_DSN"
+  ],
   "guard_mode": "block",
   "run_mode": "live",
   "target_hosts": [
-    "OW_TP_LAKEBASE_DSN",
-    "LAKEBASE_MIGRATION_DSN",
-    "LAKEBASE_EXEC_DSN",
-    "PGHOST"
+    "OW_TP_LAKEBASE_W0_DSN",
+    "OW_TP_LAKEBASE_W1_DSN",
+    "OW_TP_LAKEBASE_EXEC_DSN",
+    "ep-wild-hat-d120fhwn.database.us-west-2.cloud.databricks.com"
   ],
-  "bundle_targets": ["mig_20260927"],
-  "lakebase_projects": ["ow-tp-billing"],
-  "lakebase_branches": ["mig-20260927-w*", "mig-20260927-exec"],
+  "bundle_targets": [
+    "mig_20260927"
+  ],
+  "lakebase_projects": [
+    "ow-tp-billing"
+  ],
+  "lakebase_branches": [
+    "mig-20260927-w0",
+    "mig-20260927-w1",
+    "mig-20260927-exec"
+  ],
   "forbidden": {
-    "schemas": ["ow_tp.bronze", "ow_tp.silver", "ow_tp.gold", "ow_tp.airbyte_demo", "ow_tp.fivetran_metadata", "ow_tp._fivetran_setup_test", "ow_tp.fivetran_trimester_remoteness_staging"],
-    "lakebase_branches": ["production"],
+    "schemas": [
+      "ow_tp.bronze",
+      "ow_tp.silver",
+      "ow_tp.gold",
+      "ow_tp.airbyte_demo",
+      "ow_tp.fivetran_metadata",
+      "ow_tp._fivetran_setup_test",
+      "ow_tp.fivetran_trimester_remoteness_staging"
+    ],
+    "lakebase_branches": [
+      "production"
+    ],
     "legacy": "OW_BILLING on 52.201.36.9:1521/FREEPDB1 is read-only in every phase"
   }
 }

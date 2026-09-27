@@ -1,0 +1,64 @@
+{
+  "auto_merge": false,
+  "base_sha": "aacf87004163a4bb3f4bf29f01cbab90dd3a3871",
+  "batches": [
+    {
+      "branch": "mig/20260927/w0-lakebase-scaffold",
+      "changed_paths": [],
+      "failure_class": "doctor_guard_blocked",
+      "gates": [
+        {
+          "evidence": "not run: child factory-doctor blocked by dbx_guard",
+          "id": "w0-structural",
+          "status": "failed"
+        },
+        {
+          "evidence": "not run: child factory-doctor blocked by dbx_guard",
+          "id": "w0-reference-parity",
+          "status": "failed"
+        },
+        {
+          "evidence": "not run: child factory-doctor blocked by dbx_guard",
+          "id": "w0-fixture-shape",
+          "status": "failed"
+        }
+      ],
+      "id": "w0-lakebase-scaffold",
+      "merge_authority": {
+        "kind": "harness"
+      },
+      "merge_eligible": false,
+      "one_line_summary": "BLOCKED at preflight: the child factory-doctor (doctor.py, with or without --source-secret) is rejected by the plugin's own dbx_guard hook; no DDL, load, recon, or PR performed; nothing written anywhere.",
+      "pr_url": "",
+      "prompt_sha": "fbb276962b802e93",
+      "recon_cost": {},
+      "recon_mode": "none",
+      "recon_verdict": "NOT_RUN",
+      "skill_feedback": [
+        "factory-doctor SKILL says run python3 <plugin>/skills/factory-doctor/doctor.py, but hooks/dbx_guard.py _check_python marks doctor.py opaque and blocks it; a `factory-doctor` wrapper is rejected as an unrecognised wrapper \u2014 the guard needs an exemption/known-client rule for the doctor",
+        "Brief says 'run factory-doctor' but no such executable exists on PATH; only the doctor.py script in the plugin cache"
+      ],
+      "status": "BLOCKED",
+      "write_targets": []
+    }
+  ],
+  "breaker_tripped_on": null,
+  "close": null,
+  "close_minutes": 30,
+  "closed": false,
+  "doctor_signed_at": "2026-09-27T14:10:46+00:00",
+  "hook_probe": "blocked:6fdd1c1f",
+  "manifest_sha": "db64edd62926",
+  "merge_overrides": [],
+  "pipeline_order": {},
+  "resync": null,
+  "stop_c": "D-034",
+  "tag": "0",
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "verify": null,
+  "waived_gates": [],
+  "wave": 0,
+  "width": 1,
+  "write_target_overlaps": []
+}

@@ -389,7 +389,7 @@
     },
     {
       "data": {
-        "branch": "dbx-doctor-probe-5cf757e6",
+        "branch": "dbx-doctor-probe-4e82297b",
         "parent_branch": "production",
         "project": "ow-tp-billing"
       },
@@ -404,7 +404,7 @@
         "role": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2",
         "schema": "billing"
       },
-      "detail": "role d9d1c4ec-29da-4ec7-9aa0-e932710d61e2 can CREATE in database ow_tp",
+      "detail": "role d9d1c4ec-29da-4ec7-9aa0-e932710d61e2 can CREATE in schema billing",
       "id": "lakebase_target_grants",
       "reusable": false,
       "status": "ok"
@@ -424,7 +424,7 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-27T18:27:26Z",
+  "generated_at": "2026-09-27T18:59:22Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,

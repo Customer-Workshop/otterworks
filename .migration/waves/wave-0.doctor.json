@@ -389,7 +389,7 @@
     },
     {
       "data": {
-        "branch": "dbx-doctor-probe-5cf757e6",
+        "branch": "dbx-doctor-probe-4e82297b",
         "parent_branch": "production",
         "project": "ow-tp-billing"
       },
@@ -404,7 +404,7 @@
         "role": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2",
         "schema": "billing"
       },
-      "detail": "role d9d1c4ec-29da-4ec7-9aa0-e932710d61e2 can CREATE in database ow_tp",
+      "detail": "role d9d1c4ec-29da-4ec7-9aa0-e932710d61e2 can CREATE in schema billing",
       "id": "lakebase_target_grants",
       "reusable": false,
       "status": "ok"
@@ -424,7 +424,7 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-27T18:27:26Z",
+  "generated_at": "2026-09-27T18:59:22Z",
   "hook_probe": "blocked:3cdaf9ae",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
@@ -432,14 +432,14 @@
     "userName": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2"
   },
   "inputs_sha": "86949944d45c0678687512b916970f29b77165a40a1f8e915eeae0915d71cff6",
-  "manifest_sha": "29b9bb7ffa4a",
+  "manifest_sha": "0e28efe2aadd",
   "plugin_root": "/opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_dbx-migration-plugin-5890f19a/0.4.2",
   "ready": true,
   "reused_doctor": null,
   "role": "orchestrator",
   "schema": "dbx-migration-factory/capabilities/1",
-  "signature": "31f9429afd117ce9cf127331d6a8d8b7c97e8ebd3da019a2195adf6043655442",
-  "signed_at": "2026-09-27T18:27:26+00:00",
+  "signature": "49270f5e94f65880d398a27ee437fcfd5c132dfb7168b78dd42fde8fbb451d30",
+  "signed_at": "2026-09-27T18:59:22+00:00",
   "source": {
     "family": "oracle",
     "params": {

@@ -395,7 +395,7 @@
     },
     {
       "data": {
-        "branch": "dbx-doctor-probe-594ea295",
+        "branch": "dbx-doctor-probe-0b854c65",
         "parent_branch": "production",
         "project": "ow-tp-billing"
       },
@@ -416,7 +416,7 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-27T23:57:07Z",
+  "generated_at": "2026-09-27T23:58:24Z",
   "hook_probe": "blocked:4f90dd1b",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
@@ -424,14 +424,14 @@
     "userName": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2"
   },
   "inputs_sha": "7323ef15ef20e0cd3720e362daef1a1d777431dded4b4dc6282ae22b419b5fda",
-  "manifest_sha": "21e5a8b0ce1e",
+  "manifest_sha": "fafe8b1e60d0",
   "plugin_root": "/opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_dbx-migration-plugin-5890f19a/0.4.3",
   "ready": true,
   "reused_doctor": null,
   "role": "orchestrator",
   "schema": "dbx-migration-factory/capabilities/1",
-  "signature": "b239e3a875d74cf353d57e6792005c260385c14ebc1e5d74c1c24adc9d929d67",
-  "signed_at": "2026-09-27T23:57:07+00:00",
+  "signature": "0318d588ac349c356358b8e08a4e518e42215baded9b3af04bf95f488776c20c",
+  "signed_at": "2026-09-27T23:58:24+00:00",
   "source": {
     "family": "oracle",
     "params": {

@@ -1,7 +1,8 @@
 {
   "run_id": "20260927c",
   "catalogs": [
-    "ow_tp"
+    "ow_tp",
+    "billing_demo"
   ],
   "schema_prefix": "mig_20260927c_",
   "job_prefix": "ow_tp_20260927c_",
@@ -11,7 +12,10 @@
   "guard_mode": "block",
   "run_mode": "live",
   "target_hosts": [
-    "ep-crimson-wave-d1jr0yo9.database.us-west-2.cloud.databricks.com"
+    "ep-crimson-wave-d1jr0yo9.database.us-west-2.cloud.databricks.com",
+    "ep-bitter-haze-d1cs5zdx.database.us-west-2.cloud.databricks.com",
+    "localhost",
+    "127.0.0.1"
   ],
   "lakebase_databases": [
     "ow_tp"
@@ -41,5 +45,6 @@
       "production"
     ],
     "legacy": "OW_BILLING on 52.201.36.9:1521/FREEPDB1 is read-only in every phase"
-  }
+  },
+  "fixture_note": "localhost/127.0.0.1 + database billing_demo = the local docker Postgres fixture (make procs-up NS=demo, port 55432+offset); mig-20260927c-exec host = ep-bitter-haze-d1cs5zdx (D-022)"
 }

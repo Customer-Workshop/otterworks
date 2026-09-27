@@ -10,7 +10,9 @@
   ],
   "guard_mode": "block",
   "run_mode": "live",
-  "target_hosts": [],
+  "target_hosts": [
+    "ep-calm-sea-d1avwe82.database.us-west-2.cloud.databricks.com"
+  ],
   "lakebase_databases": [
     "ow_tp"
   ],

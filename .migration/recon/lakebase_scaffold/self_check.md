@@ -27,14 +27,14 @@ Evidence for each item; nothing below is described as green without a path.
   shape: drop/recreate of an unchanged declared shape evolves nothing). `rerun/prior_proof_20260927.json`
   is the previous committed proof for this unit (same shape digest).
 - Recon values recomputed from the target platform by `dbx-recon run --mode live --depth full`
-  (`result.json`, `report.md`, `recon.summary.md`); two live attempts of the allowed three
-  (attempt 1 lacked `--routine-dependencies`).
+  (`result.json`, `report.md`, `recon.summary.md`); D-017 rerun: apply.sh + extract | load re-executed
+  on `mig-20260927c-w0`, then one live attempt of the allowed three (PASS, 918 keyed rows).
 - Unverified paths: none in the loader. Fixture-mode recon (`fixture/`) FAILs on fixture-only
   differences (fixture trigger `TRG_USAGE_EVENTS_CHECK`, one extra fixture tenant and three
   extra fixture usage_events); it is development evidence only.
 - Machine-readable report: `result.json` is the harness's own schema (no `*.recon.json` used).
-- Capability preflight: child doctor `ready=True`, 12 ok / 1 warn (`type_map_audit`, advisory) /
-  1 skipped (`named_secrets_exist`). `.migration/09_capabilities.json` unchanged.
+- Capability preflight: child doctor `ready=True`, 11 ok / 2 warn (`type_map_audit`, advisory;
+  `recon_harness`: databricks-sql-connector absent, irrelevant to a Lakebase target) / 1 skipped. `.migration/09_capabilities.json` unchanged.
 - `make tp-smoke`: green (6 passed, "tp-smoke: all checks passed").
 - Also run: `type_map_audit.json` (19 fields ok), `fixture_shape.json` (status pass, exit 0,
   24/40 source statements).

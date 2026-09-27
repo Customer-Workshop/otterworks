@@ -1,0 +1,196 @@
+{
+  "version": "map-20260927-lakebase_scaffold-v1",
+  "note": "wave 0 reference load Oracle OW_BILLING -> Lakebase ow_tp.billing on branch mig-20260927-w0; exact, full | object names de-qualified from ow_tp.billing.<t> to bare <t> for the harness (LakebaseTargetAdapter qualifies with --target-catalog/--target-schema); otherwise byte-identical to .migration/units/lakebase_scaffold/mapping_spec.json",
+  "objects": [
+    {
+      "object": "codes",
+      "root_table": "OW_BILLING.CODES",
+      "key": {
+        "source": [
+          "CODE_TYPE",
+          "CODE_VAL"
+        ],
+        "target": [
+          "code_type",
+          "code_val"
+        ]
+      },
+      "fields": [
+        {
+          "source": "CODE_TYPE",
+          "target": "code_type",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "varchar(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CODE_VAL",
+          "target": "code_val",
+          "source_type": "NUMBER(4)",
+          "target_type": "bigint"
+        },
+        {
+          "source": "CODE_DESC",
+          "target": "code_desc",
+          "source_type": "VARCHAR2(80)",
+          "target_type": "varchar(80)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    },
+    {
+      "object": "plans",
+      "root_table": "OW_BILLING.PLANS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "ID",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "CODE",
+          "target": "code",
+          "source_type": "VARCHAR2(50)",
+          "target_type": "varchar(50)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TIER_CD",
+          "target": "tier_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "bigint"
+        },
+        {
+          "source": "MONTHLY_FEE",
+          "target": "monthly_fee",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)"
+        },
+        {
+          "source": "INCLUDED_UNITS",
+          "target": "included_units",
+          "source_type": "NUMBER(10)",
+          "target_type": "bigint"
+        },
+        {
+          "source": "OVERAGE_RATE",
+          "target": "overage_rate",
+          "source_type": "NUMBER(12,6)",
+          "target_type": "numeric(12,6)"
+        },
+        {
+          "source": "ACTIVE_YN",
+          "target": "active_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "char(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        }
+      ]
+    },
+    {
+      "object": "tenants",
+      "root_table": "OW_BILLING.TENANTS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "ID",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "NAME",
+          "target": "name",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "varchar(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TAX_EXEMPT_YN",
+          "target": "tax_exempt_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "char(1)",
+          "rules": [
+            "rstrip_spaces"
+          ]
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "bigint"
+        }
+      ]
+    },
+    {
+      "object": "usage_events",
+      "root_table": "OW_BILLING.USAGE_EVENTS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "ID",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)"
+        },
+        {
+          "source": "OCCURRED_AT",
+          "target": "occurred_at",
+          "source_type": "TIMESTAMP(6)",
+          "target_type": "timestamp(6)"
+        },
+        {
+          "source": "UNITS",
+          "target": "units",
+          "source_type": "NUMBER(10)",
+          "target_type": "bigint"
+        },
+        {
+          "source": "KIND_CD",
+          "target": "kind_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "bigint"
+        }
+      ]
+    }
+  ]
+}

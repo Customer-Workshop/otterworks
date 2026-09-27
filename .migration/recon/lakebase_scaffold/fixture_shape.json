@@ -1,0 +1,30 @@
+{
+  "family": "oracle",
+  "mapping_version": "map-20260927-lakebase_scaffold-v1",
+  "source_statement_cap": 40,
+  "status": "pass",
+  "findings": [],
+  "tables": {
+    "OW_BILLING.CODES": {
+      "status": "pass",
+      "shape": "checked",
+      "cardinality": "checked"
+    },
+    "OW_BILLING.PLANS": {
+      "status": "pass",
+      "shape": "checked",
+      "cardinality": "checked"
+    },
+    "OW_BILLING.TENANTS": {
+      "status": "pass",
+      "shape": "checked",
+      "cardinality": "checked"
+    },
+    "OW_BILLING.USAGE_EVENTS": {
+      "status": "pass",
+      "shape": "checked",
+      "cardinality": "checked"
+    }
+  },
+  "source_statements": 24
+}

@@ -1,0 +1,133 @@
+{
+  "unit": "lakebase_scaffold",
+  "sources": [
+    "00_scaffold.sql",
+    "apply.sh",
+    "load_reference.py"
+  ],
+  "fresh": "pass",
+  "evolved": "unsupported",
+  "passed": true,
+  "findings": [],
+  "notes": [],
+  "tables": [
+    "codes",
+    "plans",
+    "tenants",
+    "usage_events"
+  ],
+  "source_digest": "80fd3a3795e92e3cc1d7259d8e35ed18f54bc6aa1deb7a01901ac189d800aa95",
+  "evidence": {
+    "fresh": ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log (apply.sh on an empty billing schema, mig-20260927-w0)",
+    "evolved": ".migration/recon/lakebase_scaffold/rerun/evolved_apply.log (apply.sh rerun on the tables the fresh run created; NOTICE ... already exists, skipping)"
+  },
+  "shape": {
+    "tables": {
+      "codes": [
+        {
+          "name": "code_type",
+          "type": "varchar(30)",
+          "nullable": false
+        },
+        {
+          "name": "code_val",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "code_desc",
+          "type": "varchar(80)",
+          "nullable": false
+        }
+      ],
+      "plans": [
+        {
+          "name": "id",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "type": "varchar(50)",
+          "nullable": false
+        },
+        {
+          "name": "tier_cd",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "monthly_fee",
+          "type": "decimal(12,2)",
+          "nullable": false
+        },
+        {
+          "name": "included_units",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "overage_rate",
+          "type": "decimal(12,6)",
+          "nullable": false
+        },
+        {
+          "name": "active_yn",
+          "type": "char(1)",
+          "nullable": false
+        }
+      ],
+      "tenants": [
+        {
+          "name": "id",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(200)",
+          "nullable": false
+        },
+        {
+          "name": "tax_exempt_yn",
+          "type": "char(1)",
+          "nullable": false
+        },
+        {
+          "name": "status_cd",
+          "type": "bigint",
+          "nullable": false
+        }
+      ],
+      "usage_events": [
+        {
+          "name": "id",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamp(6)",
+          "nullable": false
+        },
+        {
+          "name": "units",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "kind_cd",
+          "type": "bigint",
+          "nullable": false
+        }
+      ]
+    }
+  },
+  "shape_digest": "978c3ee2a8f4352396877237653a588b10c6f0d3873c4143db292598c78dca18",
+  "unsupported_reason": "evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved"
+}

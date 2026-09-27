@@ -1,0 +1,116 @@
+{
+  "run": "fresh",
+  "status": "pass",
+  "evidence": ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log (apply.sh on an empty billing schema, mig-20260927-w0)",
+  "shape": {
+    "target_kind": "lakebase",
+    "catalog": "ow_tp",
+    "schema": "billing",
+    "read_at": "2026-09-27T14:52:30.001502+00:00",
+    "tables": {
+      "codes": [
+        {
+          "name": "code_type",
+          "type": "varchar(30)",
+          "nullable": false
+        },
+        {
+          "name": "code_val",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "code_desc",
+          "type": "varchar(80)",
+          "nullable": false
+        }
+      ],
+      "plans": [
+        {
+          "name": "id",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "type": "varchar(50)",
+          "nullable": false
+        },
+        {
+          "name": "tier_cd",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "monthly_fee",
+          "type": "decimal(12,2)",
+          "nullable": false
+        },
+        {
+          "name": "included_units",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "overage_rate",
+          "type": "decimal(12,6)",
+          "nullable": false
+        },
+        {
+          "name": "active_yn",
+          "type": "char(1)",
+          "nullable": false
+        }
+      ],
+      "tenants": [
+        {
+          "name": "id",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(200)",
+          "nullable": false
+        },
+        {
+          "name": "tax_exempt_yn",
+          "type": "char(1)",
+          "nullable": false
+        },
+        {
+          "name": "status_cd",
+          "type": "bigint",
+          "nullable": false
+        }
+      ],
+      "usage_events": [
+        {
+          "name": "id",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamp(6)",
+          "nullable": false
+        },
+        {
+          "name": "units",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "kind_cd",
+          "type": "bigint",
+          "nullable": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,528 @@
+{
+  "unit": "lakebase_scaffold",
+  "mode": "fixture",
+  "mapping_version": "map-20260927c-lakebase_scaffold-v1",
+  "tolerance_version": "tol-20260927c-v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {
+    "ns": "demo",
+    "batch_no": "85559852",
+    "admin_tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "fixture_tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  "snapshot": null,
+  "cost": {
+    "source_statements": 37,
+    "source_rows_fetched": 0,
+    "target_statements": 26,
+    "target_rows_fetched": 0,
+    "elapsed_s": 1.858
+  },
+  "generated_at": "2026-09-27T21:07:35.547991+00:00",
+  "tiers": [
+    {
+      "tier": 0,
+      "name": "structural_parity",
+      "passed": false,
+      "checks_run": 4,
+      "stats": {
+        "codes": {
+          "source": {
+            "primary_key": [
+              "code_type",
+              "code_val"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "code_desc",
+              "code_type",
+              "code_val"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "target": {
+            "primary_key": [
+              "code_type",
+              "code_val"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "code_desc",
+              "code_type",
+              "code_val"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "identity": null
+        },
+        "plans": {
+          "source": {
+            "primary_key": [
+              "id"
+            ],
+            "primary_key_informational": [],
+            "unique": [
+              [
+                "code"
+              ]
+            ],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "active_yn",
+              "code",
+              "id",
+              "included_units",
+              "monthly_fee",
+              "overage_rate",
+              "tier_cd"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "target": {
+            "primary_key": [
+              "id"
+            ],
+            "primary_key_informational": [],
+            "unique": [
+              [
+                "code"
+              ]
+            ],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "active_yn",
+              "code",
+              "id",
+              "included_units",
+              "monthly_fee",
+              "overage_rate",
+              "tier_cd"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "identity": null
+        },
+        "tenants": {
+          "source": {
+            "primary_key": [
+              "id"
+            ],
+            "primary_key_informational": [],
+            "unique": [
+              [
+                "name"
+              ]
+            ],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "id",
+              "name",
+              "status_cd",
+              "tax_exempt_yn"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "target": {
+            "primary_key": [
+              "id"
+            ],
+            "primary_key_informational": [],
+            "unique": [
+              [
+                "name"
+              ]
+            ],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "id",
+              "name",
+              "status_cd",
+              "tax_exempt_yn"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "identity": null
+        },
+        "usage_events": {
+          "source": {
+            "primary_key": [
+              "id"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [
+              [
+                [
+                  "tenant_id"
+                ],
+                "ow_billing.tenants",
+                [
+                  "id"
+                ],
+                "no action",
+                "no action"
+              ]
+            ],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "id",
+              "kind_cd",
+              "occurred_at",
+              "tenant_id",
+              "units"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {
+              "trg_usage_events_check": [
+                "before",
+                [
+                  "insert"
+                ],
+                "row"
+              ]
+            },
+            "grants": {},
+            "unsupported": []
+          },
+          "target": {
+            "primary_key": [
+              "id"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [
+              [
+                [
+                  "tenant_id"
+                ],
+                "billing.tenants",
+                [
+                  "id"
+                ],
+                "no action",
+                "no action"
+              ]
+            ],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "id",
+              "kind_cd",
+              "occurred_at",
+              "tenant_id",
+              "units"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "identity": null
+        },
+        "structural_checks": {
+          "constraints": "checked",
+          "triggers": "checked",
+          "indexes": "checked",
+          "sequences_identity": "checked",
+          "grants": "direct_only"
+        },
+        "structural_diff": {
+          "usage_events": {
+            "triggers": [
+              "before insert row: source 1, target 0"
+            ]
+          }
+        },
+        "dictionary": {
+          "source": "live",
+          "target": "live"
+        }
+      },
+      "findings": [
+        {
+          "object": "usage_events",
+          "check": "trigger_missing",
+          "detail": "before insert row: source 1, target 0",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        }
+      ]
+    },
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": false,
+      "checks_run": 4,
+      "stats": {
+        "source_counts": {
+          "OW_BILLING.CODES": 32,
+          "OW_BILLING.PLANS": 3,
+          "OW_BILLING.TENANTS": 70,
+          "OW_BILLING.USAGE_EVENTS": 817
+        }
+      },
+      "findings": [
+        {
+          "object": "tenants",
+          "check": "root_count",
+          "detail": "rows(OW_BILLING.TENANTS)=70 vs target rows=69",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        },
+        {
+          "object": "usage_events",
+          "check": "root_count",
+          "detail": "rows(OW_BILLING.USAGE_EVENTS)=817 vs target rows=814",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        }
+      ]
+    }
+  ],
+  "warnings": [],
+  "verdict": "FAIL",
+  "merge_eligible": false,
+  "merge_authority": {
+    "kind": "harness",
+    "decision_id": null
+  },
+  "type_map": {
+    "family": "oracle",
+    "target_kind": "lakebase",
+    "filled": [],
+    "unmapped": []
+  },
+  "rerun_proof": {
+    "unit": "lakebase_scaffold",
+    "sources": [
+      "databricks/mig_20260927c/lakebase/00_scaffold.sql",
+      "databricks/mig_20260927c/lakebase/apply.sh",
+      "databricks/mig_20260927c/lakebase/reference_tables.py",
+      "databricks/mig_20260927c/lakebase/extract_reference.py",
+      "databricks/mig_20260927c/lakebase/load_reference.py"
+    ],
+    "prior_from": ".migration/recon/lakebase_scaffold/rerun/prior_proof_20260927.json",
+    "fresh": "pass",
+    "evolved": "unsupported",
+    "passed": true,
+    "findings": [],
+    "notes": [],
+    "tables": [
+      "codes",
+      "plans",
+      "tenants",
+      "usage_events"
+    ],
+    "source_digest": "e3d9339deca930c9390101426c07db7fc08f68f559520505984f496d6fe6d020",
+    "evidence": {
+      "fresh": ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log (apply.sh on empty mig-20260927c-w0: schema billing created, four tables created)",
+      "evolved": ".migration/recon/lakebase_scaffold/rerun/evolved_apply.log (apply.sh rerun on the tables the fresh leg created; drop/recreate)"
+    },
+    "shape": {
+      "tables": {
+        "codes": [
+          {
+            "name": "code_type",
+            "type": "varchar(30)",
+            "nullable": false
+          },
+          {
+            "name": "code_val",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "code_desc",
+            "type": "varchar(80)",
+            "nullable": false
+          }
+        ],
+        "plans": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "code",
+            "type": "varchar(50)",
+            "nullable": false
+          },
+          {
+            "name": "tier_cd",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "monthly_fee",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "included_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "overage_rate",
+            "type": "decimal(12,6)",
+            "nullable": false
+          },
+          {
+            "name": "active_yn",
+            "type": "char(1)",
+            "nullable": false
+          }
+        ],
+        "tenants": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "varchar(200)",
+            "nullable": false
+          },
+          {
+            "name": "tax_exempt_yn",
+            "type": "char(1)",
+            "nullable": false
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": false
+          }
+        ],
+        "usage_events": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "occurred_at",
+            "type": "timestamp(6)",
+            "nullable": false
+          },
+          {
+            "name": "units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "kind_cd",
+            "type": "bigint",
+            "nullable": false
+          }
+        ]
+      }
+    },
+    "shape_digest": "978c3ee2a8f4352396877237653a588b10c6f0d3873c4143db292598c78dca18",
+    "prior_digest": "978c3ee2a8f4352396877237653a588b10c6f0d3873c4143db292598c78dca18",
+    "unsupported_reason": "evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved"
+  },
+  "merge_block_reasons": [
+    "structural_gap",
+    "tier_failed",
+    "mode",
+    "rerun_unsupported"
+  ],
+  "routine_parity": [],
+  "routine_writers": [],
+  "routine_dependencies": ".migration/recon/lakebase_scaffold/dependencies.json"
+}

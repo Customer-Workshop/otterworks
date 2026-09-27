@@ -1,0 +1,91 @@
+{
+  "manifest": {
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_count": 1,
+        "row_offset": 0
+      }
+    ],
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 8,
+      "columns": [
+        {
+          "name": "invoice_id",
+          "position": 0,
+          "type_name": "STRING",
+          "type_text": "STRING"
+        },
+        {
+          "name": "cust_no",
+          "position": 1,
+          "type_name": "STRING",
+          "type_text": "STRING"
+        },
+        {
+          "name": "cust_name",
+          "position": 2,
+          "type_name": "STRING",
+          "type_text": "STRING"
+        },
+        {
+          "name": "invoice_dt",
+          "position": 3,
+          "type_name": "STRING",
+          "type_text": "STRING"
+        },
+        {
+          "name": "total_amt",
+          "position": 4,
+          "type_name": "DECIMAL",
+          "type_precision": 14,
+          "type_scale": 2,
+          "type_text": "DECIMAL(14,2)"
+        },
+        {
+          "name": "currency",
+          "position": 5,
+          "type_name": "STRING",
+          "type_text": "STRING"
+        },
+        {
+          "name": "record_type",
+          "position": 6,
+          "type_name": "STRING",
+          "type_text": "STRING"
+        },
+        {
+          "name": "reject_reasons",
+          "position": 7,
+          "type_name": "ARRAY",
+          "type_text": "ARRAY\u003cSTRING\u003e"
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "total_row_count": 1,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "data_array": [
+      [
+        "fixture-bad-row-00000000-0000-0000-0000-000000000001",
+        null,
+        "FIXTURE BAD ROW",
+        "31-FEB-99",
+        null,
+        "XXX",
+        "01",
+        "[\"cust_no IS NOT NULL\",\"period_end IS NOT NULL\",\"total_amt IS NOT NULL AND abs(total_amt) \u003c= 9999999999.99\",\"currency = 'USD'\"]"
+      ]
+    ],
+    "row_count": 1,
+    "row_offset": 0
+  },
+  "statement_id": "01f1bac8-66b6-1ea0-b1e8-1f4658253ab8",
+  "status": {
+    "state": "SUCCEEDED"
+  }
+}

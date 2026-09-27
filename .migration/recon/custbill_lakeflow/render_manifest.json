@@ -1,0 +1,61 @@
+{
+  "manifest": {
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_count": 1,
+        "row_offset": 0
+      }
+    ],
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 4,
+      "columns": [
+        {
+          "name": "file",
+          "position": 0,
+          "type_name": "STRING",
+          "type_text": "STRING"
+        },
+        {
+          "name": "bytes",
+          "position": 1,
+          "type_name": "LONG",
+          "type_text": "BIGINT"
+        },
+        {
+          "name": "sha256",
+          "position": 2,
+          "type_name": "STRING",
+          "type_text": "STRING"
+        },
+        {
+          "name": "generated_at",
+          "position": 3,
+          "type_name": "TIMESTAMP",
+          "type_text": "TIMESTAMP"
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "total_row_count": 1,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "data_array": [
+      [
+        "/Volumes/ow_tp/mig_20260927c_bronze/custbill_out/CUSTBILL_DEMO_ORACLE.dat",
+        "1237500",
+        "c3e2cf43e099f9e17cc59a2b202cd876c103b8f21a8693eba45fb5fd7eb946db",
+        "2026-09-27T23:03:42.206Z"
+      ]
+    ],
+    "row_count": 1,
+    "row_offset": 0
+  },
+  "statement_id": "01f1bac7-ba29-113b-8829-f9bfb2224356",
+  "status": {
+    "state": "SUCCEEDED"
+  }
+}

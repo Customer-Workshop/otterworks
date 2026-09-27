@@ -1,0 +1,15 @@
+resources:
+  jobs:
+    custbill_render:
+      name: ow_tp_20260927c_custbill_render
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      tasks:
+        - task_key: render
+          notebook_task:
+            notebook_path: ../src/render_custbill.py
+            base_parameters:
+              out: /Volumes/ow_tp/mig_20260927c_bronze/custbill_out/CUSTBILL_DEMO_ORACLE.dat
+              manifest_table: ow_tp.mig_20260927c_silver.custbill_file_manifest

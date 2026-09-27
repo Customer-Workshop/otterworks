@@ -1,0 +1,11 @@
+bundle:
+  name: ow_tp_20260927c_custbill
+
+include:
+  - resources/*.yml
+
+targets:
+  mig_20260927c:
+    default: true
+    workspace:
+      host: https://dbc-8bc9474f-40ae.cloud.databricks.com

@@ -1,0 +1,30 @@
+{
+  "extracted_at": "2026-09-27T22:56:35.560034+00:00",
+  "uploaded": true,
+  "tables": [
+    {
+      "table": "invoice_header",
+      "rows": 18750,
+      "sha256": "e0b4406bdd94d583540ec7bb5b21352fd55619f738ee2ea9e0bcd0a95d410c6b",
+      "volume": "dbfs:/Volumes/ow_tp/mig_20260927c_bronze/custbill_landing/invoice_header/part-0000.parquet"
+    },
+    {
+      "table": "invoice_line",
+      "rows": 150000,
+      "sha256": "e0e7f5b4e5acde4096964ecbcd51114c848480d94822b53be1e24090fae94da8",
+      "volume": "dbfs:/Volumes/ow_tp/mig_20260927c_bronze/custbill_landing/invoice_line/part-0000.parquet"
+    },
+    {
+      "table": "customer_master",
+      "rows": 25000,
+      "sha256": "ee460c6bb4d89689a2873fd8ccdcd2aaf6c6248aa2681f760b188dc2f761ca3e",
+      "volume": "dbfs:/Volumes/ow_tp/mig_20260927c_bronze/custbill_landing/customer_master/part-0000.parquet"
+    },
+    {
+      "table": "entity_attr_value",
+      "rows": 8333,
+      "sha256": "a478ba33fea5f5f457cb319dcc926bfbd77d8681e51a31ca4321391dac43cccc",
+      "volume": "dbfs:/Volumes/ow_tp/mig_20260927c_bronze/custbill_landing/entity_attr_value/part-0000.parquet"
+    }
+  ]
+}

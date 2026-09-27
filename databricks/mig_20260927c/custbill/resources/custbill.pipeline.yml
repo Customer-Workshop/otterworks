@@ -1,0 +1,19 @@
+resources:
+  pipelines:
+    custbill_pipeline:
+      name: ow_tp_20260927c_custbill
+      catalog: ow_tp
+      target: mig_20260927c_bronze
+      serverless: true
+      continuous: false
+      development: true
+      channel: current
+      root_path: ../src
+      libraries:
+        - glob:
+            include: ../src/custbill_pipeline.py
+      configuration:
+        spark.databricks.delta.properties.defaults.enableTimestampNtz: "true"
+        custbill.batch_no: "85559852"
+        custbill.admin_tenant_id: a0000000-0000-0000-0000-000000000001
+        custbill.inject_bad_row: "false"

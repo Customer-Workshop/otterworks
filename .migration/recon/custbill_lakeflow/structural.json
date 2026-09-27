@@ -1,0 +1,27 @@
+{
+ "pipeline": {
+  "name": "ow_tp_20260927c_custbill",
+  "id": "245d4446-5cb8-40bc-80b7-f0af2ee7ed4f",
+  "continuous": false,
+  "trigger": null,
+  "serverless": true,
+  "configuration": {
+   "custbill.admin_tenant_id": "a0000000-0000-0000-0000-000000000001",
+   "custbill.batch_no": "85559852",
+   "custbill.inject_bad_row": "false",
+   "spark.databricks.delta.properties.defaults.enableTimestampNtz": "true"
+  }
+ }
+}
+{
+ "job": {
+  "name": "ow_tp_20260927c_custbill_render",
+  "id": 979522161217831,
+  "schedule": {
+   "pause_status": "PAUSED",
+   "quartz_cron_expression": "0 0 2 * * ?",
+   "timezone_id": "UTC"
+  },
+  "trigger": null
+ }
+}

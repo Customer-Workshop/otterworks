@@ -1,5 +1,5 @@
 {
-  "repo": "Cognition-Partner-Workshops/otterworks",
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
   "run_id": "20260927c",
   "wave": 0,
   "base_branch": "tp-run/databricks-20260927T194945Z",
@@ -60,7 +60,7 @@
     "target_rows_fetched": 926,
     "row_counts_known": true
   },
-  "stop_c": "D-017",
+  "stop_c": "D-018",
   "lakebase": {
     "project": "ow-tp-billing",
     "database": "ow_tp",

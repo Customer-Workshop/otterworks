@@ -399,7 +399,7 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-27T21:43:38Z",
+  "generated_at": "2026-09-27T21:56:59Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,

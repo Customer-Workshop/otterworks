@@ -4,26 +4,31 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import time
 import urllib.error
 import urllib.request
 import uuid
 import urllib.parse
 from dataclasses import dataclass
+from pathlib import Path
 
 from common import (
     CleanupRegistry,
     Manifest,
     exception_detail,
     install_failure_handlers,
-    require_env,
     validate_https_endpoint,
 )
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tp_dbx"))
+from client import resolve_token  # noqa: E402  # shared with tp_dbx tooling
 
-require_env("DATABRICKS_DEMO_HOST", "DATABRICKS_DEMO_TOKEN")
-raw_host = os.environ["DATABRICKS_DEMO_HOST"]
-parsed_host = validate_https_endpoint(raw_host, "DATABRICKS_DEMO_HOST")
+
+raw_host = os.environ.get("DATABRICKS_DEMO_HOST") or os.environ.get("DATABRICKS_HOST", "")
+if not raw_host:
+    raise SystemExit("DATABRICKS_DEMO_HOST or DATABRICKS_HOST is required")
+parsed_host = validate_https_endpoint(raw_host, "DATABRICKS_HOST")
 valid_databricks_host = (
     parsed_host.hostname == "cloud.databricks.com"
     or parsed_host.hostname.endswith(".cloud.databricks.com")
@@ -31,9 +36,11 @@ valid_databricks_host = (
     or parsed_host.hostname.endswith(".gcp.databricks.com")
 )
 if not valid_databricks_host:
-    raise SystemExit("DATABRICKS_DEMO_HOST must use a Databricks workspace host")
+    raise SystemExit("the Databricks host must be a Databricks workspace host")
 HOST = raw_host.rstrip("/")
-TOKEN = os.environ["DATABRICKS_DEMO_TOKEN"]
+TOKEN = resolve_token(HOST)
+AUTH_KIND = "pat" if (os.environ.get("DATABRICKS_DEMO_TOKEN") or os.environ.get("DATABRICKS_TOKEN")) \
+    else "oauth-m2m"
 catalog = os.environ.get("TP_DATABRICKS_CATALOG", "ow_tp")
 landing = os.environ.get("TP_DATABRICKS_LANDING_PATH", f"/Volumes/{catalog}/bronze/landing")
 configured_warehouse_id = os.environ.get("DATABRICKS_SQL_WAREHOUSE_ID", "")
@@ -176,12 +183,15 @@ def probe(pid, description, api, action, cleanup=None):
     return None
 
 
+manifest.add("auth-kind", "Credential kind used for the run", "env",
+             "verified", AUTH_KIND)
 identity_status, identity_body = call("GET", "/api/2.0/preview/scim/v2/Me")
 if 200 <= identity_status < 300 and isinstance(identity_body, dict):
-    manifest.set_identity(identity_body.get("userName", "available"))
+    identity = identity_body.get("userName") or identity_body.get("applicationId") or "available"
+    manifest.set_identity(f"{AUTH_KIND}:{identity}")
 else:
     manifest.set_identity("unavailable")
-    manifest.add("authenticate", "PAT can identify the caller", "GET /api/2.0/preview/scim/v2/Me",
+    manifest.add("authenticate", "credential can identify the caller", "GET /api/2.0/preview/scim/v2/Me",
                  "denied", response_detail(identity_status, identity_body))
 
 suffix = f"__tp_preflight_{uuid.uuid4().hex}"

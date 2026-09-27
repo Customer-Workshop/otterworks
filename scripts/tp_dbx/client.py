@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
+import subprocess
 import time
 import urllib.error
 import urllib.parse
@@ -53,15 +55,66 @@ class SqlResult:
         return [dict(zip(self.columns, row)) for row in self.rows]
 
 
+def resolve_host() -> str | None:
+    """Workspace URL from the demo or standard Databricks env vars, whichever is set."""
+    return os.environ.get("DATABRICKS_DEMO_HOST") or os.environ.get("DATABRICKS_HOST")
+
+
+def resolve_token(host: str | None = None) -> str:
+    """A bearer token for the workspace: DATABRICKS_DEMO_TOKEN first, then DATABRICKS_TOKEN,
+    then one minted by `databricks auth token` (the service-principal DATABRICKS_CLIENT_ID /
+    DATABRICKS_CLIENT_SECRET the CLI reads when AUTH_TYPE=oauth-m2m). The token is never
+    printed or logged here."""
+    for var in ("DATABRICKS_DEMO_TOKEN", "DATABRICKS_TOKEN"):
+        token = os.environ.get(var)
+        if token:
+            return token
+    cli = shutil.which("databricks")
+    if cli and host:
+        try:
+            out = subprocess.run([cli, "auth", "token", "--host", host, "-o", "json"],
+                                 check=True, capture_output=True, text=True, timeout=60)
+            token = json.loads(out.stdout).get("access_token", "")
+            if token:
+                return token
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError,
+                json.JSONDecodeError):
+            pass
+    # The CLI cannot always mint (e.g. no prior `auth login` cache): ask the workspace's
+    # OIDC endpoint directly with the service-principal env vars, same grant the CLI uses.
+    client_id, client_secret = (os.environ.get("DATABRICKS_CLIENT_ID"),
+                                os.environ.get("DATABRICKS_CLIENT_SECRET"))
+    if client_id and client_secret and host:
+        import base64
+
+        req = urllib.request.Request(
+            host.rstrip("/") + "/oidc/v1/token",
+            data=urllib.parse.urlencode(
+                {"grant_type": "client_credentials", "scope": "all-apis"}).encode(),
+            headers={"Authorization": "Basic " + base64.b64encode(
+                f"{client_id}:{client_secret}".encode()).decode(),
+                     "Content-Type": "application/x-www-form-urlencoded"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                token = json.loads(response.read()).get("access_token", "")
+                if token:
+                    return token
+        except (urllib.error.URLError, OSError, json.JSONDecodeError):
+            pass
+    raise SystemExit("no Databricks bearer token available: set DATABRICKS_DEMO_TOKEN or "
+                     "DATABRICKS_TOKEN, or configure service-principal env vars "
+                     "(DATABRICKS_AUTH_TYPE=oauth-m2m + DATABRICKS_CLIENT_ID/SECRET)")
+
+
 class Databricks:
     def __init__(self, host: str | None = None, token: str | None = None, warehouse_id: str | None = None):
-        raw_host = host or os.environ.get("DATABRICKS_DEMO_HOST", "")
-        self.token = token or os.environ.get("DATABRICKS_DEMO_TOKEN", "")
-        if not raw_host or not self.token:
-            raise SystemExit("DATABRICKS_DEMO_HOST and DATABRICKS_DEMO_TOKEN are required")
+        raw_host = host or resolve_host() or ""
+        if not raw_host:
+            raise SystemExit("DATABRICKS_DEMO_HOST or DATABRICKS_HOST is required")
         parsed = urllib.parse.urlparse(raw_host)
         if parsed.scheme != "https" or not parsed.hostname:
-            raise SystemExit("DATABRICKS_DEMO_HOST must be an https workspace URL")
+            raise SystemExit("the Databricks host must be an https workspace URL")
+        self.token = token or resolve_token(raw_host)
         self.host = raw_host.rstrip("/")
         self._warehouse_id = warehouse_id or os.environ.get("DATABRICKS_SQL_WAREHOUSE_ID", "")
 

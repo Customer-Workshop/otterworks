@@ -237,6 +237,7 @@
         "ow_tp.billing.fn_invoice_lines",
         "ow_tp.billing.sp_issue_invoice"
       ],
+      "lakeflow_pipelines": [],
       "verify_depth": "full",
       "max_minutes": 60,
       "target_kind": "lakebase",

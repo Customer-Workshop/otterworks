@@ -83,6 +83,7 @@
         "ow_tp_20260927_finance_close_dashboard",
         "ow_tp_20260927_finance_close"
       ],
+      "lakeflow_pipelines": [],
       "verify_depth": "full",
       "max_minutes": 60,
       "target_kind": "databricks",

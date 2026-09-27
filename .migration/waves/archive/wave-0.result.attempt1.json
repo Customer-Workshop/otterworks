@@ -1,0 +1,105 @@
+{
+  "auto_merge": false,
+  "base_sha": "c9967e5ca476aeb3f3efd9d692f003977e5f65c7",
+  "batches": [
+    {
+      "branch": "mig/20260927c/w0-lakebase-scaffold",
+      "changed_paths": [
+        ".migration/recon/lakebase_scaffold/dependencies.json",
+        ".migration/recon/lakebase_scaffold/fixture/recon.summary.md",
+        ".migration/recon/lakebase_scaffold/fixture/report.md",
+        ".migration/recon/lakebase_scaffold/fixture/result.json",
+        ".migration/recon/lakebase_scaffold/fixture_shape.json",
+        ".migration/recon/lakebase_scaffold/load.log",
+        ".migration/recon/lakebase_scaffold/mapping_spec.bare.json",
+        ".migration/recon/lakebase_scaffold/recon.summary.md",
+        ".migration/recon/lakebase_scaffold/report.md",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_apply.log",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_pre_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_record.json",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_record.json",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/prior_proof_20260927.json",
+        ".migration/recon/lakebase_scaffold/rerun/rerun_proof.json",
+        ".migration/recon/lakebase_scaffold/result.json",
+        ".migration/recon/lakebase_scaffold/self_check.md",
+        ".migration/recon/lakebase_scaffold/type_map_audit.json",
+        "databricks/mig_20260927c/lakebase/00_scaffold.sql",
+        "databricks/mig_20260927c/lakebase/apply.sh",
+        "databricks/mig_20260927c/lakebase/extract_reference.py",
+        "databricks/mig_20260927c/lakebase/load_reference.py",
+        "databricks/mig_20260927c/lakebase/reference_tables.py"
+      ],
+      "failure_class": "missing_rule",
+      "gates": [
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/result.json (tier 0 structural_parity 4/4 PASS); .migration/recon/lakebase_scaffold/rerun/fresh_shape.json",
+          "id": "w0-structural",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/result.json (live, depth full, tiers 1-3 PASS, 918 keyed rows)",
+          "id": "w0-reference-parity",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/fixture_shape.json (status pass, exit 0, 24/40 source statements)",
+          "id": "w0-fixture-shape",
+          "status": "passed"
+        }
+      ],
+      "id": "w0-lakebase-scaffold",
+      "merge_authority": {
+        "kind": "harness"
+      },
+      "merge_eligible": false,
+      "one_line_summary": "Lakebase billing schema + 4 reference tables (918 rows) landed on mig-20260927c-w0 with live recon PASS on all tiers; not merge-eligible only because rerun-proof's evolved leg is 'unsupported' (shape unchanged since prior proof) \u2014 needs a merge_override or harness rule at wave close. PR #1729 open, CI green.",
+      "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1729",
+      "prompt_sha": "a5fa2e6c7ac027e1",
+      "recon_cost": {
+        "elapsed_s": 6.836,
+        "source_rows_fetched": 918,
+        "source_statements": 53,
+        "target_rows_fetched": 918,
+        "target_statements": 38
+      },
+      "recon_mode": "live",
+      "recon_verdict": "PASS",
+      "skill_feedback": [
+        "rerun-proof: a unit whose declared shape is unchanged since its prior committed proof can never produce a supported evolved leg (pre_shape == fresh shape), so merge_eligible is unreachable without a human override; the harness needs an explicit rule for no-evolution units.",
+        "--routine-dependencies requires the file to already be committed in HEAD (git cat-file check) and the default path is .migration/units/<unit>/ which children may not write; the brief should say to commit .migration/recon/<unit>/dependencies.json first and pass the flag.",
+        "psycopg >= 3.2: Cursor.copy() is a context manager, not the Copy object; calling write_row on it deadlocks the connection lock during rollback. Loader must use `with cur.copy(...) as copy`.",
+        "*.log is gitignored repo-wide; apply/load log evidence under .migration/recon/<unit>/ needs `git add -f`.",
+        "Guard: doctor/recon/loader invocations that need OW_BILLING_RO_DSN must inject it in-process via a ~/bin python wrapper; `source`-ing an export script is blocked as redefining a trusted name."
+      ],
+      "status": "FAIL",
+      "write_targets": [
+        "ow_tp.billing.codes",
+        "ow_tp.billing.plans",
+        "ow_tp.billing.tenants",
+        "ow_tp.billing.usage_events"
+      ]
+    }
+  ],
+  "breaker_tripped_on": null,
+  "close": null,
+  "close_minutes": 30,
+  "closed": false,
+  "doctor_signed_at": "2026-09-27T20:21:45+00:00",
+  "hook_probe": "blocked:4f90dd1b",
+  "manifest_sha": "5fc6d917817e",
+  "merge_overrides": [],
+  "pipeline_order": {},
+  "resync": null,
+  "stop_c": "D-013",
+  "tag": "0",
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "verify": null,
+  "waived_gates": [],
+  "wave": 0,
+  "width": 1,
+  "write_target_overlaps": []
+}

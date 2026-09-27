@@ -1,0 +1,15 @@
+psql:00_scaffold.sql:10: NOTICE:  schema "billing" does not exist, skipping
+DROP TABLE
+psql:00_scaffold.sql:11: NOTICE:  schema "billing" does not exist, skipping
+DROP TABLE
+psql:00_scaffold.sql:12: NOTICE:  schema "billing" does not exist, skipping
+DROP TABLE
+psql:00_scaffold.sql:13: NOTICE:  schema "billing" does not exist, skipping
+DROP TABLE
+psql:00_scaffold.sql:19: NOTICE:  schema "billing" does not exist, skipping
+DO
+CREATE SCHEMA
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE

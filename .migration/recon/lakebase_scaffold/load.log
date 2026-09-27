@@ -1,0 +1,8 @@
+ow_tp.billing.codes: 32 rows
+ow_tp.billing.plans: 3 rows
+ow_tp.billing.tenants: 69 rows
+ow_tp.billing.usage_events: 814 rows
+OW_BILLING.CODES: 32 rows read
+OW_BILLING.PLANS: 3 rows read
+OW_BILLING.TENANTS: 69 rows read
+OW_BILLING.USAGE_EVENTS: 814 rows read

@@ -1,0 +1,183 @@
+{
+  "unit": "pkg_ow_util",
+  "mode": "live",
+  "mapping_version": "map-20260927c-pkg_ow_util-v1",
+  "tolerance_version": "tol-20260927c-v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {
+    "ns": "demo",
+    "batch_no": "85559852",
+    "admin_tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "fixture_tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  "snapshot": null,
+  "cost": {
+    "source_statements": 14,
+    "source_rows_fetched": 0,
+    "target_statements": 11,
+    "target_rows_fetched": 0,
+    "elapsed_s": 1.21
+  },
+  "generated_at": "2026-09-27T22:57:14.739330+00:00",
+  "tiers": [
+    {
+      "tier": 0,
+      "name": "structural_parity",
+      "passed": false,
+      "checks_run": 1,
+      "stats": {
+        "billing_audit_log": {
+          "source": {
+            "primary_key": [
+              "log_id"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "log_id",
+              "logged_at"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "target": {
+            "primary_key": [
+              "log_id"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "log_id",
+              "logged_at"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [
+              "log_id"
+            ],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "identity": null
+        },
+        "structural_checks": {
+          "constraints": "checked",
+          "triggers": "checked",
+          "indexes": "checked",
+          "sequences_identity": "checked",
+          "grants": "direct_only"
+        },
+        "structural_diff": {
+          "billing_audit_log": {
+            "sequences_identity": [
+              "target log_id is identity but source log_id is not: target-generated keys diverge from the source's"
+            ]
+          }
+        },
+        "dictionary": {
+          "source": "live",
+          "target": "live"
+        }
+      },
+      "findings": [
+        {
+          "object": "billing_audit_log",
+          "check": "identity_extra",
+          "detail": "target log_id is identity but source log_id is not: target-generated keys diverge from the source's",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        }
+      ]
+    },
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "OW_BILLING.BILLING_AUDIT_LOG": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 4,
+      "stats": {
+        "deferred_to_tier3": [
+          "billing_audit_log.module",
+          "billing_audit_log.message"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 0,
+      "stats": {
+        "billing_audit_log": {
+          "mode": "full_diff",
+          "population": 0,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "FAIL",
+  "merge_eligible": false,
+  "merge_authority": {
+    "kind": "harness",
+    "decision_id": null
+  },
+  "type_map": {
+    "family": "oracle",
+    "target_kind": "lakebase",
+    "filled": [],
+    "unmapped": []
+  },
+  "rerun_proof": null,
+  "merge_block_reasons": [
+    "structural_gap",
+    "tier_failed",
+    "routine_parity_missing",
+    "rerun_missing"
+  ],
+  "routine_parity": null,
+  "routine_writers": [
+    "ow_billing.pkg_ow_util.log_msg",
+    "ow_billing.job_purge_audit_log"
+  ],
+  "routine_dependencies": ".migration/units/pkg_ow_util/dependencies.json"
+}

@@ -1,0 +1,25 @@
+{
+  "mode": "live",
+  "depth": "full",
+  "tier3_mode": {
+    "OW_BILLING.SUBSCRIPTIONS": "full_diff",
+    "OW_BILLING.SUBSCRIPTIONS_HIST": "full_diff"
+  },
+  "source_statements": {
+    "tier1": 2,
+    "tier2": 2,
+    "tier3": 6,
+    "tier4": 0,
+    "total": 10
+  },
+  "target_statements": {
+    "tier1": 2,
+    "tier2": 2,
+    "tier3": 4,
+    "tier4": 0,
+    "total": 8
+  },
+  "source_rows_fetched": 138,
+  "target_rows_fetched": 138,
+  "row_counts_known": true
+}

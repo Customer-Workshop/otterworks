@@ -1,0 +1,27 @@
+{
+  "mode": "live",
+  "depth": "full",
+  "tier3_mode": {
+    "OW_BILLING.INVOICE_HEADER": "full_diff",
+    "OW_BILLING.INVOICE_LINE": "full_diff",
+    "OW_BILLING.CUSTOMER_MASTER": "full_diff",
+    "OW_BILLING.ENTITY_ATTR_VALUE": "full_diff"
+  },
+  "source_statements": {
+    "tier1": 4,
+    "tier2": 4,
+    "tier3": 12,
+    "tier4": 0,
+    "total": 20
+  },
+  "target_statements": {
+    "tier1": 4,
+    "tier2": 4,
+    "tier3": 8,
+    "tier4": 0,
+    "total": 16
+  },
+  "source_rows_fetched": 202083,
+  "target_rows_fetched": 202083,
+  "row_counts_known": true
+}

@@ -1,0 +1,42 @@
+{
+  "routines": [
+    {
+      "routine": "OW_BILLING.PKG_INVOICING.COMPUTE_PREVIEW",
+      "reads": [
+        "OW_BILLING.SUBSCRIPTIONS",
+        "OW_BILLING.PLANS",
+        "OW_BILLING.CREDIT_NOTES",
+        "OW_BILLING.TENANTS"
+      ],
+      "writes": [],
+      "calls": ["OW_BILLING.PKG_RATING.COMPUTE_RATING"]
+    },
+    {
+      "routine": "OW_BILLING.PKG_INVOICING.FN_INVOICE_PREVIEW",
+      "reads": [],
+      "writes": [],
+      "calls": ["OW_BILLING.PKG_INVOICING.COMPUTE_PREVIEW"]
+    },
+    {
+      "routine": "OW_BILLING.PKG_INVOICING.FN_INVOICE_LINES",
+      "reads": ["OW_BILLING.INVOICE_LINES"],
+      "writes": [],
+      "calls": []
+    },
+    {
+      "routine": "OW_BILLING.PKG_INVOICING.SP_ISSUE_INVOICE",
+      "reads": ["OW_BILLING.CREDIT_NOTES"],
+      "writes": [
+        "OW_BILLING.INVOICES",
+        "OW_BILLING.INVOICE_LINES",
+        "OW_BILLING.CREDIT_NOTES"
+      ],
+      "calls": [
+        "OW_BILLING.PKG_OW_UTIL.F_MD5_UUID",
+        "OW_BILLING.PKG_RATING.SP_FINALIZE_RATING",
+        "OW_BILLING.PKG_INVOICING.FN_INVOICE_PREVIEW",
+        "OW_BILLING.PKG_OW_UTIL.LOG_MSG"
+      ]
+    }
+  ]
+}

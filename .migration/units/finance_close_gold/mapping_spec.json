@@ -1,0 +1,75 @@
+{
+  "version": "map-20260927b-finance_close_gold-v1",
+  "note": "gold detail = the exact invoice_header rows the CUSTBILL close covers (batch or admin tenant); finance_close aggregate is derived from it and graded by the custom close-total gate",
+  "objects": [
+    {
+      "object": "ow_tp.mig_20260927b_gold.finance_close_detail",
+      "root_table": "OW_BILLING.INVOICE_HEADER",
+      "key": {
+        "source": [
+          "INVOICE_ID"
+        ],
+        "target": [
+          "invoice_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "INVOICE_ID",
+          "target": "invoice_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "CUST_ID",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)"
+        },
+        {
+          "source": "INVOICE_DT",
+          "target": "invoice_dt",
+          "source_type": "VARCHAR2(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)"
+        },
+        {
+          "source": "TOTAL_AMT",
+          "target": "total_amt",
+          "source_type": "NUMBER(14,2)"
+        },
+        {
+          "source": "BATCH_NO",
+          "target": "batch_no",
+          "source_type": "NUMBER(8)"
+        }
+      ],
+      "intended_target_types": {
+        "invoice_id": "string",
+        "invoice_no": "string",
+        "cust_id": "string",
+        "tenant_id": "string",
+        "invoice_dt": "string",
+        "due_dt": "string",
+        "status_cd": "bigint",
+        "total_amt": "decimal(14,2)",
+        "batch_no": "bigint"
+      },
+      "root_where": "BATCH_NO = ${batch_no} OR TENANT_ID = '${admin_tenant_id}'",
+      "target_where": "batch_no = ${batch_no} OR tenant_id = '${admin_tenant_id}'",
+      "scope_columns": [
+        "batch_no",
+        "tenant_id"
+      ]
+    }
+  ]
+}

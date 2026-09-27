@@ -1,0 +1,43 @@
+{
+  "run_id": "20260927b",
+  "catalogs": [
+    "ow_tp"
+  ],
+  "schema_prefix": "mig_20260927b_",
+  "job_prefix": "ow_tp_20260927b_",
+  "legacy_sources": [
+    "OW_BILLING_RO_DSN"
+  ],
+  "guard_mode": "block",
+  "run_mode": "live",
+  "target_hosts": [],
+  "lakebase_databases": [
+    "ow_tp"
+  ],
+  "bundle_targets": [
+    "mig_20260927b"
+  ],
+  "lakebase_projects": [
+    "ow-tp-billing"
+  ],
+  "lakebase_branches": [
+    "mig-20260927b-w0",
+    "mig-20260927b-w1",
+    "mig-20260927b-exec"
+  ],
+  "forbidden": {
+    "schemas": [
+      "ow_tp.bronze",
+      "ow_tp.silver",
+      "ow_tp.gold",
+      "ow_tp.airbyte_demo",
+      "ow_tp.fivetran_metadata",
+      "ow_tp._fivetran_setup_test",
+      "ow_tp.fivetran_trimester_remoteness_staging"
+    ],
+    "lakebase_branches": [
+      "production"
+    ],
+    "legacy": "OW_BILLING on 52.201.36.9:1521/FREEPDB1 is read-only in every phase"
+  }
+}

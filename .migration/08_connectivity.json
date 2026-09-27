@@ -1,0 +1,52 @@
+{
+  "run_id": "20260927b",
+  "resolved_at": "STOP A",
+  "source_access": {
+    "family": "oracle",
+    "mode": "live",
+    "bridge": "session (Devin VM) -> 52.201.36.9:1521/FREEPDB1 via python-oracledb thin",
+    "principal_secret": "ow-tp/oracle/ow_billing_ro",
+    "env_var": "OW_BILLING_RO_DSN",
+    "read_only": true,
+    "doctor_source_principal_read_only": "ok (STOP A probe 2026-09-27 ~17:45Z as OW_BILLING_RO: SESSION_PRIVS = CREATE SESSION, SELECT ANY DICTIONARY, SELECT ANY TABLE; no roles; prior-run FLASHBACK revoke persisted)",
+    "cdc": false,
+    "lakehouse_federation": false,
+    "serverless_to_1521": false,
+    "query_cap": {
+      "source_concurrency": 4,
+      "live_reads_per_child": 1,
+      "verifier_reads_per_wave": 1
+    },
+    "fixture": {
+      "kind": "docker",
+      "host": "localhost:52521/FREEPDB1",
+      "seed": "make oracle-billing-seed NS=demo",
+      "snapshot": "testdata/legacy/oracle/mig_20260927b/"
+    }
+  },
+  "target_access": {
+    "databricks": {
+      "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+      "auth": "oauth-m2m",
+      "principal": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2",
+      "catalog": "ow_tp",
+      "warehouse_id": "565cd2fd713738c4",
+      "mode": "live"
+    },
+    "lakebase": {
+      "project": "ow-tp-billing",
+      "branches": [
+        "mig-20260927b-w*",
+        "mig-20260927b-exec"
+      ],
+      "parent": "production (branch source only; never written)",
+      "credential": "databricks postgres generate-database-credential at run time",
+      "env_vars": [
+        "LAKEBASE_MIGRATION_DSN",
+        "LAKEBASE_EXEC_DSN"
+      ],
+      "mode": "live"
+    },
+    "local_target": false
+  }
+}

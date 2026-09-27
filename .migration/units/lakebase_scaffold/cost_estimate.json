@@ -1,0 +1,27 @@
+{
+  "mode": "live",
+  "depth": "full",
+  "tier3_mode": {
+    "OW_BILLING.CODES": "full_diff",
+    "OW_BILLING.PLANS": "full_diff",
+    "OW_BILLING.TENANTS": "full_diff",
+    "OW_BILLING.USAGE_EVENTS": "full_diff"
+  },
+  "source_statements": {
+    "tier1": 4,
+    "tier2": 4,
+    "tier3": 12,
+    "tier4": 0,
+    "total": 20
+  },
+  "target_statements": {
+    "tier1": 4,
+    "tier2": 4,
+    "tier3": 8,
+    "tier4": 0,
+    "total": 16
+  },
+  "source_rows_fetched": 926,
+  "target_rows_fetched": 926,
+  "row_counts_known": true
+}

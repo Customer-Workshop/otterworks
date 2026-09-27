@@ -1,0 +1,25 @@
+{
+  "mode": "live",
+  "depth": "full",
+  "tier3_mode": {
+    "OW_BILLING.RATING_PERIODS": "full_diff",
+    "OW_BILLING.RATING_RESULTS": "full_diff"
+  },
+  "source_statements": {
+    "tier1": 2,
+    "tier2": 2,
+    "tier3": 6,
+    "tier4": 0,
+    "total": 10
+  },
+  "target_statements": {
+    "tier1": 2,
+    "tier2": 2,
+    "tier3": 4,
+    "tier4": 0,
+    "total": 8
+  },
+  "source_rows_fetched": 2,
+  "target_rows_fetched": 2,
+  "row_counts_known": true
+}

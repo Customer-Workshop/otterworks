@@ -1,0 +1,38 @@
+{
+  "routines": [
+    {
+      "routine": "OW_BILLING.PKG_RATING.COMPUTE_RATING",
+      "reads": [
+        "OW_BILLING.SUBSCRIPTIONS",
+        "OW_BILLING.PLANS",
+        "OW_BILLING.USAGE_EVENTS",
+        "OW_BILLING.RATING_RESULTS",
+        "OW_BILLING.RATING_PERIODS"
+      ],
+      "writes": [],
+      "calls": ["OW_BILLING.PKG_OW_UTIL.LOG_MSG"]
+    },
+    {
+      "routine": "OW_BILLING.PKG_RATING.FN_USAGE_RATING",
+      "reads": [],
+      "writes": [],
+      "calls": ["OW_BILLING.PKG_RATING.COMPUTE_RATING"]
+    },
+    {
+      "routine": "OW_BILLING.PKG_RATING.FN_USAGE_SUMMARY",
+      "reads": ["OW_BILLING.USAGE_EVENTS"],
+      "writes": [],
+      "calls": []
+    },
+    {
+      "routine": "OW_BILLING.PKG_RATING.SP_FINALIZE_RATING",
+      "reads": ["OW_BILLING.SUBSCRIPTIONS"],
+      "writes": ["OW_BILLING.RATING_PERIODS", "OW_BILLING.RATING_RESULTS"],
+      "calls": [
+        "OW_BILLING.PKG_OW_UTIL.F_MD5_UUID",
+        "OW_BILLING.PKG_RATING.COMPUTE_RATING",
+        "OW_BILLING.PKG_OW_UTIL.LOG_MSG"
+      ]
+    }
+  ]
+}

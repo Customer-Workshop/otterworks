@@ -1,0 +1,43 @@
+{
+  "routines": [
+    {
+      "routine": "OW_BILLING.PKG_DUNNING.FN_OVERDUE_ACCOUNTS",
+      "reads": ["OW_BILLING.INVOICES", "OW_BILLING.TENANTS"],
+      "writes": [],
+      "calls": []
+    },
+    {
+      "routine": "OW_BILLING.PKG_DUNNING.SP_SCHEDULE_DUNNING",
+      "reads": ["OW_BILLING.INVOICES", "OW_BILLING.DUNNING_ATTEMPTS"],
+      "writes": ["OW_BILLING.DUNNING_ATTEMPTS"],
+      "calls": [
+        "OW_BILLING.PKG_OW_UTIL.F_MD5_UUID",
+        "OW_BILLING.PKG_OW_UTIL.LOG_MSG"
+      ]
+    },
+    {
+      "routine": "OW_BILLING.PKG_DUNNING.SP_SUSPEND_OVERDUE",
+      "reads": ["OW_BILLING.INVOICES", "OW_BILLING.TENANTS"],
+      "writes": [
+        "OW_BILLING.TENANTS",
+        "OW_BILLING.SUBSCRIPTIONS",
+        "OW_BILLING.NOTIFICATIONS"
+      ],
+      "calls": [
+        "OW_BILLING.PKG_OW_UTIL.F_MD5_UUID",
+        "OW_BILLING.PKG_OW_UTIL.LOG_MSG",
+        "OW_BILLING.TRG_SUBSCRIPTIONS_HIST",
+        "OW_BILLING.TRG_SUB_NO_UNCANCEL"
+      ]
+    },
+    {
+      "routine": "OW_BILLING.JOB_NIGHTLY_DUNNING",
+      "reads": [],
+      "writes": [],
+      "calls": [
+        "OW_BILLING.PKG_DUNNING.SP_SCHEDULE_DUNNING",
+        "OW_BILLING.PKG_DUNNING.SP_SUSPEND_OVERDUE"
+      ]
+    }
+  ]
+}

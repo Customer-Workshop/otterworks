@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Apply 00_scaffold.sql to Lakebase ow_tp (project ow-tp-billing, branch mig-20260927-w0) as the
-# migration service principal. Idempotent: the DDL is IF NOT EXISTS throughout, so a rerun is a no-op.
+# migration service principal. Idempotent: the DDL drops and recreates the four unit-owned tables
+# (and the schema when empty), so a rerun lands the declared shape and must be followed by
+# load_reference.py.
 # Password comes from ~/.pgpass (token minted by `databricks postgres generate-database-credential`);
 # nothing here prints or stores a credential.
 set -euo pipefail

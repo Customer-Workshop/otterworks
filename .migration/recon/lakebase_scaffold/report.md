@@ -8,8 +8,8 @@
 - Tolerance version: `tol-20260927-v1`
 - Seed: `0` | Params: `{'ns': 'demo', 'batch_no': '85559852', 'admin_tenant_id': 'a0000000-0000-0000-0000-000000000001', 'fixture_tenant_id': '00000000-0000-0000-0000-000000000001'}`
 - Tier 3 depth: `full`
-- Generated: 2026-09-27T14:55:39.296237+00:00
-- Cost: `{"source_statements": 53, "source_rows_fetched": 918, "target_statements": 38, "target_rows_fetched": 918, "elapsed_s": 4.597}`
+- Generated: 2026-09-27T15:36:08.815264+00:00
+- Cost: `{"source_statements": 53, "source_rows_fetched": 918, "target_statements": 38, "target_rows_fetched": 918, "elapsed_s": 4.727}`
 - Rerun proof: fresh `pass`, evolved `unsupported` (evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved)
 
 | Tier | Name | Checks | Result |

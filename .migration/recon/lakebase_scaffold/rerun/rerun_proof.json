@@ -1,10 +1,11 @@
 {
   "unit": "lakebase_scaffold",
   "sources": [
-    "00_scaffold.sql",
-    "apply.sh",
-    "load_reference.py"
+    "databricks/mig_20260927/lakebase/00_scaffold.sql",
+    "databricks/mig_20260927/lakebase/apply.sh",
+    "databricks/mig_20260927/lakebase/load_reference.py"
   ],
+  "prior_from": "/home/ubuntu/w0_prior_shape.json",
   "fresh": "pass",
   "evolved": "unsupported",
   "passed": true,
@@ -16,10 +17,10 @@
     "tenants",
     "usage_events"
   ],
-  "source_digest": "80fd3a3795e92e3cc1d7259d8e35ed18f54bc6aa1deb7a01901ac189d800aa95",
+  "source_digest": "7fbb54e5dfbf474ce8be4b60282225c2f922ad6f11d9b58fef5c98a55519e67d",
   "evidence": {
-    "fresh": ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log (apply.sh on an empty billing schema, mig-20260927-w0)",
-    "evolved": ".migration/recon/lakebase_scaffold/rerun/evolved_apply.log (apply.sh rerun on the tables the fresh run created; NOTICE ... already exists, skipping)"
+    "fresh": ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log (apply.sh on the prior-shape billing schema, mig-20260927-w0; DDL drops and recreates the four unit-owned tables)",
+    "evolved": ".migration/recon/lakebase_scaffold/rerun/evolved_apply.log (apply.sh rerun on the tables the fresh run created; drop/recreate lands the declared shape)"
   },
   "shape": {
     "tables": {
@@ -129,5 +130,6 @@
     }
   },
   "shape_digest": "978c3ee2a8f4352396877237653a588b10c6f0d3873c4143db292598c78dca18",
+  "prior_digest": "978c3ee2a8f4352396877237653a588b10c6f0d3873c4143db292598c78dca18",
   "unsupported_reason": "evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved"
 }

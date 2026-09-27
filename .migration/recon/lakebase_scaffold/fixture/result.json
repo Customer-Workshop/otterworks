@@ -13,13 +13,13 @@
   },
   "snapshot": null,
   "cost": {
-    "source_statements": 53,
-    "source_rows_fetched": 922,
-    "target_statements": 38,
-    "target_rows_fetched": 922,
-    "elapsed_s": 1.997
+    "source_statements": 37,
+    "source_rows_fetched": 0,
+    "target_statements": 26,
+    "target_rows_fetched": 0,
+    "elapsed_s": 5.16
   },
-  "generated_at": "2026-09-27T14:48:40.466080+00:00",
+  "generated_at": "2026-09-27T15:35:45.987315+00:00",
   "tiers": [
     {
       "tier": 0,
@@ -318,15 +318,7 @@
             "partial": [],
             "expression_unique": [],
             "expression_indexes": [],
-            "triggers": {
-              "trg_usage_events_check": [
-                "before",
-                [
-                  "insert"
-                ],
-                "row"
-              ]
-            },
+            "triggers": {},
             "grants": {
               "dhrov.subramanian@cognition.ai": [
                 "delete",
@@ -363,6 +355,9 @@
             ]
           },
           "usage_events": {
+            "triggers": [
+              "before insert row: source 1, target 0"
+            ],
             "grants": [
               "target grant dhrov.subramanian@cognition.ai (delete,insert,select,update) has no source counterpart"
             ]
@@ -400,6 +395,14 @@
         },
         {
           "object": "usage_events",
+          "check": "trigger_missing",
+          "detail": "before insert row: source 1, target 0",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        },
+        {
+          "object": "usage_events",
           "check": "grant_extra",
           "detail": "target grant dhrov.subramanian@cognition.ai (delete,insert,select,update) has no source counterpart",
           "source_value": "None",
@@ -411,79 +414,34 @@
     {
       "tier": 1,
       "name": "counts_through_mapping",
-      "passed": true,
+      "passed": false,
       "checks_run": 4,
       "stats": {
         "source_counts": {
           "OW_BILLING.CODES": 32,
           "OW_BILLING.PLANS": 3,
-          "OW_BILLING.TENANTS": 70,
-          "OW_BILLING.USAGE_EVENTS": 817
+          "OW_BILLING.TENANTS": 10,
+          "OW_BILLING.USAGE_EVENTS": 13
         }
       },
-      "findings": []
-    },
-    {
-      "tier": 2,
-      "name": "per_field_aggregates",
-      "passed": true,
-      "checks_run": 19,
-      "stats": {
-        "deferred_to_tier3": [
-          "codes.code_type",
-          "codes.code_desc",
-          "plans.code",
-          "plans.active_yn",
-          "tenants.name",
-          "tenants.tax_exempt_yn"
-        ]
-      },
-      "findings": []
-    },
-    {
-      "tier": 3,
-      "name": "keyed_diffs",
-      "passed": true,
-      "checks_run": 922,
-      "stats": {
-        "codes": {
-          "mode": "full_diff",
-          "population": 32,
-          "null_key_rows": {
-            "source": 0,
-            "target": 0
-          },
-          "duplicate_source_key_count": 0
+      "findings": [
+        {
+          "object": "tenants",
+          "check": "root_count",
+          "detail": "rows(OW_BILLING.TENANTS)=10 vs target rows=69",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
         },
-        "plans": {
-          "mode": "full_diff",
-          "population": 3,
-          "null_key_rows": {
-            "source": 0,
-            "target": 0
-          },
-          "duplicate_source_key_count": 0
-        },
-        "tenants": {
-          "mode": "full_diff",
-          "population": 70,
-          "null_key_rows": {
-            "source": 0,
-            "target": 0
-          },
-          "duplicate_source_key_count": 0
-        },
-        "usage_events": {
-          "mode": "full_diff",
-          "population": 817,
-          "null_key_rows": {
-            "source": 0,
-            "target": 0
-          },
-          "duplicate_source_key_count": 0
+        {
+          "object": "usage_events",
+          "check": "root_count",
+          "detail": "rows(OW_BILLING.USAGE_EVENTS)=13 vs target rows=814",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
         }
-      },
-      "findings": []
+      ]
     }
   ],
   "warnings": [],
@@ -499,16 +457,148 @@
     "filled": [],
     "unmapped": []
   },
-  "rerun_proof": null,
+  "rerun_proof": {
+    "unit": "lakebase_scaffold",
+    "sources": [
+      "databricks/mig_20260927/lakebase/00_scaffold.sql",
+      "databricks/mig_20260927/lakebase/apply.sh",
+      "databricks/mig_20260927/lakebase/load_reference.py"
+    ],
+    "prior_from": "/home/ubuntu/w0_prior_shape.json",
+    "fresh": "pass",
+    "evolved": "unsupported",
+    "passed": true,
+    "findings": [],
+    "notes": [],
+    "tables": [
+      "codes",
+      "plans",
+      "tenants",
+      "usage_events"
+    ],
+    "source_digest": "7fbb54e5dfbf474ce8be4b60282225c2f922ad6f11d9b58fef5c98a55519e67d",
+    "evidence": {
+      "fresh": ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log (apply.sh on the prior-shape billing schema, mig-20260927-w0; DDL drops and recreates the four unit-owned tables)",
+      "evolved": ".migration/recon/lakebase_scaffold/rerun/evolved_apply.log (apply.sh rerun on the tables the fresh run created; drop/recreate lands the declared shape)"
+    },
+    "shape": {
+      "tables": {
+        "codes": [
+          {
+            "name": "code_type",
+            "type": "varchar(30)",
+            "nullable": false
+          },
+          {
+            "name": "code_val",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "code_desc",
+            "type": "varchar(80)",
+            "nullable": false
+          }
+        ],
+        "plans": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "code",
+            "type": "varchar(50)",
+            "nullable": false
+          },
+          {
+            "name": "tier_cd",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "monthly_fee",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "included_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "overage_rate",
+            "type": "decimal(12,6)",
+            "nullable": false
+          },
+          {
+            "name": "active_yn",
+            "type": "char(1)",
+            "nullable": false
+          }
+        ],
+        "tenants": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "varchar(200)",
+            "nullable": false
+          },
+          {
+            "name": "tax_exempt_yn",
+            "type": "char(1)",
+            "nullable": false
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": false
+          }
+        ],
+        "usage_events": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "occurred_at",
+            "type": "timestamp(6)",
+            "nullable": false
+          },
+          {
+            "name": "units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "kind_cd",
+            "type": "bigint",
+            "nullable": false
+          }
+        ]
+      }
+    },
+    "shape_digest": "978c3ee2a8f4352396877237653a588b10c6f0d3873c4143db292598c78dca18",
+    "prior_digest": "978c3ee2a8f4352396877237653a588b10c6f0d3873c4143db292598c78dca18",
+    "unsupported_reason": "evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved"
+  },
   "merge_block_reasons": [
     "structural_gap",
     "tier_failed",
-    "routine_parity_missing",
     "mode",
-    "rerun_missing"
+    "rerun_unsupported"
   ],
-  "routine_parity": null,
-  "routine_writers": null,
-  "routine_dependencies": null,
-  "routine_analysis_missing": true
+  "routine_parity": [],
+  "routine_writers": [],
+  "routine_dependencies": ".migration/recon/lakebase_scaffold/dependencies.json"
 }

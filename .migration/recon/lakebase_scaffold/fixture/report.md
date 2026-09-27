@@ -8,17 +8,14 @@
 - Tolerance version: `tol-20260927-v1`
 - Seed: `0` | Params: `{'ns': 'demo', 'batch_no': '85559852', 'admin_tenant_id': 'a0000000-0000-0000-0000-000000000001', 'fixture_tenant_id': '00000000-0000-0000-0000-000000000001'}`
 - Tier 3 depth: `full`
-- Generated: 2026-09-27T14:48:40.466080+00:00
-
-## Routine parity: routine_parity_missing (no dependency analysis; commit .migration/units/lakebase_scaffold/dependencies.json, an empty `routines` list for a unit that writes nothing, or pass `--routine-dependencies`)
-- Cost: `{"source_statements": 53, "source_rows_fetched": 922, "target_statements": 38, "target_rows_fetched": 922, "elapsed_s": 1.997}`
+- Generated: 2026-09-27T15:35:45.987315+00:00
+- Cost: `{"source_statements": 37, "source_rows_fetched": 0, "target_statements": 26, "target_rows_fetched": 0, "elapsed_s": 5.16}`
+- Rerun proof: fresh `pass`, evolved `unsupported` (evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved)
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|
-| 0 | structural_parity | 4 | FAIL (4 findings) |
-| 1 | counts_through_mapping | 4 | PASS |
-| 2 | per_field_aggregates | 19 | PASS |
-| 3 | keyed_diffs | 922 | PASS |
+| 0 | structural_parity | 4 | FAIL (5 findings) |
+| 1 | counts_through_mapping | 4 | FAIL (2 findings) |
 
 ## Tier 0 coverage
 ```json
@@ -314,15 +311,7 @@
       "partial": [],
       "expression_unique": [],
       "expression_indexes": [],
-      "triggers": {
-        "trg_usage_events_check": [
-          "before",
-          [
-            "insert"
-          ],
-          "row"
-        ]
-      },
+      "triggers": {},
       "grants": {
         "dhrov.subramanian@cognition.ai": [
           "delete",
@@ -359,6 +348,9 @@
       ]
     },
     "usage_events": {
+      "triggers": [
+        "before insert row: source 1, target 0"
+      ],
       "grants": [
         "target grant dhrov.subramanian@cognition.ai (delete,insert,select,update) has no source counterpart"
       ]
@@ -371,10 +363,11 @@
 }
 ```
 
-## Tier 0 findings (4)
+## Tier 0 findings (5)
 - `codes` grant_extra: target grant dhrov.subramanian@cognition.ai (delete,insert,select,update) has no source counterpart
 - `plans` grant_extra: target grant dhrov.subramanian@cognition.ai (delete,insert,select,update) has no source counterpart
 - `tenants` grant_extra: target grant dhrov.subramanian@cognition.ai (delete,insert,select,update) has no source counterpart
+- `usage_events` trigger_missing: before insert row: source 1, target 0
 - `usage_events` grant_extra: target grant dhrov.subramanian@cognition.ai (delete,insert,select,update) has no source counterpart
 
 ## Tier 1 coverage
@@ -383,64 +376,12 @@
   "source_counts": {
     "OW_BILLING.CODES": 32,
     "OW_BILLING.PLANS": 3,
-    "OW_BILLING.TENANTS": 70,
-    "OW_BILLING.USAGE_EVENTS": 817
+    "OW_BILLING.TENANTS": 10,
+    "OW_BILLING.USAGE_EVENTS": 13
   }
 }
 ```
 
-## Tier 2 coverage
-```json
-{
-  "deferred_to_tier3": [
-    "codes.code_type",
-    "codes.code_desc",
-    "plans.code",
-    "plans.active_yn",
-    "tenants.name",
-    "tenants.tax_exempt_yn"
-  ]
-}
-```
-
-## Tier 3 coverage
-```json
-{
-  "codes": {
-    "mode": "full_diff",
-    "population": 32,
-    "null_key_rows": {
-      "source": 0,
-      "target": 0
-    },
-    "duplicate_source_key_count": 0
-  },
-  "plans": {
-    "mode": "full_diff",
-    "population": 3,
-    "null_key_rows": {
-      "source": 0,
-      "target": 0
-    },
-    "duplicate_source_key_count": 0
-  },
-  "tenants": {
-    "mode": "full_diff",
-    "population": 70,
-    "null_key_rows": {
-      "source": 0,
-      "target": 0
-    },
-    "duplicate_source_key_count": 0
-  },
-  "usage_events": {
-    "mode": "full_diff",
-    "population": 817,
-    "null_key_rows": {
-      "source": 0,
-      "target": 0
-    },
-    "duplicate_source_key_count": 0
-  }
-}
-```
+## Tier 1 findings (2)
+- `tenants` root_count: rows(OW_BILLING.TENANTS)=10 vs target rows=69
+- `usage_events` root_count: rows(OW_BILLING.USAGE_EVENTS)=13 vs target rows=814

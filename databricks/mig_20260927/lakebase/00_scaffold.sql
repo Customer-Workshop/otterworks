@@ -3,7 +3,20 @@
 -- Types are exactly .migration/units/lakebase_scaffold/mapping_spec.json (map-20260927-lakebase_scaffold-v1);
 -- keys, uniques, foreign keys and NOT NULLs are the Oracle dictionary
 -- .migration/inventory/oracle_dictionary_20260927.json (OW_BILLING.CODES/PLANS/TENANTS/USAGE_EVENTS).
--- Idempotent: IF NOT EXISTS / OR REPLACE / REVOKE throughout; a rerun changes nothing.
+-- Idempotent by drop/recreate: the four unit-owned tables are dropped (FK order) and the schema is
+-- dropped only when nothing else lives in it, so a rerun lands exactly the declared shape and
+-- never touches a table another unit owns.
+
+DROP TABLE IF EXISTS billing.usage_events;
+DROP TABLE IF EXISTS billing.tenants;
+DROP TABLE IF EXISTS billing.plans;
+DROP TABLE IF EXISTS billing.codes;
+DO $$
+BEGIN
+    DROP SCHEMA IF EXISTS billing RESTRICT;
+EXCEPTION WHEN dependent_objects_still_exist THEN
+    RAISE NOTICE 'schema billing kept: other objects live in it';
+END $$;
 
 CREATE SCHEMA IF NOT EXISTS billing;
 

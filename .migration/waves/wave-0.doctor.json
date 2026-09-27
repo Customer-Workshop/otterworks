@@ -389,7 +389,7 @@
     },
     {
       "data": {
-        "branch": "dbx-doctor-probe-4de3e6e5",
+        "branch": "dbx-doctor-probe-5cf757e6",
         "parent_branch": "production",
         "project": "ow-tp-billing"
       },
@@ -424,7 +424,7 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-27T18:25:28Z",
+  "generated_at": "2026-09-27T18:27:26Z",
   "hook_probe": "blocked:3cdaf9ae",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
@@ -438,8 +438,8 @@
   "reused_doctor": null,
   "role": "orchestrator",
   "schema": "dbx-migration-factory/capabilities/1",
-  "signature": "868d523f4cc8e3e4b0afdfdc4573407af74e6a59e411d95d4ff07a7c0b115468",
-  "signed_at": "2026-09-27T18:25:28+00:00",
+  "signature": "31f9429afd117ce9cf127331d6a8d8b7c97e8ebd3da019a2195adf6043655442",
+  "signed_at": "2026-09-27T18:27:26+00:00",
   "source": {
     "family": "oracle",
     "params": {

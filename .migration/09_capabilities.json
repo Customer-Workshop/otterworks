@@ -1,7 +1,5 @@
 {
-  "blocking": [
-    "source_principal_read_only=fail"
-  ],
+  "blocking": [],
   "checks": [
     {
       "data": {
@@ -240,16 +238,12 @@
           "OW_BILLING.USAGE_EVENTS"
         ],
         "unresolved": [],
-        "writable": {
-          "session_privs": [
-            "FLASHBACK ANY TABLE"
-          ]
-        }
+        "writable": {}
       },
-      "detail": "oracle: the source principal can write in scope (session_privs: FLASHBACK ANY TABLE); the factory needs a SELECT-only principal, and driver-level read-only (SQL Server readonly=True, Postgres default_transaction_read_only) is advisory, a hint the server may ignore; only the principal's grants stop writes",
+      "detail": "oracle: no write system privilege, no object grant beyond SELECT/READ, no write role on 5 in-scope table(s); connection opened readonly=True, session_user=OW_BILLING_RO; driver-level read-only (SQL Server readonly=True, Postgres default_transaction_read_only) is advisory, a hint the server may ignore; only the principal's grants stop writes",
       "id": "source_principal_read_only",
       "reusable": false,
-      "status": "fail"
+      "status": "ok"
     },
     {
       "data": {
@@ -341,7 +335,7 @@
     },
     {
       "data": {
-        "branch": "dbx-doctor-probe-493015ba",
+        "branch": "dbx-doctor-probe-3fe996e6",
         "parent_branch": "production",
         "project": "ow-tp-billing"
       },
@@ -376,20 +370,19 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-27T12:51:49Z",
+  "generated_at": "2026-09-27T13:05:11Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,
     "userName": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2"
   },
   "plugin_root": "/opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_dbx-migration-plugin-5890f19a/0.4.1",
-  "ready": false,
+  "ready": true,
   "reused_doctor": null,
   "role": "setup",
   "schema": "dbx-migration-factory/capabilities/1",
   "summary": {
-    "fail": 1,
-    "ok": 15,
+    "ok": 16,
     "skipped": 1
   },
   "workspace": "/home/ubuntu/repos/otterworks"

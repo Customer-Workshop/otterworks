@@ -29,6 +29,10 @@ Evidence for each item; nothing below is described as green without a path.
 - Recon values recomputed from the target platform by `dbx-recon run --mode live --depth full`
   (`result.json`, `report.md`, `recon.summary.md`); D-017 rerun: apply.sh + extract | load re-executed
   on `mig-20260927c-w0`, then one live attempt of the allowed three (PASS, 918 keyed rows).
+  Refreshed in the current session: apply.sh + extract | load re-executed (32/3/69/814 rows),
+  `rerun_proof.json` regraded for the loader's literal-endpoint change (same shape digest),
+  then one live full run (PASS, 918 rows, 5.2 s), `type-map-audit` (19 ok, unchanged) and
+  `fixture-shape` against a freshly seeded NS=demo fixture (pass, 24/40, unchanged).
 - Unverified paths: none in the loader. Fixture-mode recon (`fixture/`) FAILs on fixture-only
   differences (fixture trigger `TRG_USAGE_EVENTS_CHECK`, one extra fixture tenant and three
   extra fixture usage_events); it is development evidence only.

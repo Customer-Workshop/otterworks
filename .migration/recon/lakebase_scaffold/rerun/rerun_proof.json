@@ -19,7 +19,7 @@
     "tenants",
     "usage_events"
   ],
-  "source_digest": "e3d9339deca930c9390101426c07db7fc08f68f559520505984f496d6fe6d020",
+  "source_digest": "f0ac0eae8cf13a4c77730813b974fb69a9fc0b092844363721d57af69e86e788",
   "evidence": {
     "fresh": ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log (apply.sh on empty mig-20260927c-w0: schema billing created, four tables created)",
     "evolved": ".migration/recon/lakebase_scaffold/rerun/evolved_apply.log (apply.sh rerun on the tables the fresh leg created; drop/recreate)"

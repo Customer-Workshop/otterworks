@@ -10,28 +10,21 @@ then committed. Rerunnable: a rerun lands the identical rows. Touches no other b
 Values arrive as text (Decimal rendered exactly, ISO 8601 timestamps, CHAR(1) already stripped)
 and are cast by the server to the declared column types of 00_scaffold.sql.
 
-Secret by name only: --target-secret names the env var holding the Lakebase libpq DSN
-(default LAKEBASE_MIGRATION_DSN).
+Connects to the literal Lakebase endpoint apply.sh uses (project ow-tp-billing, branch
+mig-20260927c-w0) as the migration service principal; the password is libpq's ~/.pgpass entry
+(token minted by `databricks postgres generate-database-credential`), never an argument.
 """
 from __future__ import annotations
 
 import argparse
 import itertools
 import json
-import os
 import sys
 from collections.abc import Iterator
 
 import psycopg
 
 from reference_tables import TABLES, TARGET_DATABASE, TARGET_SCHEMA
-
-
-def _env(name: str) -> str:
-    value = os.environ.get(name)
-    if not value:
-        raise SystemExit(f"secret {name} is not set in the environment")
-    return value
 
 
 def _scalar(row: tuple[object, ...] | None) -> object:
@@ -71,8 +64,7 @@ def stream(lines: Iterator[str], trailer_box: list[dict[str, int] | None]) -> It
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--target-secret", default="LAKEBASE_MIGRATION_DSN")
-    args = ap.parse_args(argv)
+    ap.parse_args(argv)
 
     by_target = {tgt: (columns, i) for i, (_, tgt, columns) in enumerate(TABLES)}
     order = [tgt for _, tgt, _ in TABLES]
@@ -81,7 +73,9 @@ def main(argv: list[str] | None = None) -> int:
     trailer_box: list[dict[str, int] | None] = [None]
     records = stream(sys.stdin, trailer_box)
 
-    with psycopg.connect(_env(args.target_secret)) as pg:
+    with psycopg.connect(host="ep-crimson-wave-d1jr0yo9.database.us-west-2.cloud.databricks.com", port=5432,
+                         dbname="ow_tp", user="d9d1c4ec-29da-4ec7-9aa0-e932710d61e2",
+                         sslmode="require") as pg:
         with pg.cursor() as cur:
             cur.execute("SELECT current_database()")
             db = _scalar(cur.fetchone())

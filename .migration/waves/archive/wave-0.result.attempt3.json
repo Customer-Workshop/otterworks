@@ -1,0 +1,102 @@
+{
+  "auto_merge": false,
+  "base_sha": "0eff74c8fb9f48c7150e2340523d0fcc92da48fd",
+  "batches": [
+    {
+      "branch": "mig/20260927c/w0-lakebase-scaffold",
+      "changed_paths": [
+        ".migration/recon/lakebase_scaffold/dependencies.json",
+        ".migration/recon/lakebase_scaffold/fixture/recon.summary.md",
+        ".migration/recon/lakebase_scaffold/fixture/report.md",
+        ".migration/recon/lakebase_scaffold/fixture/result.json",
+        ".migration/recon/lakebase_scaffold/fixture_shape.json",
+        ".migration/recon/lakebase_scaffold/load.log",
+        ".migration/recon/lakebase_scaffold/mapping_spec.bare.json",
+        ".migration/recon/lakebase_scaffold/recon.summary.md",
+        ".migration/recon/lakebase_scaffold/report.md",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_apply.log",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_pre_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_record.json",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_apply.log",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_record.json",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/prior_proof_20260927.json",
+        ".migration/recon/lakebase_scaffold/rerun/rerun_proof.json",
+        ".migration/recon/lakebase_scaffold/result.json",
+        ".migration/recon/lakebase_scaffold/self_check.md",
+        ".migration/recon/lakebase_scaffold/type_map_audit.json",
+        "databricks/mig_20260927c/lakebase/00_scaffold.sql",
+        "databricks/mig_20260927c/lakebase/apply.sh",
+        "databricks/mig_20260927c/lakebase/extract_reference.py",
+        "databricks/mig_20260927c/lakebase/load_reference.py",
+        "databricks/mig_20260927c/lakebase/reference_tables.py"
+      ],
+      "failure_class": "merge_authority",
+      "gates": [
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/result.json (tier 0 structural_parity 4/4) + .migration/recon/lakebase_scaffold/rerun/fresh_shape.json",
+          "id": "w0-structural",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/result.json (live, depth full, tiers 1-3 PASS, 918 keyed rows)",
+          "id": "w0-reference-parity",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/fixture_shape.json (exit 0, 0 findings, 24/40 statements)",
+          "id": "w0-fixture-shape",
+          "status": "passed"
+        }
+      ],
+      "id": "w0-lakebase-scaffold",
+      "merge_eligible": false,
+      "one_line_summary": "PASS downgraded: recon evidence is not merge_eligible=true for every unit (.migration/recon/lakebase_scaffold/result.json at the PR head has merge_eligible=False) and no merge_override row D-016 naming lakebase_scaffold is in .migration/06_decisions.md; lakebase_scaffold re-verified independently this session: live full-depth dbx-recon PASS on all 4 billing tables (918 rows), merge_eligible=false only for rerun_unsupported (first-run harness gap), covered by merge_override D-016; unit PR is the pre-existing open #1729 on mig/20260927c/w0-lakebase-scaffold (CI green), no second PR opened.",
+      "pr_head": "b32c2eea1340a1c8ae65de0b7e548f1eae0e32e8",
+      "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1729",
+      "prompt_sha": "9e3c5ea851f7d845",
+      "recon_cost": {
+        "elapsed_s": 11.529,
+        "source_rows_fetched": 918,
+        "source_statements": 53,
+        "target_rows_fetched": 918,
+        "target_statements": 38
+      },
+      "recon_mode": "live",
+      "recon_verdict": "PASS",
+      "skill_feedback": [
+        "Brief did not mention rerun-proof or dependencies.json; harness 0.4.3 blocks merge without them (rerun_missing / routine_parity_missing) - derived from the data-reconciliation skill.",
+        "A first-run unit with no manifest-declared prior shape can never satisfy the evolved rerun leg, so merge_eligible=false is structural; the ledger already carries merge_override D-016 for exactly this case.",
+        "OW_BILLING_RO cannot see Oracle triggers (inventory all_triggers=[]), so porting TRG_USAGE_EVENTS_CHECK makes the live structural tier FAIL (structural_gap); the fixture (owner-visible) reports the opposite. Live wins; do not port the trigger in this unit.",
+        "An open PR #1729 on the exact unit branch already existed from the D-017/D-018 reruns; 'open exactly one PR' means reusing it, not pushing a divergent duplicate implementation."
+      ],
+      "status": "FAIL",
+      "write_targets": [
+        "ow_tp.billing.codes",
+        "ow_tp.billing.plans",
+        "ow_tp.billing.tenants",
+        "ow_tp.billing.usage_events"
+      ]
+    }
+  ],
+  "breaker_tripped_on": null,
+  "close": null,
+  "close_minutes": 30,
+  "closed": false,
+  "doctor_signed_at": "2026-09-27T21:56:59+00:00",
+  "hook_probe": "blocked:4f90dd1b",
+  "manifest_sha": "14df8316a297",
+  "merge_overrides": [],
+  "pipeline_order": {},
+  "resync": null,
+  "stop_c": "D-018",
+  "tag": "0",
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "verify": null,
+  "waived_gates": [],
+  "wave": 0,
+  "width": 1,
+  "write_target_overlaps": []
+}

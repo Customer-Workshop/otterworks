@@ -8,6 +8,7 @@
     "principal_secret": "ow-tp/oracle/ow_billing_ro",
     "env_var": "OW_BILLING_RO_DSN",
     "read_only": true,
+    "doctor_source_principal_read_only": "fail: FLASHBACK ANY TABLE (D-023); STOP A blocked pending DBA revoke or customer attestation",
     "cdc": false,
     "lakehouse_federation": false,
     "serverless_to_1521": false,

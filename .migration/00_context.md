@@ -49,3 +49,19 @@ Every field is FACT (with its source) or PROPOSED (for a stop). Nothing is silen
 ## Evidence contract (STOP E packet)
 
 Legacy output, Databricks output, `dbx-recon` verdict, side by side, for: the Tenant One invoice row, the CUSTBILL SHA-256, the finance close total. Three recordings (legacy flow, Databricks flow, live `issue_invoice` on Lakebase) by the testing agent once each side is green. Run branch, unit PRs, verifier packet, recon reports, dashboard link, one-screen "what moved". SI comparison qualitative only.
+
+## Glossary
+
+| term | meaning in this run |
+|---|---|
+| `OW_BILLING` | legacy Oracle schema on `52.201.36.9:1521/FREEPDB1`; read-only in every phase |
+| `OW_BILLING_RO` | Oracle read-only principal (AWS SM `ow-tp/oracle/ow_billing_ro`); env name `OW_BILLING_RO_DSN` |
+| CUSTBILL | nightly fixed-width customer-billing file produced by the ksh/perl chain (`etl/legacy-extra`) |
+| finance close total | sum of invoice totals for the close period as reported by `finance_excel_report.pl` / `GET /api/reports/finance` |
+| `pkg_ow_util`, `pkg_plans`, `pkg_rating`, `pkg_invoicing`, `pkg_dunning` | Oracle PL/SQL packages under `services/legacy-billing/db/oracle/packages/` |
+| `billing.fn_*` / `billing.sp_*` | converted Lakebase (Postgres) routines matching the app's `BILLING_BACKEND=postgres` contract |
+| `mig-20260927-w<n>` / `mig-20260927-exec` | run-scoped, TTL'd Lakebase branches of project `ow-tp-billing`; database `ow_tp` on each |
+| `ow_tp.mig_20260927_*` | run-scoped Unity Catalog schemas (bronze, silver, gold, quarantine) |
+| Tenant One | fixture tenant `00000000-0000-0000-0000-000000000001` (STARTER, 260 units on 2026-02-10, no invoice before the run) |
+| dbx-recon | the reconciliation harness; the only parity authority (`--family oracle`, live from the session bridge) |
+| STOP A/B/C/E | hard stops: access, scope, plan, cutover decision (repoint declined by design) |

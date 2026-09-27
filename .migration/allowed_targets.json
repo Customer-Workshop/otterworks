@@ -11,10 +11,10 @@
   "guard_mode": "block",
   "run_mode": "live",
   "target_hosts": [
-    "OW_TP_LAKEBASE_W0_DSN",
-    "OW_TP_LAKEBASE_W1_DSN",
-    "OW_TP_LAKEBASE_EXEC_DSN",
     "ep-wild-hat-d120fhwn.database.us-west-2.cloud.databricks.com"
+  ],
+  "lakebase_databases": [
+    "ow_tp"
   ],
   "bundle_targets": [
     "mig_20260927"

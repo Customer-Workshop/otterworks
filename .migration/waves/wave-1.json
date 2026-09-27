@@ -299,7 +299,7 @@
       "lakeflow_pipelines": [
         "ow_tp_20260927c_custbill"
       ],
-      "verify_depth": "sample",
+      "verify_depth": "sampled",
       "max_minutes": 60,
       "target_kind": "databricks",
       "gates": [

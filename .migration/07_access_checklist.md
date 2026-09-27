@@ -14,7 +14,7 @@ Every row is a probe that ran from this session, with the command shape and the 
 | 8 | Guard hook | `hooks/dbx_guard.py` PreToolUse | nonce probe `__dbx_guard_probe__<nonce>` | see `09_capabilities.json` `hook_guard` | pending doctor |
 | 9 | Recon harness | `~/.venvs/dbx-recon/bin/dbx-recon` (oracledb + psycopg + databricks-sql extras) | `dbx-recon selftest` | 9 canonicalization rules OK | OK |
 | 10 | Local Oracle fixture | docker `otterworks-oracle-billing-oracle-billing-1`, `localhost:52521/FREEPDB1`, `ow_billing` (dev password in compose file, not a secret) | `make oracle-billing-up && make oracle-billing-seed NS=demo` | healthy; packages VALID; static tenants 1..9 identical to the estate | OK |
-| 11 | Slack | `#dbx-migration` (C09ETT31F0S) via the Slack integration | lookup at STOP A | — | pending |
+| 11 | Slack | `#ow-migrations` (C0BQP3P965V) via the Slack integration; `#dbx-migration` (C09ETT31F0S) from the prior run is not accessible to this session | `lookup_slack_resource` + `list_channels`; STOP A posted https://cogpartners.slack.com/archives/C0BQP3P965V/p1790513601122399 | read+write | OK |
 | 12 | Cutover principal | not held, never requested | — | STOP E pre-declined by the user | N/A |
 
 Blocked-by-default rules: row 1 failing (a write privilege or a role) blocks STOP A; nothing here downgrades to fixture or local access silently (`08_connectivity.json` records the resolved posture).

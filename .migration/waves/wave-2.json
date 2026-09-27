@@ -57,7 +57,7 @@
     "target_rows_fetched": 18750,
     "row_counts_known": true
   },
-  "stop_c": "",
+  "stop_c": "D-015",
   "lakebase": {
     "project": "ow-tp-billing",
     "database": "ow_tp",

@@ -166,7 +166,7 @@
     "source_rows_fetched": 202228,
     "target_rows_fetched": 202228
   },
-  "stop_c": "",
+  "stop_c": "D-014",
   "lakebase": {
     "project": "ow-tp-billing",
     "database": "ow_tp",

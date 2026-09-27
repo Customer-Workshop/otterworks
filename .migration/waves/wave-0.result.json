@@ -1,0 +1,99 @@
+{
+  "auto_merge": false,
+  "base_sha": "8cd28cd4df3199aaa7ca4a9a3c4e8ecdb1c499f9",
+  "batches": [
+    {
+      "branch": "mig/20260927/w0-lakebase-scaffold",
+      "changed_paths": [
+        ".migration/recon/lakebase_scaffold/dependencies.json",
+        ".migration/recon/lakebase_scaffold/fixture/recon.summary.md",
+        ".migration/recon/lakebase_scaffold/fixture/report.md",
+        ".migration/recon/lakebase_scaffold/fixture/result.json",
+        ".migration/recon/lakebase_scaffold/fixture_shape.json",
+        ".migration/recon/lakebase_scaffold/mapping_spec.bare.json",
+        ".migration/recon/lakebase_scaffold/recon.summary.md",
+        ".migration/recon/lakebase_scaffold/report.md",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_record.json",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_record.json",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/rerun_proof.json",
+        ".migration/recon/lakebase_scaffold/result.json",
+        ".migration/recon/lakebase_scaffold/self_check.md",
+        ".migration/recon/lakebase_scaffold/type_map_audit.json",
+        "databricks/mig_20260927/lakebase/00_scaffold.sql",
+        "databricks/mig_20260927/lakebase/apply.sh",
+        "databricks/mig_20260927/lakebase/load_reference.py"
+      ],
+      "failure_class": "non_merge_evidence",
+      "gates": [
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/rerun/fresh_shape.json",
+          "id": "w0-structural",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/result.json",
+          "id": "w0-reference-parity",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/fixture_shape.json",
+          "id": "w0-fixture-shape",
+          "status": "passed"
+        }
+      ],
+      "id": "w0-lakebase-scaffold",
+      "merge_authority": {
+        "decision_id": "D-036",
+        "kind": "human_override"
+      },
+      "merge_eligible": false,
+      "one_line_summary": "PASS downgraded: recon evidence was live/FAIL; lakebase_scaffold run 3: billing schema + 4 tables drop/recreated on mig-20260927-w0, 918 rows reloaded, live recon rows tiers 1-3 PASS; harness FAIL only on D-036's two gaps (grant_extra x4, rerun evolved unsupported) \u2192 human_override D-036; PR #1727 updated, not merged.",
+      "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1727",
+      "prompt_sha": "e12836d7fcbc9219",
+      "recon_cost": {
+        "elapsed_s": 4.727,
+        "source_rows_fetched": 918,
+        "source_statements": 53,
+        "target_rows_fetched": 918,
+        "target_statements": 38
+      },
+      "recon_mode": "live",
+      "recon_verdict": "FAIL",
+      "skill_feedback": [
+        "Guard treats --force-with-lease on a unit branch as protected-history rewrite; had to merge base forward + cherry-pick instead of rebase \u2014 the brief should say 'merge forward', not 'rebase or reset'.",
+        "Drop/recreate makes rerun proof 'evolved' structurally unsupported (pre-shape == fresh shape); harness needs a drop-recreate rerun mode rather than relying on D-036.",
+        "Harness has no way to classify Lakebase platform-inherited grants (pg_write_all_data via databricks_superuser) as expected; grant_extra needs a platform-grant allowlist.",
+        "result.json cannot carry a human_override authority; the child has to translate D-036 into the report by hand.",
+        "factory-doctor must run as python -m doctor from the recon venv (system python lacks oracledb) and mise.toml needs trusting for the databricks shim."
+      ],
+      "status": "FAIL",
+      "write_targets": [
+        "ow_tp.billing.codes",
+        "ow_tp.billing.plans",
+        "ow_tp.billing.tenants",
+        "ow_tp.billing.usage_events"
+      ]
+    }
+  ],
+  "breaker_tripped_on": null,
+  "close": null,
+  "close_minutes": 30,
+  "closed": false,
+  "doctor_signed_at": "2026-09-27T15:22:43+00:00",
+  "hook_probe": "blocked:6fdd1c1f",
+  "manifest_sha": "4620a73e68f0",
+  "merge_overrides": [],
+  "pipeline_order": {},
+  "resync": null,
+  "stop_c": "D-037",
+  "tag": "0",
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "verify": null,
+  "waived_gates": [],
+  "wave": 0,
+  "width": 1,
+  "write_target_overlaps": []
+}

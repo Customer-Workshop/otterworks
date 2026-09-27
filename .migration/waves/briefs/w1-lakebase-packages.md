@@ -13,7 +13,7 @@ Load the oracle-plsql skill (dbx-migration-factory:oracle-plsql, OLTP track) bef
 2. Routines, one file per package under databricks/mig_20260927b/lakebase/1x_pkg_*.sql: f_md5_uuid, f_code_desc,
    f_dt2str, f_str2dt, log_msg, job_purge_audit_log; fn_list_plans, fn_entitlement, sp_change_plan;
    compute_rating, fn_usage_rating, fn_usage_summary, sp_finalize_rating; compute_preview, fn_invoice_preview,
-   fn_invoice_lines, sp_issue_invoice. Accepted deviation D-009: log_msg has no autonomous transaction on
+   fn_invoice_lines, sp_issue_invoice. Accepted deviation DEP-003 (STOP B, D-011): log_msg has no autonomous transaction on
    Postgres (it commits with the caller); audit presence and ordering are graded, logged_at is not. Keep Oracle
    rounding (ROUND half away from zero on NUMBER(12,2)), NVL / empty-string semantics, status codes from CODES,
    and the sp_issue_invoice write order (rating_periods, rating_results, invoices, invoice_lines, credit_notes,

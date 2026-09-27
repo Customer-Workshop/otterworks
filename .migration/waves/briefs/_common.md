@@ -23,7 +23,7 @@ RUN CONTRACT (read .migration/00_context.md, 01_conventions.md, 03_recon_toleran
   wave. Schedules PAUSED. No cutover, no BILLING_BACKEND change on any deployed service, never Lakebase branch
   `production`, never ow_tp.bronze / ow_tp.silver / ow_tp.gold / airbyte / fivetran schemas.
 - Lakebase: project ow-tp-billing, database ow_tp, branch mig-20260927b-w0, host
-  ep-wild-hat-d120fhwn.database.us-west-2.cloud.databricks.com. Credential recipe: `databricks postgres
+  ep-calm-sea-d1avwe82.database.us-west-2.cloud.databricks.com. Credential recipe: `databricks postgres
   generate-database-credential projects/ow-tp-billing/branches/mig-20260927b-w0/endpoints/primary --ttl 3600s
   --output json` (top-level `token`); put it in ~/.pgpass (chmod 600) as
   <host>:5432:*:d9d1c4ec-29da-4ec7-9aa0-e932710d61e2:<token>, then `psql -h <literal host> -U

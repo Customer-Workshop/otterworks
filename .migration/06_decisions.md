@@ -1,0 +1,13 @@
+# 06 — Decisions (append-only)
+
+Every stop is a dated row with provenance: `user:<slack ts>` when a human replied; `default-accepted (soft, 60s, no reply)` never applies here because `stop_mode = hard` (`00_context.md`). Rows are never edited.
+
+| Id | Date (UTC) | Stop | Decision | Provenance | Notes |
+|---|---|---|---|---|---|
+| D-000 | 2026-09-27 | intake | `stop_mode = hard` for A, B, C, E; wave close = notify only; `auto_merge = false`; notifications to Slack #dbx-migration | user:web-intake-20260927 | user brief ("message me on slack only at stops, wave closes, or a halt") |
+| D-001 | 2026-09-27 | intake | Oracle is read-only in every phase; prior-run CDC/supplemental-logging decisions superseded (DEP-014). Source ingestion for CUSTBILL is a query-based extract from the session bridge (DEP-005) | user:web-intake-20260927 | "No 1521 to serverless, no Debezium, Oracle read-only" |
+| D-002 | 2026-09-27 | intake | Write scope = `ow_tp.mig_20260927_*`, `ow_tp_20260927_*`, Lakebase `mig-20260927-w<n>` + `mig-20260927-exec` (TTL 7d); shared bronze/silver/gold, airbyte, fivetran, Lakebase `production` forbidden (`allowed_targets.json`) | user:web-intake-20260927 | the `-exec` branch is the routine-parity execution branch required by `dbx-recon routine-parity`; PROPOSED to the user at STOP A |
+| D-003 | 2026-09-27 | intake | Analytics crons and the Scala job are findings only; `pkg_dunning` only if the dependency ledger pulls it in (DEP-010: it does not) | user:web-intake-20260927 | |
+| D-004 | 2026-09-27 | intake | Parity authority = `dbx-recon --family oracle` run from the session bridge; fixture-mode runs are development evidence only | user:web-intake-20260927 | |
+| D-005 | 2026-09-27 | intake | Fixture tenant = `00000000-0000-0000-0000-000000000001` (Tenant One), period 2026-02-01..2026-02-28; chosen because it is a static seed row present in both the EC2 estate and the local fixture, has a subscription, usage and rating history, and no invoice yet | orchestrator, from live read | the live `issue_invoice` runs on Lakebase `mig-20260927-exec`; the legacy comparison run executes the legacy packages on the **local fixture** (the EC2 estate is read-only) |
+| D-006 | 2026-09-27 | intake | Carry forward prior-run D-009 (`log_msg` audit write declared as a write target of every routine unit), D-010 (`TIMESTAMP` -> `timestamp` no zone), D-011 (`usage_events` materialized before `pkg_rating`/`pkg_invoicing`); prior D-008 (dead sendmail / finance consumer) carried as DEP-007 | orchestrator, from `/home/ubuntu/prior/06_decisions.md` | "STOP B scope is the above plus last run's dependency additions" |

@@ -1,0 +1,103 @@
+{
+  "auto_merge": false,
+  "base_sha": "783e798bf15ff64cc1e7a2c58eca6641f826dc37",
+  "batches": [
+    {
+      "branch": "mig/20260927b/w0-lakebase-scaffold",
+      "changed_paths": [
+        ".migration/recon/lakebase_scaffold/dependencies.json",
+        ".migration/recon/lakebase_scaffold/fixture/recon.summary.md",
+        ".migration/recon/lakebase_scaffold/fixture/report.md",
+        ".migration/recon/lakebase_scaffold/fixture/result.json",
+        ".migration/recon/lakebase_scaffold/fixture_shape/fixture_shape.json",
+        ".migration/recon/lakebase_scaffold/gates.json",
+        ".migration/recon/lakebase_scaffold/live/recon.summary.md",
+        ".migration/recon/lakebase_scaffold/live/report.md",
+        ".migration/recon/lakebase_scaffold/live/result.json",
+        ".migration/recon/lakebase_scaffold/mapping_spec.bare.json",
+        ".migration/recon/lakebase_scaffold/rerun/evolved.json",
+        ".migration/recon/lakebase_scaffold/rerun/evolved_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/fresh.json",
+        ".migration/recon/lakebase_scaffold/rerun/fresh_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/pre_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/prior_shape.json",
+        ".migration/recon/lakebase_scaffold/rerun/rerun_proof.json",
+        ".migration/recon/lakebase_scaffold/type_map_audit.json",
+        "databricks/mig_20260927b/lakebase/00_scaffold.prior.sql",
+        "databricks/mig_20260927b/lakebase/00_scaffold.sql",
+        "databricks/mig_20260927b/lakebase/apply.sh",
+        "databricks/mig_20260927b/lakebase/extract_reference.py",
+        "databricks/mig_20260927b/lakebase/load_reference.py"
+      ],
+      "failure_class": "non_merge_evidence",
+      "gates": [
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/live/result.json \u2014 tier 0 FAIL on exactly 4 grant_extra findings (one per table) for dhrov.subramanian@cognition.ai, whose privilege comes solely via membership in platform role databricks_superuser (relacl shows only owner + databricks_gateway/reader/superuser grants written by event trigger on_create_table_or_view; pg_auth_members: member of databricks_superuser only; no direct grant). Types, PKs, uniques (uq_plans_code, uq_tenants_name), FK fk_usage_tenant, not-null, indexes, identity, triggers all match source. Covered by D-018.",
+          "id": "w0-structural",
+          "status": "failed"
+        },
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/live/result.json \u2014 mode live, depth full, tiers 1-3 PASS on all four objects, 918 keyed rows (codes 32, plans 3, tenants 69, usage_events 814)",
+          "id": "w0-reference-parity",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/lakebase_scaffold/fixture_shape/fixture_shape.json \u2014 exit 0, 0 findings, 24/40 source statements",
+          "id": "w0-fixture-shape",
+          "status": "passed"
+        }
+      ],
+      "id": "w0-lakebase-scaffold",
+      "merge_authority": {
+        "decision_id": "D-018",
+        "kind": "human_override"
+      },
+      "merge_eligible": false,
+      "one_line_summary": "PASS downgraded: recon evidence was live/FAIL; lakebase_scaffold attempt 2: billing schema + 4 reference tables re-created and reloaded on mig-20260927b-w0 (918 rows), live full recon tiers 1-3 PASS, tier 0 fails only on the platform-inherited databricks_superuser grant_extra covered by D-018; PR #1728 updated (first line PASS), not merged.",
+      "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1728",
+      "prompt_sha": "1a9efb62e0661a67",
+      "recon_cost": {
+        "elapsed_s": 8.882,
+        "source_rows_fetched": 918,
+        "source_statements": 53,
+        "target_rows_fetched": 918,
+        "target_statements": 38
+      },
+      "recon_mode": "live",
+      "recon_verdict": "FAIL",
+      "skill_feedback": [
+        "Doctor must be run with the recon venv interpreter (python-oracledb), not system python3, or source_principal_read_only fails 'No module named oracledb'",
+        "The guard rejects a ~/bin DSN helper placed directly in front of a recognised Databricks/SQL client; invoke it as `python3 ~/bin/helper <cmd>` instead",
+        "dbx-recon run refuses to overwrite an existing --out dir (FileExistsError); write to a fresh dir and copy into .migration/recon/<unit>/",
+        "LAKEBASE_MIGRATION_DSN for --target-secret must be built in-process from ~/.pgpass (no shell var for the host); the brief only gives the psql recipe",
+        "Attempt-2 fixture-first: a fixture recon reload would cost a second live Oracle read in the load stage; brief should say whether fixture/ from attempt 1 may be retained (I retained it and said so)"
+      ],
+      "status": "FAIL",
+      "write_targets": [
+        "ow_tp.billing.codes",
+        "ow_tp.billing.plans",
+        "ow_tp.billing.tenants",
+        "ow_tp.billing.usage_events"
+      ]
+    }
+  ],
+  "breaker_tripped_on": null,
+  "close": null,
+  "close_minutes": 30,
+  "closed": false,
+  "doctor_signed_at": "2026-09-27T18:59:22+00:00",
+  "hook_probe": "blocked:3cdaf9ae",
+  "manifest_sha": "0e28efe2aadd",
+  "merge_overrides": [],
+  "pipeline_order": {},
+  "resync": null,
+  "stop_c": "D-017",
+  "tag": "0",
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "verify": null,
+  "waived_gates": [],
+  "wave": 0,
+  "width": 1,
+  "write_target_overlaps": []
+}

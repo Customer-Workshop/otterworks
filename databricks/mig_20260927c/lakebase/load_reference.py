@@ -1,55 +1,125 @@
-"""Wave 0 load: TRUNCATE + COPY the four billing reference tables on Lakebase from extract CSVs."""
+"""Wave 0 reference load, stage 2 of 2: JSON lines on stdin -> Lakebase ow_tp.billing (branch mig-20260927c-w0).
+
+Consumes the stream extract_reference.py writes (stage 1, python-oracledb) and lands it with
+psycopg COPY, one transaction: the four unit-owned tables are truncated and reloaded, the row
+counts are checked against the extract's trailer and against count(*) after the copy, and only
+then committed. Rerunnable: a rerun lands the identical rows. Touches no other billing table.
+
+    extract_reference.py | load_reference.py
+
+Values arrive as text (Decimal rendered exactly, ISO 8601 timestamps, CHAR(1) already stripped)
+and are cast by the server to the declared column types of 00_scaffold.sql.
+
+Secret by name only: --target-secret names the env var holding the Lakebase libpq DSN
+(default LAKEBASE_MIGRATION_DSN).
+"""
 from __future__ import annotations
 
 import argparse
+import itertools
+import json
+import os
 import sys
-from pathlib import Path
+from collections.abc import Iterator
 
 import psycopg
 
-TARGET_SCHEMA = "billing"
-TARGET_DATABASE = "ow_tp"
-LOAD_ORDER = ["codes", "plans", "tenants", "usage_events"]  # FK-safe
-TRUNCATE_ORDER = ["usage_events", "tenants", "plans", "codes"]  # FK-safe
+from reference_tables import TABLES, TARGET_DATABASE, TARGET_SCHEMA
+
+
+def _env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(f"secret {name} is not set in the environment")
+    return value
+
+
+def _scalar(row: tuple[object, ...] | None) -> object:
+    if row is None or len(row) != 1:
+        raise SystemExit(f"expected a single-column row, got {row!r}")
+    return row[0]
+
+
+def _parse(line: str) -> dict:
+    try:
+        rec = json.loads(line)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"malformed extract line: {exc}") from None
+    if not isinstance(rec, dict):
+        raise SystemExit("malformed extract line: not an object")
+    return rec
+
+
+def stream(lines: Iterator[str], trailer_box: list[dict[str, int] | None]) -> Iterator[dict]:
+    """Row records up to the trailer, which is parked in trailer_box[0]; rows after it are refused."""
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        rec = _parse(line)
+        if "end" in rec:
+            if not isinstance(rec["end"], dict):
+                raise SystemExit("malformed extract trailer")
+            trailer_box[0] = rec["end"]
+            return
+        if trailer_box[0] is not None:
+            raise SystemExit("extract stream continues after its trailer")
+        if not isinstance(rec.get("table"), str):
+            raise SystemExit(f"extract line has no table: {line[:80]}")
+        yield rec
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--host", default="ep-crimson-wave-d1jr0yo9.database.us-west-2.cloud.databricks.com")
-    ap.add_argument("--user", default="d9d1c4ec-29da-4ec7-9aa0-e932710d61e2")
-    ap.add_argument("--dbname", default="ow_tp")
-    ap.add_argument("--port", type=int, default=5432)
-    ap.add_argument("--in-dir", type=Path, required=True,
-                    help="directory of <table>.csv files written by extract_reference.py")
+    ap.add_argument("--target-secret", default="LAKEBASE_MIGRATION_DSN")
     args = ap.parse_args(argv)
 
-    # Password comes from ~/.pgpass via libpq; never handled here.
-    conninfo = (
-        f"host={args.host} port={args.port} user={args.user} "
-        f"dbname={args.dbname} sslmode=require")
-    with psycopg.connect(conninfo) as pg, pg.cursor() as cur:
-        cur.execute("SELECT current_database()")
-        row = cur.fetchone()
-        if not row or row[0] != TARGET_DATABASE:
-            raise SystemExit(
-                f"connected to {row[0] if row else '?'}, not {TARGET_DATABASE}; refusing to write")
-        cur.execute(
-            "TRUNCATE TABLE " + ", ".join(f"{TARGET_SCHEMA}.{t}" for t in TRUNCATE_ORDER))
-        for table in LOAD_ORDER:
-            path = args.in_dir / f"{table}.csv"
-            if not path.is_file():
-                raise SystemExit(f"missing extract file {path}")
-            header = path.open().readline().strip().split(",")
-            tgt_cols = ", ".join(header)
-            with cur.copy(
-                    f"COPY {TARGET_SCHEMA}.{table} ({tgt_cols}) FROM STDIN "
-                    "(FORMAT csv, HEADER true, NULL '\\N')") as copy, path.open("rb") as fh:
-                while chunk := fh.read(1 << 20):
-                    copy.write(chunk)
-        for table in LOAD_ORDER:
-            cur.execute(f"SELECT count(*) FROM {TARGET_SCHEMA}.{table}")
-            print(f"{TARGET_DATABASE}.{TARGET_SCHEMA}.{table}: {cur.fetchone()[0]} rows")
+    by_target = {tgt: (columns, i) for i, (_, tgt, columns) in enumerate(TABLES)}
+    order = [tgt for _, tgt, _ in TABLES]
+    counts: dict[str, int] = {tgt: 0 for tgt in order}
+    last_idx = -1
+    trailer_box: list[dict[str, int] | None] = [None]
+    records = stream(sys.stdin, trailer_box)
+
+    with psycopg.connect(_env(args.target_secret)) as pg:
+        with pg.cursor() as cur:
+            cur.execute("SELECT current_database()")
+            db = _scalar(cur.fetchone())
+            if db != TARGET_DATABASE:
+                raise SystemExit(f"target DSN landed in {db}, not {TARGET_DATABASE}; refusing to write")
+            targets = ", ".join(f"{TARGET_SCHEMA}.{tgt}" for tgt in order)
+            cur.execute(f"TRUNCATE TABLE {targets}")
+
+            for table, rows in itertools.groupby(records, key=lambda rec: rec["table"]):
+                if table not in by_target:
+                    raise SystemExit(f"extract stream names no unit-owned table: {table!r}")
+                columns, idx = by_target[table]
+                if idx <= last_idx:
+                    raise SystemExit(f"{table}: extract stream is out of table order (FK order)")
+                tgt_cols = ", ".join(tgt for _, tgt in columns)
+                with cur.copy(f"COPY {TARGET_SCHEMA}.{table} ({tgt_cols}) FROM STDIN") as copy:
+                    for rec in rows:
+                        row = rec["row"]
+                        if not isinstance(row, list) or len(row) != len(columns):
+                            raise SystemExit(f"{table}: row has {len(row) if isinstance(row, list) else '?'} "
+                                             f"values, expected {len(columns)}")
+                        copy.write_row(row)
+                        counts[table] += 1
+                last_idx = idx
+            trailer = trailer_box[0]
+
+            if trailer is None:
+                raise SystemExit("extract stream ended without its trailer; nothing committed")
+            if trailer != counts:
+                raise SystemExit(f"extract reported {trailer} rows, loader saw {counts}; nothing committed")
+            for tgt in order:
+                cur.execute(f"SELECT count(*) FROM {TARGET_SCHEMA}.{tgt}")
+                landed = _scalar(cur.fetchone())
+                if landed != counts[tgt]:
+                    raise SystemExit(f"{tgt}: copied {counts[tgt]} rows but {landed} landed")
         pg.commit()
+    for tgt in order:
+        print(f"{TARGET_DATABASE}.{TARGET_SCHEMA}.{tgt}: {counts[tgt]} rows")
     return 0
 
 

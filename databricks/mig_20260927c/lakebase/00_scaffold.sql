@@ -1,22 +1,10 @@
 -- Run 20260927c, unit lakebase_scaffold (wave 0).
 -- Lakebase project ow-tp-billing, database ow_tp, branch mig-20260927c-w0 only.
--- Types are exactly .migration/units/lakebase_scaffold/mapping_spec.json (map-20260927c-lakebase_scaffold-v1);
--- keys, uniques, foreign keys and NOT NULLs are the Oracle dictionary
--- .migration/inventory/oracle_dictionary_20260927c.json (OW_BILLING.CODES/PLANS/TENANTS/USAGE_EVENTS).
--- Idempotent by drop/recreate: the four unit-owned tables are dropped (FK order) and the schema is
--- dropped only when nothing else lives in it, so a rerun lands exactly the declared shape and
--- never touches a table another unit owns.
-
-DROP TABLE IF EXISTS billing.usage_events;
-DROP TABLE IF EXISTS billing.tenants;
-DROP TABLE IF EXISTS billing.plans;
-DROP TABLE IF EXISTS billing.codes;
-DO $$
-BEGIN
-    DROP SCHEMA IF EXISTS billing RESTRICT;
-EXCEPTION WHEN dependent_objects_still_exist THEN
-    RAISE NOTICE 'schema billing kept: other objects live in it';
-END $$;
+-- Types are exactly .migration/units/lakebase_scaffold/mapping_spec.json
+-- (map-20260927c-lakebase_scaffold-v1); keys, uniques, foreign keys and NOT NULLs are the
+-- Oracle dictionary for OW_BILLING.CODES/PLANS/TENANTS/USAGE_EVENTS.
+-- Idempotent: every statement is IF NOT EXISTS, so a rerun makes no changes. Nothing is
+-- dropped here; table replacement is load_reference.py's job (TRUNCATE + COPY).
 
 CREATE SCHEMA IF NOT EXISTS billing;
 
@@ -58,5 +46,10 @@ CREATE TABLE IF NOT EXISTS billing.usage_events (
     CONSTRAINT fk_usage_tenant FOREIGN KEY (tenant_id) REFERENCES billing.tenants (id)
 );
 
--- No triggers: the live OW_BILLING dictionary declares none on these four tables (the local fixture's
--- TRG_USAGE_EVENTS_CHECK is fixture-only and is not reproduced here).
+-- No triggers: the live OW_BILLING dictionary declares none on these four tables (the local
+-- fixture's TRG_USAGE_EVENTS_CHECK is fixture-only and is not reproduced here).
+
+-- Lakebase auto-grants every new table to the platform role databricks_superuser (and, through
+-- membership, to workspace admins). OW_BILLING grants nothing beyond the owner, so the target
+-- carries only the owner (the migration service principal) and the platform reader roles.
+REVOKE ALL ON billing.codes, billing.plans, billing.tenants, billing.usage_events FROM databricks_superuser;

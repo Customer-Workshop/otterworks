@@ -26,3 +26,17 @@ RUN 3 NOTES (after run 2, D-035, closed FAIL missing_rule):
 - Run 2 evidence is in .migration/recon/lakebase_scaffold/ on that branch (mapping_spec.bare.json, fresh_shape.json):
   reuse the de-qualified mapping copy and use run 2's fresh_shape.json as the prior shape for the rerun proof.
   fixture-shape --source-statement-cap 40.
+
+RUN 4 NOTES (after run 3, D-037, closed FAIL; plugin fixed in dbx-migration-plugin PR #71 / v0.4.2):
+- Run 3 notes still apply for branch/PR reuse and idempotent apply.sh, but the D-036 override path is gone: the
+  harness now excludes grantees that inherit through a Lakebase platform role, so grant_extra must not appear and
+  merge_authority must be the harness verdict PASS. Confirm your dbx-recon is >= 0.4.2 (the platform-role test
+  `test_grants_inherited_through_a_platform_role_are_not_the_units` exists in its tests dir) before the live recon;
+  if it is not, report FAIL "plugin_stale" without running.
+- Rerun proof must have a real evolved leg. Do NOT reuse run 2's fresh_shape.json as --prior-shape (it equals the
+  fresh shape and the harness rejects it). Instead add databricks/mig_20260927/lakebase/00_scaffold.prior.sql: the
+  four tables at a declared earlier shape (same columns and PKs, but without uq_plans_code, uq_tenants_name and
+  fk_usage_tenant, and codes.code_desc as varchar(40)), apply it on mig-20260927-w0 first, record that as pre_shape (dbx-recon
+  rerun-proof ... --prior-shape from that DDL), then run apply.sh (which drop/recreates to the current DDL) and let
+  the evolved leg prove it converges on the fresh shape. Commit prior DDL + rerun/*.json under the unit's evidence
+  dir. If the harness still says evolved unsupported, that is a real FAIL: report the reason string verbatim.

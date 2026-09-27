@@ -1,15 +1,24 @@
 # OW_BILLING estate inventory — STOP B (run 20260927b)
 
 Every row is FACT (with citation: `file:line` or the dictionary view read at
-`.migration/inventory/oracle_dictionary_20260927.json`) or PROPOSED/INFERRED (marked).
+`.migration/inventory/oracle_dictionary_20260927b.json`) or PROPOSED/INFERRED (marked).
 
 Scope slice: signup → subscription → `issue_invoice` → nightly CUSTBILL fixed-width
 file → finance close total (`00_context.md`).
 
 ## 1. Live Oracle census (one dictionary read, OW_BILLING_RO, FREEPDB1)
 
-Raw read: `.migration/inventory/oracle_dictionary_20260927.json` (script
-`/home/ubuntu/bin/ow_inventory_read.py`, connected as `OW_BILLING_RO`).
+Raw read: `.migration/inventory/oracle_dictionary_20260927b.json` and
+`.migration/inventory/row_counts_20260927b.json` (script
+`/home/ubuntu/bin/ow_inventory_read.py`, connected as `OW_BILLING_RO`, `read_at`
+2026-09-27T17:5xZ, one pass: dictionary + governance views + `COUNT(*)` per table;
+the run-20260927 read `.migration/inventory/oracle_dictionary_20260927.json` is kept
+as the prior baseline). Delta vs that baseline after the estate reset: zero object,
+constraint or column changes except `FIXTURE_META.INITIALIZED_AT TIMESTAMP(6)`
+(fixture-infra); row counts identical (CODES 32, CREDIT_NOTES 5, RATING_PERIODS 3,
+RATING_RESULTS 3, DUNNING_ATTEMPTS 1, NOTIFICATIONS 1, INVOICES 3, INVOICE_LINES 2,
+INVOICE_HEADER 18,750, INVOICE_LINE 150,000, CUSTOMER_MASTER 25,000,
+ENTITY_ATTR_VALUE 8,333, TENANTS 69, SUBSCRIPTIONS 69, USAGE_EVENTS 814).
 
 **N = 45 objects visible in `ALL_OBJECTS` for `owner='OW_BILLING'`: 20 TABLE + 25 INDEX, all VALID.**
 Packages, package bodies, triggers, sequences and scheduler jobs are **invisible to
@@ -17,9 +26,8 @@ Packages, package bodies, triggers, sequences and scheduler jobs are **invisible
 `ALL_SEQUENCES`, `ALL_SCHEDULER_JOBS` all empty) — consistent with DEP-013
 (SELECT-only principal, no EXECUTE grants). Their existence and shape are therefore
 FACT from the repo DDL that seeded the estate (`services/legacy-billing/db/oracle/`),
-not from the dictionary. `ALL_TAB_PRIVS` could not be read (query used `OWNER`;
-the view's column is `TABLE_SCHEMA` — ORA-00904, recorded in the JSON; one-run
-budget spent). `ALL_SYNONYMS` returned zero rows (no synonyms over OW_BILLING).
+not from the dictionary. `ALL_TAB_PRIVS` read with `TABLE_SCHEMA='OW_BILLING'`
+in the same pass (1 row, see §10). `ALL_SYNONYMS` returned zero rows (no synonyms over OW_BILLING).
 
 Coverage arithmetic (ALL_OBJECTS-visible objects only):
 
@@ -226,8 +234,6 @@ dependency either way).
   for the RO user, so live state is unverifiable from this principal (gap, not a
   contradiction).
 - DEP-010 confirmed by the closure fact (§8).
-- `ALL_TAB_PRIVS` first-pass query failed (ORA-00904 on `OWNER` — the column is
-  `TABLE_SCHEMA`); collected on the second parent-owned read — see §10.
 - New table `FIXTURE_META` (1 row) exists in live but not in the slice tables list —
   classified fixture-infra.
 - `CUSTOMER_MASTER_HIST` (0 rows) is trigger-maintained but unused by any slice path
@@ -235,8 +241,8 @@ dependency either way).
 
 ## 10. Governance (grantee, privilege, object; cited view)
 
-Second parent-owned live read (governance views only; merged under `"governance"`
-in `.migration/inventory/oracle_dictionary_20260927.json`).
+Governance views, same single pass (`"governance"` in
+`.migration/inventory/oracle_dictionary_20260927b.json`).
 
 | View | Rows | Fact |
 |---|---|---|

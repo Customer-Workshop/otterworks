@@ -60,7 +60,7 @@
     "target_rows_fetched": 926,
     "row_counts_known": true
   },
-  "stop_c": "D-019",
+  "stop_c": "D-020",
   "lakebase": {
     "project": "ow-tp-billing",
     "database": "ow_tp",

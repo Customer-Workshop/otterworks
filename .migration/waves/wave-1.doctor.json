@@ -388,17 +388,32 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-27T13:47:34Z",
+  "generated_at": "2026-09-27T13:47:04Z",
+  "hook_probe": "blocked:6fdd1c1f",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,
     "userName": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2"
   },
+  "inputs_sha": "ea891eb49b41b6f9b202f4a23e2a0f58e89102f8e07f08bbf7b7ac4c8a075bb7",
+  "manifest_sha": "d2aaf142eaf7",
   "plugin_root": "/opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_dbx-migration-plugin-5890f19a/0.4.1",
   "ready": true,
   "reused_doctor": null,
   "role": "orchestrator",
   "schema": "dbx-migration-factory/capabilities/1",
+  "signature": "30c1c557647022559dc1273bd88418879cad9833d751f88b9feb749cca4500ef",
+  "signed_at": "2026-09-27T13:47:04+00:00",
+  "source": {
+    "family": "oracle",
+    "params": {
+      "admin_tenant_id": "a0000000-0000-0000-0000-000000000001",
+      "batch_no": "85559852",
+      "fixture_tenant_id": "00000000-0000-0000-0000-000000000001",
+      "ns": "demo"
+    },
+    "secret": "OW_BILLING_RO_DSN"
+  },
   "summary": {
     "ok": 13,
     "skipped": 1

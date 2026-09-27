@@ -1,0 +1,112 @@
+{
+  "repo": "Cognition-Partner-Workshops/otterworks",
+  "run_id": "20260927",
+  "wave": 2,
+  "base_branch": "tp-run/databricks-20260927T122304Z",
+  "child_macro": "dbx-migration-factory:unit-migration",
+  "verify_macro": "dbx-migration-factory:wave-verify",
+  "width": 1,
+  "breaker_threshold": 3,
+  "max_minutes": 60,
+  "close_minutes": 30,
+  "doctor_max_age": 15,
+  "auto_merge": false,
+  "target_namespace": "ow_tp.mig_20260927_gold",
+  "verify_depth": "full",
+  "source": {
+    "family": "oracle",
+    "secret": "OW_BILLING_RO_DSN",
+    "params": {
+      "ns": "demo",
+      "batch_no": "85559852",
+      "admin_tenant_id": "a0000000-0000-0000-0000-000000000001",
+      "fixture_tenant_id": "00000000-0000-0000-0000-000000000001"
+    }
+  },
+  "capabilities": {
+    "identity": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2",
+    "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+    "catalogs": [
+      "ow_tp"
+    ],
+    "guard_mode": "block",
+    "stop_mode": "hard",
+    "ready": true
+  },
+  "cost_estimate": {
+    "mode": "live",
+    "depth": "full",
+    "tier3_mode": {
+      "OW_BILLING.INVOICE_HEADER": "full_diff"
+    },
+    "source_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 3,
+      "tier4": 0,
+      "total": 5
+    },
+    "target_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 2,
+      "tier4": 0,
+      "total": 4
+    },
+    "source_rows_fetched": 18750,
+    "target_rows_fetched": 18750,
+    "row_counts_known": true
+  },
+  "stop_c": "D-033",
+  "lakebase": {
+    "project": "ow-tp-billing",
+    "database": "ow_tp",
+    "parent_branch": "production",
+    "branch": "mig-20260927-w0",
+    "exec_branch": "mig-20260927-exec",
+    "ttl": "604800s"
+  },
+  "batches": [
+    {
+      "id": "w2-finance-close-gold",
+      "units": [
+        "finance_close_gold"
+      ],
+      "brief": "UNIT finance_close_gold (wave 2, serial, width 1). Gold finance table and the one AI/BI dashboard.\n1. ow_tp.mig_20260927_gold.finance_close_detail: one row per invoice the close covers, from\n   ow_tp.mig_20260927_silver.custbill_records joined back to ow_tp.mig_20260927_bronze.invoice_header\n   (invoice_id, cust_id, tenant_id, invoice_dt, total_amt, batch_no, status_cd, plus cust_no, period_end,\n   currency, rec_type). ow_tp.mig_20260927_gold.finance_close: SUM(total_amt) and COUNT(*) grouped by currency\n   and rec_type, with ns = 'demo' and close_run_at: the same computation the legacy finance close performs\n   (GET /api/reports/finance?ns=demo over the parsed CUSTBILL records). Both as tables built by a small DAB\n   (databricks/mig_20260927/finance_close/, target mig_20260927, job ow_tp_20260927_finance_close, schedule\n   PAUSED, run once manually).\n2. Dashboard ow_tp_20260927_finance_close_dashboard (databricks:databricks-aibi-dashboards; test every query on warehouse\n   565cd2fd713738c4 first): one page with the close total by currency / rec_type from finance_close, the detail\n   row count, and the file sha256 from ow_tp.mig_20260927_silver.custbill_file_manifest. JSON committed under\n   databricks/mig_20260927/dashboards/. Report the dashboard URL.\n3. Legacy side: the legacy finance close total for NS=demo from the legacy chain (the finance report endpoint or\n   its CSV, run locally over the legacy .dat, Oracle read-only), recorded in\n   .migration/recon/finance_close_gold/close_total.json side by side with the gold row.\n4. Gates: w2-detail-parity (row_parity, depth full, PASS of finance_close_detail vs Oracle INVOICE_HEADER scoped\n   by the mapping's root_where), w2-close-total (publish_leg: gold total == SUM(detail) == legacy close total ==\n   the dbx-recon Tier-2 aggregate_sum(TOTAL_AMT) of the detail run, all four values printed), w2-dashboard\n   (structural: dashboard published, every query runs on the warehouse, URL recorded).\nWrite targets: ow_tp.mig_20260927_gold.finance_close_detail, ow_tp.mig_20260927_gold.finance_close, dashboard\now_tp_20260927_finance_close_dashboard, job ow_tp_20260927_finance_close.\n\nRUN CONTRACT (read .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.*, allowed_targets.json first).\n- Run 20260927; base branch tp-run/databricks-20260927T122304Z; open exactly one PR from a branch\n  mig/20260927/<batch_id> into tp-run/databricks-20260927T122304Z; never merge it. Never touch main or\n  tech-partnerships.\n- Oracle OW_BILLING (52.201.36.9:1521/FREEPDB1) is READ-ONLY. The DSN is the env var OW_BILLING_RO_DSN\n  (helper: source /home/ubuntu/bin/ow_oracle_env.sh, secret ow-tp/oracle/ow_billing_ro, principal OW_BILLING_RO).\n  Never print it. Fixture first (services/legacy-billing fixtures, testdata/legacy oracle_billing_seed NS=demo),\n  then ONE live read per stage.\n- Databricks: service principal d9d1c4ec-29da-4ec7-9aa0-e932710d61e2, DATABRICKS_AUTH_TYPE=oauth-m2m, no PAT,\n  catalog ow_tp, warehouse 565cd2fd713738c4. Write only to your declared write_targets; any other write halts the\n  wave. Schedules PAUSED. No cutover, no BILLING_BACKEND change on any deployed service, never Lakebase branch\n  `production`, never ow_tp.bronze / ow_tp.silver / ow_tp.gold / airbyte / fivetran schemas.\n- Lakebase: project ow-tp-billing, database ow_tp, branch mig-20260927-w0, host\n  ep-wild-hat-d120fhwn.database.us-west-2.cloud.databricks.com (helpers /home/ubuntu/bin/ow_lakebase_env.sh and\n  ow_lakebase_pgpass.sh; psql with the literal host and an env-var DSN only). Objects are owned by the service\n  principal role.\n- Recon: ~/.venvs/dbx-recon/bin/dbx-recon --family oracle from the session bridge (never from serverless), mapping\n  .migration/units/<unit_id>/mapping_spec.json, tolerances .migration/03_recon_tolerances.json (tol-20260927-v1),\n  params --param ns=demo --param batch_no=85559852 --param admin_tenant_id=a0000000-0000-0000-0000-000000000001\n  --param fixture_tenant_id=00000000-0000-0000-0000-000000000001. Reports go under .migration/recon/<unit_id>/,\n  the ONLY .migration path you may write. Max 3 full recon attempts, then stop and report. Only a dbx-recon\n  verdict is parity; fix recon failures in converted code, never in the source or the tolerances.\n- Before the PR: make tp-smoke, the tp-pre-pr-self-check skill for your unit, lint/typecheck/affected tests for\n  code you touch. Report: changed paths, write targets actually written, recon verdict + report paths, PR URL.\n- Secrets by name only. Do not edit .migration/05_progress.md, allowed_targets.json, 06_decisions.md, waves/.\n",
+      "write_targets": [
+        "ow_tp.mig_20260927_gold.finance_close_detail",
+        "ow_tp.mig_20260927_gold.finance_close",
+        "ow_tp_20260927_finance_close_dashboard",
+        "ow_tp_20260927_finance_close"
+      ],
+      "deploy_objects": [
+        "ow_tp_20260927_finance_close_dashboard",
+        "ow_tp_20260927_finance_close"
+      ],
+      "verify_depth": "full",
+      "max_minutes": 60,
+      "target_kind": "databricks",
+      "gates": [
+        {
+          "id": "w2-detail-parity",
+          "kind": "row_parity",
+          "status": "pending",
+          "evidence": ""
+        },
+        {
+          "id": "w2-close-total",
+          "kind": "publish_leg",
+          "status": "pending",
+          "evidence": ""
+        },
+        {
+          "id": "w2-dashboard",
+          "kind": "structural",
+          "status": "pending",
+          "evidence": ""
+        }
+      ]
+    }
+  ],
+  "gates_sha": "f6e68ff76723d970f66381e973c408e6938c485d45ca826c5755712f1bd68f57"
+}

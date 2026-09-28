@@ -29,13 +29,16 @@
     {
       "data": {
         "allowlist": [
-          "ow_tp"
+          "ow_tp",
+          "billing_demo"
         ],
         "catalogs": [
-          "ow_tp"
+          "ow_tp",
+          "billing_demo"
         ],
         "expected": [
-          "ow_tp"
+          "ow_tp",
+          "billing_demo"
         ],
         "guard_mode": "block",
         "legacy_sources": 1,
@@ -43,31 +46,34 @@
           {
             "data": {
               "catalogs": [
-                "ow_tp"
+                "ow_tp",
+                "billing_demo"
               ],
               "guard_mode": "block",
               "legacy_sources": 1
             },
-            "detail": "catalogs=['ow_tp'] guard_mode=block",
+            "detail": "catalogs=['ow_tp', 'billing_demo'] guard_mode=block",
             "id": "allowed_targets",
             "status": "ok"
           },
           {
             "data": {
               "allowlist": [
-                "ow_tp"
+                "ow_tp",
+                "billing_demo"
               ],
               "expected": [
-                "ow_tp"
+                "ow_tp",
+                "billing_demo"
               ]
             },
-            "detail": "allowlist catalogs match the contract: ['ow_tp']",
+            "detail": "allowlist catalogs match the contract: ['ow_tp', 'billing_demo']",
             "id": "allowlist_matches_contract",
             "status": "ok"
           }
         ]
       },
-      "detail": "allowed_targets: catalogs=['ow_tp'] guard_mode=block; allowlist_matches_contract: allowlist catalogs match the contract: ['ow_tp']",
+      "detail": "allowed_targets: catalogs=['ow_tp', 'billing_demo'] guard_mode=block; allowlist_matches_contract: allowlist catalogs match the contract: ['ow_tp', 'billing_demo']",
       "id": "allowed_targets",
       "reusable": false,
       "status": "ok"
@@ -351,7 +357,7 @@
             "data": {
               "path": "/home/ubuntu/.local/share/mise/shims/databricks"
             },
-            "detail": "Databricks CLI v1.18.0",
+            "detail": "Databricks CLI v1.12.1",
             "id": "databricks_cli",
             "status": "ok"
           },
@@ -382,8 +388,19 @@
         ],
         "userName": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2"
       },
-      "detail": "databricks_cli: Databricks CLI v1.18.0; databricks_auth_kind: auth: oauth-m2m (service principal via the org blueprint); databricks_identity: authenticated as d9d1c4ec-29da-4ec7-9aa0-e932710d61e2 (service principal) on https://dbc-8bc9474f-40ae.cloud.databricks.com; databricks_warehouse: default warehouse resolved: 565cd2fd713738c4",
+      "detail": "databricks_cli: Databricks CLI v1.12.1; databricks_auth_kind: auth: oauth-m2m (service principal via the org blueprint); databricks_identity: authenticated as d9d1c4ec-29da-4ec7-9aa0-e932710d61e2 (service principal) on https://dbc-8bc9474f-40ae.cloud.databricks.com; databricks_warehouse: default warehouse resolved: 565cd2fd713738c4",
       "id": "databricks_identity",
+      "reusable": false,
+      "status": "ok"
+    },
+    {
+      "data": {
+        "branch": "dbx-doctor-probe-0b854c65",
+        "parent_branch": "production",
+        "project": "ow-tp-billing"
+      },
+      "detail": "branch created and deleted",
+      "id": "lakebase_branch_create",
       "reusable": false,
       "status": "ok"
     },
@@ -391,15 +408,15 @@
       "data": {
         "database": "ow_tp",
         "role": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2",
-        "schema": null
+        "schema": "billing"
       },
-      "detail": "role d9d1c4ec-29da-4ec7-9aa0-e932710d61e2 can CREATE in database ow_tp",
+      "detail": "role d9d1c4ec-29da-4ec7-9aa0-e932710d61e2 can CREATE in schema billing",
       "id": "lakebase_target_grants",
       "reusable": false,
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-27T22:44:27Z",
+  "generated_at": "2026-09-27T23:58:24Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,
@@ -411,7 +428,7 @@
   "role": "orchestrator",
   "schema": "dbx-migration-factory/capabilities/1",
   "summary": {
-    "ok": 14,
+    "ok": 15,
     "skipped": 1
   },
   "workspace": "/home/ubuntu/repos/otterworks"

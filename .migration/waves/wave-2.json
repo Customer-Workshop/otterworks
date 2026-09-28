@@ -27,7 +27,8 @@
     "identity": "d9d1c4ec-29da-4ec7-9aa0-e932710d61e2",
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "catalogs": [
-      "ow_tp"
+      "ow_tp",
+      "billing_demo"
     ],
     "guard_mode": "block",
     "stop_mode": "hard",

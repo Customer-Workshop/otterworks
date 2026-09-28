@@ -5,7 +5,7 @@
   "snapshot": "fixture:.migration/recon/pkg_rating/routine_parity/fixture/scenarios.json",
   "evidence": ".migration/recon/pkg_rating/routine_parity/sp_change_plan.run.json",
   "golden": {
-    "subscriptions": [
+    "ow_billing.subscriptions": [
       {
         "id": "20000000-0000-0000-0000-000000000001",
         "tenant_id": "00000000-0000-0000-0000-000000000001",
@@ -25,7 +25,7 @@
         "suspended_on": null
       }
     ],
-    "subscriptions_hist": [
+    "ow_billing.subscriptions_hist": [
       {
         "hist_id": "1.00",
         "hist_op": "UPD",
@@ -38,7 +38,7 @@
         "suspended_on": null
       }
     ],
-    "billing_audit_log": [
+    "ow_billing.billing_audit_log": [
       {
         "log_id": "8.00",
         "module": "PLANS",
@@ -47,7 +47,7 @@
     ]
   },
   "observed": {
-    "subscriptions": [
+    "ow_billing.subscriptions": [
       {
         "id": "20000000-0000-0000-0000-000000000001",
         "tenant_id": "00000000-0000-0000-0000-000000000001",
@@ -67,7 +67,7 @@
         "suspended_on": null
       }
     ],
-    "subscriptions_hist": [
+    "ow_billing.subscriptions_hist": [
       {
         "hist_id": "1.00",
         "hist_op": "UPD",
@@ -80,7 +80,7 @@
         "suspended_on": null
       }
     ],
-    "billing_audit_log": [
+    "ow_billing.billing_audit_log": [
       {
         "log_id": "8.00",
         "module": "PLANS",

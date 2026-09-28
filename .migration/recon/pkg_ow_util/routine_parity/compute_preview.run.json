@@ -5,7 +5,7 @@
   "snapshot": "fixture:.migration/recon/pkg_ow_util/routine_parity/fixture/scenarios.json",
   "evidence": ".migration/recon/pkg_ow_util/routine_parity/compute_preview.run.json",
   "golden": {
-    "billing_audit_log": [
+    "ow_billing.billing_audit_log": [
       {
         "log_id": "1.00",
         "module": "RATING",
@@ -39,7 +39,7 @@
     ]
   },
   "observed": {
-    "billing_audit_log": [
+    "ow_billing.billing_audit_log": [
       {
         "log_id": "1.00",
         "module": "RATING",

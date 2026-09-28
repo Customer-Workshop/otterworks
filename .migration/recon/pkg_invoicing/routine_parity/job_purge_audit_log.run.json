@@ -5,9 +5,9 @@
   "snapshot": "fixture:.migration/recon/pkg_invoicing/routine_parity/fixture/scenarios.json",
   "evidence": ".migration/recon/pkg_invoicing/routine_parity/job_purge_audit_log.run.json",
   "golden": {
-    "billing_audit_log": []
+    "ow_billing.billing_audit_log": []
   },
   "observed": {
-    "billing_audit_log": []
+    "ow_billing.billing_audit_log": []
   }
 }

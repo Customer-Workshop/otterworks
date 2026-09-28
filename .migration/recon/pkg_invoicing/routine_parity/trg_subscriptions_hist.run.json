@@ -5,7 +5,7 @@
   "snapshot": "fixture:.migration/recon/pkg_invoicing/routine_parity/fixture/scenarios.json",
   "evidence": ".migration/recon/pkg_invoicing/routine_parity/trg_subscriptions_hist.run.json",
   "golden": {
-    "subscriptions_hist": [
+    "ow_billing.subscriptions_hist": [
       {
         "hist_id": "1.00",
         "hist_op": "UPD",
@@ -31,7 +31,7 @@
     ]
   },
   "observed": {
-    "subscriptions_hist": [
+    "ow_billing.subscriptions_hist": [
       {
         "hist_id": "1.00",
         "hist_op": "UPD",

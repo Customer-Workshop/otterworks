@@ -5,7 +5,7 @@
   "snapshot": "fixture:.migration/recon/pkg_ow_util/routine_parity/fixture/scenarios.json",
   "evidence": ".migration/recon/pkg_ow_util/routine_parity/sp_finalize_rating.run.json",
   "golden": {
-    "rating_periods": [
+    "ow_billing.rating_periods": [
       {
         "id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
         "tenant_id": "00000000-0000-0000-0000-000000000004",
@@ -13,7 +13,7 @@
         "period_end": "2026-02-28"
       }
     ],
-    "rating_results": [
+    "ow_billing.rating_results": [
       {
         "id": "4c5e7931-abd4-a1b6-e27d-7958b3bd4b6b",
         "period_id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
@@ -25,7 +25,7 @@
         "overage_amount": "0.00"
       }
     ],
-    "billing_audit_log": [
+    "ow_billing.billing_audit_log": [
       {
         "log_id": "1.00",
         "module": "RATING",
@@ -64,7 +64,7 @@
     ]
   },
   "observed": {
-    "rating_periods": [
+    "ow_billing.rating_periods": [
       {
         "id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
         "tenant_id": "00000000-0000-0000-0000-000000000004",
@@ -72,7 +72,7 @@
         "period_end": "2026-02-28"
       }
     ],
-    "rating_results": [
+    "ow_billing.rating_results": [
       {
         "id": "4c5e7931-abd4-a1b6-e27d-7958b3bd4b6b",
         "period_id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
@@ -84,7 +84,7 @@
         "overage_amount": "0.00"
       }
     ],
-    "billing_audit_log": [
+    "ow_billing.billing_audit_log": [
       {
         "log_id": "1.00",
         "module": "RATING",

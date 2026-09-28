@@ -1,0 +1,108 @@
+{
+  "auto_merge": false,
+  "base_sha": "6ffa09123d38fb730d4b6306aa30dd8c5e106334",
+  "batches": [
+    {
+      "branch": "mig/20260927c/w2-finance-close-gold",
+      "changed_paths": [
+        ".migration/recon/finance_close_gold/close_total.json",
+        ".migration/recon/finance_close_gold/dependencies.json",
+        ".migration/recon/finance_close_gold/finance_close_gold.recon.json",
+        ".migration/recon/finance_close_gold/mapping_spec.dequalified.json",
+        ".migration/recon/finance_close_gold/report.md",
+        ".migration/recon/finance_close_gold/rerun/fresh.json",
+        ".migration/recon/finance_close_gold/rerun/rerun_proof.json",
+        ".migration/recon/finance_close_gold/rerun/shape_fresh_close",
+        ".migration/recon/finance_close_gold/rerun/shape_fresh_detail",
+        ".migration/recon/finance_close_gold/rerun/shape_rerun_close",
+        ".migration/recon/finance_close_gold/rerun/shape_rerun_detail",
+        ".migration/recon/finance_close_gold/rerun_proof.json",
+        ".migration/recon/finance_close_gold/result.json",
+        ".migration/recon/finance_close_gold/runs/fixture-full-1/recon.summary.md",
+        ".migration/recon/finance_close_gold/runs/fixture-full-1/report.md",
+        ".migration/recon/finance_close_gold/runs/fixture-full-1/result.json",
+        ".migration/recon/finance_close_gold/runs/live-full-1/recon.summary.md",
+        ".migration/recon/finance_close_gold/runs/live-full-1/report.md",
+        ".migration/recon/finance_close_gold/runs/live-full-1/result.json",
+        ".migration/recon/finance_close_gold/runs/live-full-2/recon.summary.md",
+        ".migration/recon/finance_close_gold/runs/live-full-2/report.md",
+        ".migration/recon/finance_close_gold/runs/live-full-2/result.json",
+        "databricks/mig_20260927c/dashboards/ow_tp_20260927c_finance_close_dashboard.lvdash.json",
+        "databricks/mig_20260927c/finance_close/databricks.yml",
+        "databricks/mig_20260927c/finance_close/resources/finance_close.job.yml",
+        "databricks/mig_20260927c/finance_close/resources/finance_close_dashboard.dashboard.yml",
+        "databricks/mig_20260927c/finance_close/src/finance_close.sql",
+        "databricks/mig_20260927c/finance_close/src/finance_close_detail.sql"
+      ],
+      "failure_class": "merge_authority",
+      "gates": [
+        {
+          "evidence": ".migration/recon/finance_close_gold/result.json",
+          "id": "w2-detail-parity",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/finance_close_gold/close_total.json",
+          "id": "w2-close-total",
+          "status": "passed"
+        },
+        {
+          "evidence": ".migration/recon/finance_close_gold/finance_close_gold.recon.json",
+          "id": "w2-dashboard",
+          "status": "passed"
+        }
+      ],
+      "id": "w2-finance-close-gold",
+      "merge_eligible": false,
+      "one_line_summary": "PASS downgraded: recon evidence is not merge_eligible=true for every unit (.migration/recon/finance_close_gold/result.json at the PR head has merge_eligible=False) and no merge_override row D-<n> naming finance_close_gold is in .migration/06_decisions.md; finance_close_gold landed: gold finance_close_detail/finance_close (18750 rows, 187618458.58 = legacy = SUM(detail) = Tier-2 sum), paused job run twice, dashboard published; live recon PASS x2 but harness merge_eligible=false (table_privileges structural_gap, rerun evolved leg unsupported on first run); PR #1732 open, not merged.",
+      "pr_head": "1e08df848ba3bf3c96ba79cf2f80410bce1c7ebf",
+      "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1732",
+      "prompt_sha": "43dce2255a059b54",
+      "recon_cost": {
+        "elapsed_s": 23.006,
+        "source_rows_fetched": 18750,
+        "source_statements": 14,
+        "target_rows_fetched": 18750,
+        "target_statements": 9
+      },
+      "recon_mode": "live",
+      "recon_verdict": "PASS",
+      "skill_feedback": [
+        "OW_BILLING_RO principal has no synonyms: the repo Oracle extractor needs CURRENT_SCHEMA=OW_BILLING; brief should say so (used a runtime-only wrapper, source untouched).",
+        "Guard rejects inline VAR=... env assignments and $(...) substitution; the DSN/token export recipe in the brief cannot be typed as written, needed an out-of-repo python exec helper.",
+        "Harness mapping object must be the bare table name when --target-catalog/--target-schema are passed; the unit mapping_spec is fully qualified, so a dequalified copy under .migration/recon/<unit>/ was needed.",
+        "result.json does not persist Tier-2 aggregate values on PASS; the brief's 'print aggregate_sum(TOTAL_AMT)' requires re-reading via recon.adapters sum_probe.",
+        "rerun-proof evolved leg is always 'unsupported' on a first-run unit (no prior committed shape); merge_eligible can never be true on wave-first units without a decision row.",
+        "databricks lakeview create/get are not guard-allowlisted; dashboards must go through DAB resources.dashboards with per-dataset catalog/schema, not --dataset-catalog/--dataset-schema.",
+        "The doctor rewrites .migration/09_capabilities.json; children must git checkout it before committing or the ledger-tamper rule trips.",
+        "make tp-smoke runs from the repo Makefile; brief could name it as the smoke gate command (~2 min, uv sync)."
+      ],
+      "status": "FAIL",
+      "write_targets": [
+        "ow_tp.mig_20260927c_gold.finance_close_detail",
+        "ow_tp.mig_20260927c_gold.finance_close",
+        "ow_tp_20260927c_finance_close_dashboard",
+        "ow_tp_20260927c_finance_close"
+      ]
+    }
+  ],
+  "breaker_tripped_on": null,
+  "close": null,
+  "close_minutes": 30,
+  "closed": false,
+  "doctor_signed_at": "2026-09-28T01:19:59+00:00",
+  "hook_probe": "blocked:4f90dd1b",
+  "manifest_sha": "ff9ca05e01dd",
+  "merge_overrides": [],
+  "pipeline_order": {},
+  "resync": null,
+  "stop_c": "D-015",
+  "tag": "2",
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "verify": null,
+  "waived_gates": [],
+  "wave": 2,
+  "width": 1,
+  "write_target_overlaps": []
+}

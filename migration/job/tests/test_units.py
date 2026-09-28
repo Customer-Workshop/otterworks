@@ -34,6 +34,28 @@ def test_repo_manifest_loads_after_and_rejects_before() -> None:
     assert after.manifest.blob_prefix("r1") == "d24-after/r1/"
 
 
+def test_repo_oracle_overlay_swaps_source_only() -> None:
+    """o27-after serves the same tables from Oracle: only `source` differs from the Db2 after-overlay."""
+    oracle = load_manifest(MANIFEST, "o27-after").manifest
+    db2 = load_manifest(MANIFEST, "d25-after").manifest
+    assert oracle.source.driver == "oracle" and db2.source.driver == "db2"
+    assert oracle.source.unload_command == [] and db2.source.unload_command
+    assert oracle.source.connection_env.database == "ORACLE_SERVICE"
+    assert oracle.source.copybook_dir == db2.source.copybook_dir
+    assert oracle.source.record_format == db2.source.record_format
+    assert oracle.tables == db2.tables and oracle.target == db2.target and oracle.execution == db2.execution
+    with pytest.raises(ConfigError, match="migrate: false"):
+        load_manifest(MANIFEST, "o27-before")
+
+
+def test_unknown_source_driver_rejected(tmp_path: Path) -> None:
+    base = make_manifest_tree(tmp_path, "zz1")
+    overlay = base.parent / "manifests" / "zz1-after.yaml"
+    overlay.write_text(overlay.read_text(encoding="utf-8") + "source:\n  driver: teradata\n", encoding="utf-8")
+    with pytest.raises(ConfigError, match="driver"):
+        load_manifest(base, "zz1-after")
+
+
 @pytest.mark.parametrize("ns", ["main", "D24-after", "d24-during", "toolongtoken12-after", "d24", "1d-after"])
 def test_bad_namespace_tokens_rejected(ns: str) -> None:
     with pytest.raises(ConfigError):

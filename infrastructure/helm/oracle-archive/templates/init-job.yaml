@@ -1,0 +1,91 @@
+{{- if .Values.initJob.enabled }}
+{{- $img := printf "%s:%s" (required "initJob.image.repository (the tenant's ldm job image) is required" .Values.initJob.image.repository) (required "initJob.image.tag is required" .Values.initJob.image.tag) -}}
+{{- /*
+Post-install/upgrade hook. Unlike Db2 (server-side LOAD via kubectl exec), Oracle is seeded over
+SQL*Net by migration/source/seed/oracle.py from the ldm job image (python-oracledb thin mode), so the
+Job needs no ServiceAccount, RBAC or exec into the database pod. The seeder is idempotent: tables at
+their expected count are skipped, partial reruns are duplicate-safe, and it fails unless every table
+and planted MIG key is present.
+*/ -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oracle-archive-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "oracle-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "oracle-archive.annotations" . | nindent 4 }}
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: {{ .Values.initJob.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.initJob.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "oracle-archive.labels" . | nindent 8 }}
+        ldm/role: oracle-seed
+        {{ .Values.networkPolicy.clientLabel }}: "true"
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: seed
+          image: {{ $img | quote }}
+          imagePullPolicy: {{ .Values.initJob.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          workingDir: /app/migration/source
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              deadline=$((SECONDS + {{ .Values.initJob.waitForOracleSeconds }}))
+              echo "waiting for ${ORACLE_DSN} (up to {{ .Values.initJob.waitForOracleSeconds }}s)"
+              until python -c 'import os, oracledb; oracledb.connect(user=os.environ["ORACLE_USER"], password=os.environ["ORACLE_PASSWORD"], dsn=os.environ["ORACLE_DSN"]).close()' 2>/tmp/wait.err; do
+                [ "${SECONDS}" -lt "${deadline}" ] || { echo "oracle not reachable:"; cat /tmp/wait.err; exit 1; }
+                sleep 10
+              done
+              exec python -m seed.oracle --scale {{ .Values.initJob.scale | quote }} --workers {{ .Values.initJob.workers }} --summary-out /tmp/seed-summary.json
+          env:
+            - name: ORACLE_DSN
+              value: {{ include "oracle-archive.dsn" . | quote }}
+            - name: ORACLE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: ORACLE_USER
+            - name: ORACLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: ORACLE_PASSWORD
+          resources:
+            {{- toYaml .Values.initJob.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+{{- end }}

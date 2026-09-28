@@ -1,0 +1,100 @@
+# oracle-archive: Oracle Database 23ai Free StatefulSet for one tenant namespace - the Oracle
+# (Exadata-era) stand-in for the legacy ARCHIVE estate, same SEED-SPEC rows as db2-archive.
+# Release name MUST be `oracle-archive` (Service DNS oracle-archive.<namespace>.svc.cluster.local:1521,
+# PDB service FREEPDB1).
+
+# Namespace token <run>-<state>, e.g. o27-after. Used for the demo/namespace label.
+namespaceToken: ""
+
+# Labels required on every object (CONTRACTS.md §3.4). expires is an absolute UTC timestamp.
+owner: otterworks-demo
+expires: "1970-01-01T00:00:00Z"
+
+# gvenzl/oracle-free:23-slim mirrored into the shared ECR (scripts/deploy-demo.sh ensure_oracle_image) and
+# pinned by digest: the upstream tag moves, the estate must not. digest wins over tag when set.
+# The digest is the linux/amd64 *manifest* (not the multi-arch index) so the same bytes are addressable
+# in Docker Hub and in ECR: docker buildx imagetools inspect docker.io/gvenzl/oracle-free:23-slim.
+image:
+  repository: 599083837640.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks/oracle-free
+  tag: 23-slim
+  digest: "sha256:366fe85702d764d81a0272b72e94e629290c27aa72a47825fcc45701a0633dac"
+  pullPolicy: IfNotPresent
+
+# Secret created by ops (never by this chart) with keys
+#   ORACLE_SYS_PASSWORD  - SYS/SYSTEM password (image ORACLE_PASSWORD)
+#   ORACLE_USER          - the migration login the image creates in FREEPDB1 (image APP_USER); seeds, extracts, purges
+#   ORACLE_PASSWORD      - its password (image APP_USER_PASSWORD)
+credentialsSecret: oracle-archive-credentials
+
+# PDB the estate lives in and the listener port. migration/source/oracle/ddl hard-codes FREEPDB1 (the
+# image's default PDB), so service is fixed; it is a value only so the DSN is built in one place.
+database:
+  service: FREEPDB1
+  port: 1521
+
+# Static PV created by ops Terraform (EBS gp3, the token's source-estate volume - demo-aws names it
+# otterworks-ldm-<token>-db2 for either source engine). No storageClass => no dynamic provisioning.
+pv:
+  volumeName: ""
+  size: 20Gi
+  # When true the chart also creates the PersistentVolume object over the EBS volume (ebs.csi.aws.com);
+  # the EBS volume itself always comes from Terraform.
+  create: false
+  volumeId: ""     # vol-0123... (demo-aws output db2_volume_id)
+  zone: ""         # availability zone of the volume (demo-aws output db2_volume_az)
+
+# Oracle Free needs ~2 GiB to open; 4 GiB limit leaves headroom for the seed's bulk inserts.
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+# The image's own /opt/oracle/healthcheck.sh: 0 iff the container finished initialising (incl. the
+# /container-entrypoint-initdb.d DDL) and FREEPDB1 is OPEN READ WRITE. First start unpacks the database
+# and runs the DDL (2-8 minutes on a shared node).
+probes:
+  startup:
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 60
+  readiness:
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 3
+  liveness:
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 5
+
+networkPolicy:
+  enabled: true
+  # 1521 only from same-namespace pods carrying this label (migration Job, seed Job).
+  clientLabel: ldm/oracle-client
+
+# Post-install/upgrade hook Job: seeds ARCHIVE.* over SQL*Net with migration/source/seed/oracle.py
+# (idempotent - IGNORE_ROW_ON_DUPKEY_INDEX + final count/planted-key check). Runs from the tenant's
+# ldm job image, which ships the seed package and python-oracledb (thin mode, no Instant Client).
+initJob:
+  enabled: true
+  image:
+    repository: ""              # required: <registry>/otterworks-demo/<token>/ldm-job
+    tag: ""
+    pullPolicy: IfNotPresent
+  scale: "1"                    # 0.01 for smoke tests
+  workers: 4
+  activeDeadlineSeconds: 5400
+  ttlSecondsAfterFinished: 86400
+  waitForOracleSeconds: 1800
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+nodeSelector: {}
+tolerations: []

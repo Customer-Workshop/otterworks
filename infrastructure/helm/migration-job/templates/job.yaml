@@ -17,7 +17,7 @@ spec:
     metadata:
       labels:
         {{- include "migration-job.labels" . | nindent 8 }}
-        ldm/db2-client: "true"
+        ldm/{{ include "migration-job.sourceDriver" . }}-client: "true"
     spec:
       restartPolicy: {{ .Values.job.restartPolicy }}
       {{- if .Values.serviceAccount.create }}
@@ -65,7 +65,7 @@ spec:
             {{- end }}
           envFrom:
             - secretRef:
-                name: {{ .Values.secrets.db2 }}
+                name: {{ index .Values.secrets (include "migration-job.sourceDriver" .) }}
             - secretRef:
                 name: {{ .Values.secrets.postgres }}
                 optional: true

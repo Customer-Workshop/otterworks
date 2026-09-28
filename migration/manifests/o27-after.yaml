@@ -1,0 +1,28 @@
+# AFTER deployment on the Oracle source estate: the same SEED-SPEC rows served by Oracle Database 23ai Free
+# (oracle-archive chart) instead of Db2. Same target (the tenant's PostgreSQL database + the token's S3
+# prefix, PySpark local-mode LOAD), same selection, same MIG-01..07 - only `source` changes.
+# No unload_command: `ldm extract` uses its built-in fixed-width writer over drivers/oracle.py, so the
+# unload files are byte-compatible with the Db2 ones (TIMESTAMP fraction digits 10-12 read back as 000).
+namespace: o27-after
+run_token: o27
+extends: ../manifest.yaml
+migrate: true
+azure: false
+purge: true
+source:
+  driver: oracle
+  connection_env:
+    host: ORACLE_HOST
+    port: ORACLE_PORT
+    database: ORACLE_SERVICE                  # PDB service name (FREEPDB1)
+    user: ORACLE_USER
+    password: ORACLE_PASSWORD
+  unload_command: []
+execution:
+  run_job_in_azure: false
+  load_engine: spark
+  spark:
+    master: "local[*]"
+    driver_memory: 1g
+    shuffle_partitions: 4
+    records_per_slice: 5000

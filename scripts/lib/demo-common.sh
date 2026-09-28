@@ -29,12 +29,20 @@ DEMO_STATE_BUCKET="${DEMO_STATE_BUCKET:-otterworks-terraform-state}"
 DEMO_AWS_TF_DIR="${REPO_ROOT}/infrastructure/terraform/demo-aws"
 AZURE_TF_DIR="${REPO_ROOT}/infrastructure/terraform/azure"
 DB2_CHART_DIR="${REPO_ROOT}/infrastructure/helm/db2-archive"
+ORACLE_CHART_DIR="${REPO_ROOT}/infrastructure/helm/oracle-archive"
 JOB_CHART_DIR="${REPO_ROOT}/infrastructure/helm/migration-job"
 DB2_CREDENTIALS_SECRET="db2-archive-credentials"
+ORACLE_CREDENTIALS_SECRET="oracle-archive-credentials"
 ARCHIVE_STORE_SECRET="archive-store-credentials"
 LDM_AZURE_SECRET="ldm-azure"
 LDM_POSTGRES_SECRET="ldm-postgres"
 DB2_RELEASE="db2-archive"
+ORACLE_RELEASE="oracle-archive"
+ORACLE_PORT=1521
+ORACLE_SERVICE="FREEPDB1"
+# Upstream image the oracle-archive chart pins by digest; mirrored into ECR by ensure_oracle_image.
+ORACLE_UPSTREAM_IMAGE="${ORACLE_UPSTREAM_IMAGE:-docker.io/gvenzl/oracle-free:23-slim}"
+ORACLE_ECR_REPOSITORY="${ORACLE_ECR_REPOSITORY:-workshop/otterworks/oracle-free}"
 # MIG-06 prior-run fixture, one rendering per target provider (image path); MIG06_FIXTURE_PATH overrides.
 MIG06_FIXTURE_DIR="${MIG06_FIXTURE_DIR:-/app/migration/source/seed/fixtures}"
 MANIFEST_DIR="${REPO_ROOT}/migration"
@@ -148,6 +156,34 @@ ensure_ldm_job_image() {
   run docker push "${image}"
   dlog "job image ${image} pushed"
 }
+# Oracle Free image for the oracle-archive chart: copy the pinned upstream linux/amd64 manifest into
+# the workshop ECR namespace registry-to-registry (nodes pull from ECR only; Docker Hub is
+# rate-limited and unpinned). The chart's values.yaml pins the same digest, so the copy is verified
+# by digest, not tag - `buildx imagetools create` preserves the manifest byte-for-byte.
+oracle_ecr_image() { aws_account_id; printf '%s.dkr.ecr.%s.amazonaws.com/%s' "${AWS_ACCOUNT_ID}" "${AWS_REGION}" "${ORACLE_ECR_REPOSITORY}"; }
+oracle_chart_digest() { sed -nE 's/^[[:space:]]+digest:[[:space:]]*"?(sha256:[0-9a-f]{64})"?.*/\1/p' "${ORACLE_CHART_DIR}/values.yaml" | head -1; }
+ensure_oracle_image() {
+  local digest tag repo image
+  digest="$(oracle_chart_digest)"; [ -n "${digest}" ] || die "oracle-archive/values.yaml has no image.digest to mirror" 2
+  tag="${ORACLE_UPSTREAM_IMAGE##*:}"; repo="${ORACLE_ECR_REPOSITORY}"
+  aws_account_id; image="$(oracle_ecr_image)"
+  if [ "${DRY_RUN}" != "1" ] && aws ecr describe-images --repository-name "${repo}" --image-ids "imageDigest=${digest}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+    dlog "oracle image ${image}@${digest} already in ECR"; return 0
+  fi
+  require_bins docker
+  if [ "${DRY_RUN}" != "1" ]; then
+    aws ecr describe-repositories --repository-names "${repo}" --region "${AWS_REGION}" >/dev/null 2>&1 ||
+      run aws ecr create-repository --repository-name "${repo}" --region "${AWS_REGION}" --image-scanning-configuration scanOnPush=true \
+        --tags "Key=demo,Value=${DEMO_NAME}" "Key=owner,Value=${DEMO_OWNER}"
+    aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >/dev/null
+  fi
+  run docker buildx imagetools create --tag "${image}:${tag}" "${ORACLE_UPSTREAM_IMAGE%%:*}@${digest}"
+  if [ "${DRY_RUN}" != "1" ]; then
+    aws ecr describe-images --repository-name "${repo}" --image-ids "imageDigest=${digest}" --region "${AWS_REGION}" >/dev/null 2>&1 ||
+      die "ECR ${image} has no manifest ${digest} after the copy; not deploying an unpinned Oracle image"
+  fi
+  dlog "oracle image ${image}@${digest} mirrored (tag ${tag})"
+}
 # Platform control table (demo-platform/docs/control-table-schema.md). The platform
 # reaper GCs any otterworks-* namespace without a TENANT#<id>/META item as an orphan
 # (grace 300s) and idle-suspends registered non-persistent tenants after an hour
@@ -186,6 +222,15 @@ overlay_flag() {
   [ -f "${f}" ] || { printf 'false'; return 0; }
   local v; v="$(sed -nE "s/^[[:space:]]*${key}:[[:space:]]*([a-zA-Z]+).*/\1/p" "${f}" | head -1)"
   case "${v}" in true|True|TRUE) printf 'true' ;; *) printf 'false' ;; esac
+}
+
+# source.driver from the token's overlay; the base manifest's default (db2) otherwise. Picks the
+# source chart deploy-demo.sh installs and the ARCHIVE_STORE / *_HOST family it wires.
+token_source_driver() {
+  local token="$1" f v=""; f="$(overlay_path "${token}")"
+  [ -f "${f}" ] && v="$(sed -nE 's/^[[:space:]]+driver:[[:space:]]*([a-z0-9]+).*/\1/p' "${f}" | head -1)"
+  v="${v:-db2}"
+  case "${v}" in db2|oracle) printf '%s' "${v}" ;; *) die "overlay ${f}: source.driver ${v} is not db2 or oracle" 2 ;; esac
 }
 
 # target.provider from the token's overlay; the base manifest's default (postgresql) otherwise.
@@ -664,10 +709,14 @@ render_job() {
   # `ldm init` also loads the MIG-06 prior-run fixture (§12.1) via --apply-sql;
   # the image ships the repo's migration/ tree at /app/migration (§13.2).
   [ "${stage}" = "init" ] && extra+=(--set-json "extraArgs=[\"--apply-sql\",\"$(mig06_fixture_path "${token}")\"]")
+  # Source estate: credentials Secret + NetworkPolicy client label follow the overlay's source.driver.
+  local driver; driver="$(token_source_driver "${token}")"
+  extra+=(--set "sourceDriver=${driver}")
+  [ "${driver}" = "db2" ] && extra+=(--set-string "env.DB2_DATABASE=$(db2_db_name "${token}")")
   # shellcheck disable=SC2086
   helm template "$(job_name "${stage}" "${run_id}")" "${JOB_CHART_DIR}" --namespace "${ns}" \
     --set "stage=${stage}" --set "namespaceToken=${token}" --set "runId=${run_id}" \
-    --set "expires=$(demo_expires "${ns}")" --set-string "env.DB2_DATABASE=$(db2_db_name "${token}")" \
+    --set "expires=$(demo_expires "${ns}")" \
     "${extra[@]}" ${MIGRATION_JOB_HELM_ARGS:-}
 }
 

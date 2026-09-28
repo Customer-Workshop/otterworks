@@ -12,14 +12,14 @@ See `what_moved.md` for the one-screen table. Raw artifacts in `evidence/`:
 - Dashboard: https://dbc-8bc9474f-40ae.cloud.databricks.com/dashboardsv3/01f1badd479f1e18b2b20b3879389b06/published?w=7474651138173478
 
 ## Recordings (mp4, not committed; sha256 in `recordings.sha256`)
-The OtterWorks application itself (web-app :3000 and admin-dashboard :4200 via the api-gateway, `make tp-up` estate), with the api-gateway's `/api/v1/billing` pointed at the same legacy-billing service on Oracle (local fixture, :8096) and then on Lakebase `mig-20260927c-exec` schema `billing` (:8097). Needs PR #1733 (facade follows `BILLING_BACKEND`; before it the Lakebase side answered 501). Web login is a local auth-service user mapped to Tenant One's UUID; no Oracle tenant was created.
-1. `01-legacy-flow.mp4`: web-app Plans / Overview / Account / Invoices (Tenant One STARTER 49.00, Feb invoice `109bb68d-...` 5 lines = 53.04) and the admin Billing Report page (RPT-114 month-end 18,750 invoices / 187,618,458.58, CUSTBILL finance section), all on Oracle.
-2. `02-databricks-flow.mp4`: same pages, same tenant, gateway on Lakebase exec: same invoice id, lines and 53.04. Admin Billing Report shows its load error on this side: month-end/reconciliation read the CUSTBILL batch tables, which moved to Delta gold + the dashboard, not Lakebase, so they answer 501 (not silently Oracle); the finance CSV endpoint still answers 200 but the page hides that panel when the main report fails. Ends at the dashboard login wall (no browser session for the SP).
-3. `03-live-issue-invoice.mp4`: live issue_invoice for May-2026 on both sides (the web-app has no issue button, so the POST is the service's own form, then the resulting invoice is shown in the web-app on each side): both `issued`, same invoice id `afb70fae-4123-26fd-48b1-d41db7e9d94f`, 5 lines = 53.04 on both.
-Known gaps, unchanged app code: the web-app Overview page carries a static "Oracle" source label on both sides; the dashboard could not be shown authenticated. Earlier service-page and terminal recordings kept on the box only.
+Same legacy-billing Flask app in Chrome, `BILLING_BACKEND=oracle` (local Oracle fixture, :8096) vs `BILLING_BACKEND=postgres` against Lakebase `mig-20260927c-exec` schema `billing` (:8097).
+1. `01-legacy-flow.mp4`: app on Oracle: health, plans, Tenant One STARTER entitlement, Feb invoice `109bb68d-...` lines (49.00/0.00/2.02/2.02/0.00 = 53.04), `/api/reports/finance?ns=demo` 18,750 records / 187,618,458.58 from the ksh/perl chain output.
+2. `02-databricks-flow.mp4`: same app, same clicks on Lakebase exec, same invoice id and lines = 53.04; dashboard login barrier shown (no browser session for the SP), then committed `close_total.json` four-way 187,618,458.58.
+3. `03-live-issue-invoice.mp4`: both apps side by side, live POST `/api/invoices/<tenant>/issue` Apr-2026 on each; both `issued`, same invoice id `a0e5370d-c45a-ca95-38fc-848bcd67d4aa`, 5 lines = 53.04 on both.
+Notes: preview endpoints show unrounded per-line tax (2.02125) on both backends; persisted lines round to 2.02. JSON typing differs (Oracle strings vs Postgres ints/timestamps), amounts identical. Earlier terminal-based recordings kept in `recordings_old/` on the box only.
 
 ## PRs (run branch `tp-run/databricks-20260927T194945Z`; human merges)
-#1729 wave 0 scaffold, #1730 wave 1 packages, #1731 wave 1 CUSTBILL Lakeflow, #1732 wave 2 finance close gold + dashboard, #1733 legacy-billing facade through the backend switch (consumer-side, run branch only; enables the application recordings).
+#1729 wave 0 scaffold, #1730 wave 1 packages, #1731 wave 1 CUSTBILL Lakeflow, #1732 wave 2 finance close gold + dashboard.
 
 ## Decisions
 D-009 STOP A, D-011 STOP B, D-013/14/15 STOP C, D-016 w0 override, D-021 w0 accept, D-022 w1 fixes, D-023 w1 override, D-024 w2 override. Independent verifier never ran (mechanical gate); parity rests on live dbx-recon PASS per unit.

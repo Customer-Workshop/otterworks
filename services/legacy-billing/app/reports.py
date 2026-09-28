@@ -18,6 +18,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
+from backends import backend_name
 from oracle_conn import oracle_connect as connect_oracle
 
 reports = Blueprint("reports", __name__)
@@ -148,6 +149,12 @@ def report_meta(ns):
     }
 
 
+def _oracle_estate_only():
+    if backend_name() == "oracle":
+        return None
+    return jsonify(error="not available on this backend"), 501
+
+
 def _admin_report_allowed():
     return "ADMIN" in {
         role.strip().upper()
@@ -158,6 +165,9 @@ def _admin_report_allowed():
 
 @reports.get("/api/reports/month-end")
 def month_end():
+    blocked = _oracle_estate_only()
+    if blocked:
+        return blocked
     ns = request.args.get("ns", "demo")
     batch_no = ns_batch_no(ns)
     try:
@@ -182,6 +192,9 @@ def admin_month_end():
 
 @reports.get("/api/reports/reconciliation")
 def reconciliation():
+    blocked = _oracle_estate_only()
+    if blocked:
+        return blocked
     ns = request.args.get("ns", "demo")
     batch_no = ns_batch_no(ns)
     try:

@@ -29,6 +29,7 @@ from reports import (
 
 @pytest.fixture
 def client(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
     fixtures = {
         reports_module.STATUS_SQL: [("ISSUED", 100, "12345.00"), ("PAID", 50, "999.00")],
         reports_module.LINE_SQL: [("ISSUED", "CHARGE", 400, "12000.00", "345.00", 100)],
@@ -164,3 +165,16 @@ def test_finance_report_over_size_limit_returns_413(client, monkeypatch, tmp_pat
     response = client.get("/api/reports/finance?ns=demo")
     assert response.status_code == 413
     assert response.get_json() == {"error": "finance report too large"}
+
+
+def test_oracle_batch_reports_not_available_on_postgres(client, monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "postgres")
+    for path in ("/api/reports/month-end", "/api/reports/reconciliation"):
+        response = client.get(path + "?ns=demo")
+        assert response.status_code == 501
+        assert response.get_json() == {"error": "not available on this backend"}
+    response = client.get(
+        "/api/v1/billing/admin/reports/month-end?ns=demo",
+        headers={"X-User-Roles": "ADMIN"},
+    )
+    assert response.status_code == 501

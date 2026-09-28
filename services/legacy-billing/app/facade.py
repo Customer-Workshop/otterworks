@@ -2,23 +2,26 @@ import os
 import re
 from datetime import date, datetime, timezone
 
-import oracledb
 from flask import Blueprint, jsonify, request
 
-from backends import backend_name
-from backends import oracle
+from backends import get_backend
+from backends import oracle  # noqa: F401  (tests patch facade_module.oracle.*)
 
 facade = Blueprint("facade", __name__, url_prefix="/api/v1/billing")
 internal = Blueprint("internal", __name__)
 
 UNAVAILABLE = {
     "error": "legacy estate unavailable",
-    "detail": "the Oracle billing estate is not reachable",
+    "detail": "the billing estate is not reachable",
 }
 CANONICAL_UUID = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
     r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
+
+
+def _backend():
+    return get_backend()
 
 
 def _not_available():
@@ -41,16 +44,7 @@ def _admin():
 
 
 def _ensure(tenant_id):
-    with oracle.oracle_connect() as connection:
-        oracle.ensure_tenant(
-            connection,
-            tenant_id,
-            request.headers.get("X-User-Email"),
-        )
-
-
-def _oracle_only():
-    return backend_name() == "oracle"
+    _backend().ensure_tenant_by_id(tenant_id, request.headers.get("X-User-Email"))
 
 
 def _parse_date(value, name):
@@ -74,8 +68,7 @@ def plans():
     _, error = _identity()
     if error:
         return error
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     try:
         return jsonify(
             [
@@ -87,10 +80,10 @@ def plans():
                     "included_units": row.get("included_units"),
                     "overage_rate": row.get("overage_rate"),
                 }
-                for row in oracle.list_plans()
+                for row in backend.list_plans()
             ]
         )
-    except oracledb.Error:
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -99,38 +92,20 @@ def me():
     tenant_id, error = _identity()
     if error:
         return error
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     on, date_error = _parse_date(request.args.get("on"), "on")
     if date_error:
         return date_error
     try:
         _ensure(tenant_id)
-        entitlement = oracle.entitlement(tenant_id, on)
-        tenant_rows = oracle.query(
-            """SELECT t.id AS tenant_id, t.name,
-                      ts.code_desc AS status, t.tax_exempt_yn AS tax_exempt
-                 FROM tenants t
-                 LEFT JOIN codes ts
-                   ON ts.code_type = 'TENANT_STATUS'
-                  AND ts.code_val = t.status_cd
-                WHERE t.id = :1""",
-            (tenant_id,),
-        )
-        customer = oracle.query(
-            """SELECT cust_no, cust_name, cur_bal_amt, past_due_amt,
-                      credit_hold_yn
-                 FROM customer_master
-                WHERE tenant_id = :1
-                ORDER BY cust_seq_no
-                FETCH FIRST 1 ROWS ONLY""",
-            (tenant_id,),
-        )
-        body = tenant_rows[0]
+        entitlement = backend.entitlement(tenant_id, on)
+        body = backend.tenant_profile(tenant_id)
+        if body is None:
+            return jsonify(error="tenant not found"), 404
         body["entitlement"] = entitlement
-        body["customer"] = customer[0] if customer else None
+        body["customer"] = backend.primary_customer(tenant_id)
         return jsonify(body)
-    except oracledb.Error:
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -139,15 +114,14 @@ def entitlement():
     tenant_id, error = _identity()
     if error:
         return error
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     on, date_error = _parse_date(request.args.get("on"), "on")
     if date_error:
         return date_error
     try:
         _ensure(tenant_id)
-        return jsonify(oracle.entitlement(tenant_id, on))
-    except oracledb.Error:
+        return jsonify(backend.entitlement(tenant_id, on))
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -156,8 +130,7 @@ def plan_change():
     tenant_id, error = _identity()
     if error:
         return error
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
         return jsonify(error="invalid plan change", detail="request body must be a JSON object"), 400
@@ -174,22 +147,22 @@ def plan_change():
     if effective_date < datetime.now(timezone.utc).date():
         return jsonify(error="invalid plan change", detail="effective_on must be today or later"), 400
     try:
-        if plan_id not in {row.get("plan_id") for row in oracle.list_plans()}:
+        if plan_id not in {row.get("plan_id") for row in backend.list_plans()}:
             return jsonify(error="invalid plan change", detail="plan_id is not a known billing plan"), 400
         _ensure(tenant_id)
-        oracle.change_plan(
+        backend.change_plan(
             tenant_id,
             plan_id,
             effective_on,
         )
         return jsonify(
             status="changed",
-            entitlement=oracle.entitlement(
+            entitlement=backend.entitlement(
                 tenant_id,
                 effective_on,
             ),
         )
-    except oracledb.Error:
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -198,32 +171,18 @@ def usage():
     tenant_id, error = _identity()
     if error:
         return error
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     start, end, date_error = _usage_range()
     if date_error:
         return date_error
     try:
         _ensure(tenant_id)
         return jsonify(
-            summary=oracle.usage_summary(tenant_id, start, end),
-            rating=oracle.usage_rating(tenant_id, start, end),
-            events=oracle.query(
-                """SELECT * FROM (
-                       SELECT u.id, u.occurred_at, u.units, c.code_desc AS kind
-                         FROM usage_events u
-                         JOIN codes c
-                           ON c.code_type = 'USAGE_KIND'
-                          AND c.code_val = u.kind_cd
-                        WHERE u.tenant_id = :1
-                          AND u.occurred_at >= :2
-                          AND u.occurred_at < TO_DATE(:3, 'YYYY-MM-DD') + 1
-                        ORDER BY u.occurred_at DESC, u.id DESC
-                   ) WHERE ROWNUM <= 50""",
-                (tenant_id, oracle._as_date(start), end),
-            ),
+            summary=backend.usage_summary(tenant_id, start, end),
+            rating=backend.usage_rating(tenant_id, start, end),
+            events=backend.usage_events(tenant_id, start, end),
         )
-    except oracledb.Error:
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -232,25 +191,11 @@ def invoices():
     tenant_id, error = _identity()
     if error:
         return error
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     try:
         _ensure(tenant_id)
-        return jsonify(
-            oracle.query(
-                """SELECT i.id AS invoice_id, rp.period_start, rp.period_end,
-                          i.subtotal, i.tax, i.total, c.code_desc AS status
-                     FROM invoices i
-                     JOIN rating_periods rp ON rp.id = i.period_id
-                     LEFT JOIN codes c
-                       ON c.code_type = 'INV_STATUS'
-                      AND c.code_val = i.status_cd
-                    WHERE i.tenant_id = :1
-                    ORDER BY i.issued_at DESC, i.id DESC""",
-                (tenant_id,),
-            )
-        )
-    except oracledb.Error:
+        return jsonify(backend.list_invoices(tenant_id))
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -259,18 +204,13 @@ def invoice_lines(invoice_id):
     tenant_id, error = _identity()
     if error:
         return error
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     try:
         _ensure(tenant_id)
-        owned = oracle.query(
-            "SELECT 1 FROM invoices WHERE id = :1 AND tenant_id = :2",
-            (invoice_id, tenant_id),
-        )
-        if not owned:
+        if not backend.invoice_owned(invoice_id, tenant_id):
             return jsonify(error="invoice not found"), 404
-        return jsonify(oracle.invoice_lines(invoice_id))
-    except oracledb.Error:
+        return jsonify(backend.invoice_lines(invoice_id))
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -279,25 +219,14 @@ def customer():
     tenant_id, error = _identity()
     if error:
         return error
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     try:
         _ensure(tenant_id)
-        customers = oracle.query(
-            "SELECT * FROM customer_master WHERE tenant_id = :1 ORDER BY cust_seq_no FETCH FIRST 1 ROWS ONLY",
-            (tenant_id,),
-        )
-        if not customers:
+        body = backend.customer_with_attributes(tenant_id)
+        if body is None:
             return jsonify(error="customer not found"), 404
-        body = customers[0]
-        body["attributes"] = oracle.query(
-            """SELECT * FROM entity_attr_value
-                WHERE entity_type = 'CUSTOMER' AND entity_id = :1
-                ORDER BY eav_id""",
-            (customers[0]["cust_id"],),
-        )
         return jsonify(body)
-    except oracledb.Error:
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -305,13 +234,14 @@ def customer():
 def admin_overdue():
     if not _admin():
         return jsonify(error="forbidden"), 403
-    if not _oracle_only():
+    backend = _backend()
+    if not backend.SUPPORTS_DUNNING:
         return _not_available()
     as_of, date_error = _parse_date(request.args.get("as_of"), "as_of")
     if date_error:
         return date_error
     try:
-        rows = oracle.overdue(as_of)
+        rows = backend.overdue(as_of)
         normalized = []
         for row in rows:
             row = dict(row)
@@ -319,7 +249,7 @@ def admin_overdue():
                 row.setdefault("amount", row["total"])
             normalized.append(row)
         return jsonify(normalized)
-    except oracledb.Error:
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -327,28 +257,15 @@ def admin_overdue():
 def admin_dunning():
     if not _admin():
         return jsonify(error="forbidden"), 403
-    if not _oracle_only():
+    backend = _backend()
+    if not backend.SUPPORTS_DUNNING:
         return _not_available()
     as_of, date_error = _parse_date(request.args.get("as_of"), "as_of")
     if date_error:
         return date_error
     try:
-        return jsonify(
-            oracle.query(
-                """SELECT * FROM (
-                       SELECT d.id, d.tenant_id, d.invoice_id, d.attempt_no,
-                              d.scheduled_for, c.code_desc AS status
-                         FROM dunning_attempts d
-                         LEFT JOIN codes c
-                           ON c.code_type = 'DUN_STATUS'
-                          AND c.code_val = d.status_cd
-                        WHERE d.scheduled_for <= :1
-                        ORDER BY d.scheduled_for DESC, d.id DESC
-                   ) WHERE ROWNUM <= 200""",
-                (oracle._as_date(as_of),),
-            )
-        )
-    except oracledb.Error:
+        return jsonify(backend.dunning_attempts(as_of))
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 
@@ -359,8 +276,7 @@ def usage_event():
         return jsonify(error="internal usage ingest not configured"), 503
     if request.headers.get("X-Internal-Token") != expected_token:
         return jsonify(error="unauthorized"), 401
-    if not _oracle_only():
-        return _not_available()
+    backend = _backend()
     raw_body = request.get_data(cache=True)
     if len(raw_body) > 16 * 1024:
         return jsonify(error="invalid usage event", detail="request body exceeds 16 KB"), 400
@@ -387,37 +303,20 @@ def usage_event():
     except ValueError:
         return jsonify(error="invalid usage event", detail="occurred_at must be an ISO-8601 timestamp"), 400
     try:
-        with oracle.oracle_connect() as connection:
-            oracle.ensure_tenant(connection, tenant_id, payload.get("email"))
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """SELECT code_val FROM codes
-                        WHERE code_type = 'USAGE_KIND'
-                          AND LOWER(code_desc) = LOWER(:1)""",
-                    (payload.get("kind"),),
-                )
-                kind_row = cursor.fetchone()
-                cursor.execute(
-                    """INSERT INTO usage_events
-                       (id, tenant_id, occurred_at, units, kind_cd)
-                       VALUES (:1, :2, :3, :4, :5)""",
-                    (
-                        payload["event_id"],
-                        tenant_id,
-                        oracle._as_datetime(occurred_at),
-                        units,
-                        kind_row[0] if kind_row else None,
-                    ),
-                )
-            connection.commit()
-        return jsonify(status="recorded"), 201
-    except oracledb.Error as exc:
-        text = str(exc)
-        code = getattr(exc, "code", None)
-        if code == 1 or "ORA-00001" in text:
+        status = backend.record_usage_event(
+            tenant_id,
+            payload.get("email"),
+            event_id,
+            kind,
+            units,
+            occurred_at,
+        )
+        if status == "duplicate":
             return jsonify(status="duplicate")
-        if code in (20001, 20002) or "ORA-2000" in text:
-            return jsonify(error=text), 422
+        return jsonify(status="recorded"), 201
+    except backend.ValidationError as exc:
+        return jsonify(error=str(exc)), 422
+    except backend.Error:
         return jsonify(UNAVAILABLE), 503
 
 

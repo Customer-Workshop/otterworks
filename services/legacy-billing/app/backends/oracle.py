@@ -7,6 +7,12 @@ import oracledb
 from oracle_conn import oracle_connect
 
 NAME = "oracle"
+SUPPORTS_DUNNING = True
+Error = oracledb.Error
+
+
+class ValidationError(Exception):
+    pass
 
 
 def _json_value(value):
@@ -180,3 +186,143 @@ def _as_datetime(value):
     if isinstance(value, datetime):
         return value
     return datetime.fromisoformat(str(value).replace("Z", "+00:00")).replace(tzinfo=None)
+
+
+def tenant_profile(tenant_id):
+    rows_ = query(
+        """SELECT t.id AS tenant_id, t.name,
+                  ts.code_desc AS status, t.tax_exempt_yn AS tax_exempt
+             FROM tenants t
+             LEFT JOIN codes ts
+               ON ts.code_type = 'TENANT_STATUS'
+              AND ts.code_val = t.status_cd
+            WHERE t.id = :1""",
+        (tenant_id,),
+    )
+    return rows_[0] if rows_ else None
+
+
+def primary_customer(tenant_id):
+    rows_ = query(
+        """SELECT cust_no, cust_name, cur_bal_amt, past_due_amt,
+                  credit_hold_yn
+             FROM customer_master
+            WHERE tenant_id = :1
+            ORDER BY cust_seq_no
+            FETCH FIRST 1 ROWS ONLY""",
+        (tenant_id,),
+    )
+    return rows_[0] if rows_ else None
+
+
+def usage_events(tenant_id, start, end, limit=50):
+    return query(
+        """SELECT * FROM (
+               SELECT u.id, u.occurred_at, u.units, c.code_desc AS kind
+                 FROM usage_events u
+                 JOIN codes c
+                   ON c.code_type = 'USAGE_KIND'
+                  AND c.code_val = u.kind_cd
+                WHERE u.tenant_id = :1
+                  AND u.occurred_at >= :2
+                  AND u.occurred_at < TO_DATE(:3, 'YYYY-MM-DD') + 1
+                ORDER BY u.occurred_at DESC, u.id DESC
+           ) WHERE ROWNUM <= :4""",
+        (tenant_id, _as_date(start), end, limit),
+    )
+
+
+def list_invoices(tenant_id):
+    return query(
+        """SELECT i.id AS invoice_id, rp.period_start, rp.period_end,
+                  i.subtotal, i.tax, i.total, c.code_desc AS status
+             FROM invoices i
+             JOIN rating_periods rp ON rp.id = i.period_id
+             LEFT JOIN codes c
+               ON c.code_type = 'INV_STATUS'
+              AND c.code_val = i.status_cd
+            WHERE i.tenant_id = :1
+            ORDER BY i.issued_at DESC, i.id DESC""",
+        (tenant_id,),
+    )
+
+
+def invoice_owned(invoice_id, tenant_id):
+    return bool(query(
+        "SELECT 1 FROM invoices WHERE id = :1 AND tenant_id = :2",
+        (invoice_id, tenant_id),
+    ))
+
+
+def customer_with_attributes(tenant_id):
+    customers = query(
+        "SELECT * FROM customer_master WHERE tenant_id = :1 ORDER BY cust_seq_no FETCH FIRST 1 ROWS ONLY",
+        (tenant_id,),
+    )
+    if not customers:
+        return None
+    body = customers[0]
+    body["attributes"] = query(
+        """SELECT * FROM entity_attr_value
+            WHERE entity_type = 'CUSTOMER' AND entity_id = :1
+            ORDER BY eav_id""",
+        (customers[0]["cust_id"],),
+    )
+    return body
+
+
+def dunning_attempts(as_of, limit=200):
+    return query(
+        """SELECT * FROM (
+               SELECT d.id, d.tenant_id, d.invoice_id, d.attempt_no,
+                      d.scheduled_for, c.code_desc AS status
+                 FROM dunning_attempts d
+                 LEFT JOIN codes c
+                   ON c.code_type = 'DUN_STATUS'
+                  AND c.code_val = d.status_cd
+                WHERE d.scheduled_for <= :1
+                ORDER BY d.scheduled_for DESC, d.id DESC
+           ) WHERE ROWNUM <= :2""",
+        (_as_date(as_of), limit),
+    )
+
+
+def ensure_tenant_by_id(tenant_id, email):
+    with oracle_connect() as connection:
+        return ensure_tenant(connection, tenant_id, email)
+
+
+def record_usage_event(tenant_id, email, event_id, kind, units, occurred_at):
+    try:
+        with oracle_connect() as connection:
+            ensure_tenant(connection, tenant_id, email)
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """SELECT code_val FROM codes
+                        WHERE code_type = 'USAGE_KIND'
+                          AND LOWER(code_desc) = LOWER(:1)""",
+                    (kind,),
+                )
+                kind_row = cursor.fetchone()
+                cursor.execute(
+                    """INSERT INTO usage_events
+                       (id, tenant_id, occurred_at, units, kind_cd)
+                       VALUES (:1, :2, :3, :4, :5)""",
+                    (
+                        event_id,
+                        tenant_id,
+                        _as_datetime(occurred_at),
+                        units,
+                        kind_row[0] if kind_row else None,
+                    ),
+                )
+            connection.commit()
+        return "recorded"
+    except oracledb.Error as exc:
+        text = str(exc)
+        code = getattr(exc, "code", None)
+        if code == 1 or "ORA-00001" in text:
+            return "duplicate"
+        if code in (20001, 20002) or "ORA-2000" in text:
+            raise ValidationError(text)
+        raise

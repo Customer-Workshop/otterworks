@@ -8,6 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 
 import backends
+import backends.postgres
 import facade as facade_module
 from app import app
 
@@ -109,13 +110,98 @@ def test_plans_requires_identity(monkeypatch):
     assert response.get_json() == {"error": "missing user identity"}
 
 
-def test_facade_is_unavailable_in_postgres_mode(monkeypatch):
+def test_postgres_mode_plans_serves_rows(monkeypatch):
     monkeypatch.setenv("BILLING_BACKEND", "postgres")
+    monkeypatch.setattr(
+        backends.postgres,
+        "list_plans",
+        lambda: [
+            {
+                "plan_id": "p1",
+                "code": "GROWTH",
+                "tier": "growth",
+                "monthly_fee": "149.00",
+                "included_units": 500,
+                "overage_rate": "0.035000",
+            }
+        ],
+    )
     response = app.test_client().get(
         "/api/v1/billing/plans", headers={"X-User-ID": "tenant"}
     )
+    assert response.status_code == 200
+    assert response.get_json() == [
+        {
+            "plan_id": "p1",
+            "plan_code": "GROWTH",
+            "tier": "growth",
+            "monthly_fee": "149.00",
+            "included_units": 500,
+            "overage_rate": "0.035000",
+        }
+    ]
+
+
+def test_postgres_mode_admin_dunning_is_501(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "postgres")
+    response = app.test_client().get(
+        "/api/v1/billing/admin/dunning",
+        headers={"X-User-ID": "tenant", "X-User-Roles": "ADMIN"},
+    )
     assert response.status_code == 501
     assert response.get_json() == {"error": "not available on this backend"}
+
+
+def test_postgres_mode_me_has_null_customer(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "postgres")
+    monkeypatch.setattr(
+        backends.postgres,
+        "tenant_profile",
+        lambda tenant_id: {
+            "tenant_id": tenant_id,
+            "name": "tenant@example.com",
+            "status": "active",
+            "tax_exempt": "N",
+        },
+    )
+    monkeypatch.setattr(
+        backends.postgres,
+        "entitlement",
+        lambda tenant_id, on: [{"tenant_id": tenant_id, "plan_code": "STARTER"}],
+    )
+    monkeypatch.setattr(facade_module, "_ensure", lambda tenant_id: None)
+    response = app.test_client().get(
+        "/api/v1/billing/me",
+        headers={"X-User-ID": "t1", "X-User-Email": "tenant@example.com"},
+    )
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["customer"] is None
+    assert body["entitlement"][0]["plan_code"] == "STARTER"
+
+
+def test_internal_ingest_duplicate_postgres(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "postgres")
+    monkeypatch.setenv("USAGE_INTERNAL_TOKEN", "test-token")
+    monkeypatch.setattr(
+        backends.postgres,
+        "record_usage_event",
+        lambda *args: "duplicate",
+    )
+    response = app.test_client().post(
+        "/internal/usage/events",
+        json={
+            "event_id": "00000000-0000-0000-0000-000000000001",
+            "tenant_id": "tenant-1",
+            "email": "tenant@example.com",
+            "kind": "api",
+            "units": 1,
+            "occurred_at": "2026-02-10T10:00:00Z",
+        },
+        headers={"X-Internal-Token": "test-token"},
+    )
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "duplicate"}
 
 
 def test_facade_plans_shape(monkeypatch):
@@ -187,7 +273,7 @@ def test_facade_oracle_failure_returns_503(monkeypatch):
     assert response.status_code == 503
     assert response.get_json() == {
         "error": "legacy estate unavailable",
-        "detail": "the Oracle billing estate is not reachable",
+        "detail": "the billing estate is not reachable",
     }
 
 

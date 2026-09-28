@@ -16,7 +16,14 @@ The optional connected-estate overlay selects the Oracle backend with
 `X-User-Roles` identity headers. The facade exposes plans, the signed-in
 tenant, entitlement, plan changes, usage, invoices, customer fields, and admin
 overdue/dunning views under `/api/v1/billing`. Oracle failures return the
-estate-unavailable response rather than falling back to Postgres. After
+estate-unavailable response rather than falling back to Postgres.
+
+The `/api/v1/billing` facade follows `BILLING_BACKEND`: with `postgres` the
+same routes serve the Lakebase `billing` schema. Routes that depend on
+Oracle-only estate objects keep working only on Oracle: the `customer`
+fields sourced from `customer_master`/`entity_attr_value` come back null
+(`/me.customer`) or 404 (`/customer`), and the admin overdue/dunning views
+return 501 on postgres (pkg_dunning was not migrated). After
 `make tp-month-end NS=<ns>`, the batch-derived finance result is available at
 `GET /api/reports/finance?ns=<ns>`.
 

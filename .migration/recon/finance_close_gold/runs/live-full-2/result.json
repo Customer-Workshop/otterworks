@@ -1,0 +1,237 @@
+{
+  "unit": "finance_close_gold",
+  "mode": "live",
+  "mapping_version": "map-20260927c-finance_close_gold-v1",
+  "tolerance_version": "tol-20260927c-v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {
+    "ns": "demo",
+    "batch_no": "85559852",
+    "admin_tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "fixture_tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  "snapshot": null,
+  "cost": {
+    "source_statements": 14,
+    "source_rows_fetched": 18750,
+    "target_statements": 9,
+    "target_rows_fetched": 18750,
+    "elapsed_s": 23.006
+  },
+  "generated_at": "2026-09-28T01:36:23.052940+00:00",
+  "tiers": [
+    {
+      "tier": 0,
+      "name": "structural_parity",
+      "passed": true,
+      "checks_run": 0,
+      "stats": {
+        "dictionary_unavailable": [
+          "finance_close_detail: finance_close_detail: information_schema.table_privileges read failed (ServerOperationError)"
+        ],
+        "structural_checks": {
+          "constraints": "unsupported",
+          "triggers": "unsupported",
+          "indexes": "unsupported",
+          "sequences_identity": "unsupported",
+          "grants": "unsupported"
+        },
+        "structural_diff": {},
+        "dictionary": {
+          "source": "live",
+          "target": "live"
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "OW_BILLING.INVOICE_HEADER": 18750
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 7,
+      "stats": {
+        "deferred_to_tier3": [
+          "finance_close_detail.invoice_dt"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 18750,
+      "stats": {
+        "finance_close_detail": {
+          "mode": "full_diff",
+          "population": 18750,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [
+    "UNVERIFIED structural_parity: structure unavailable: finance_close_detail: finance_close_detail: information_schema.table_privileges read failed (ServerOperationError)"
+  ],
+  "verdict": "PASS",
+  "merge_eligible": false,
+  "merge_authority": {
+    "kind": "harness",
+    "decision_id": null
+  },
+  "type_map": {
+    "family": "oracle",
+    "target_kind": "databricks",
+    "filled": [
+      "finance_close_detail.INVOICE_ID",
+      "finance_close_detail.CUST_ID",
+      "finance_close_detail.TENANT_ID",
+      "finance_close_detail.INVOICE_DT",
+      "finance_close_detail.STATUS_CD",
+      "finance_close_detail.TOTAL_AMT",
+      "finance_close_detail.BATCH_NO"
+    ],
+    "unmapped": []
+  },
+  "rerun_proof": {
+    "unit": "finance_close_gold",
+    "sources": [
+      "databricks/mig_20260927c/finance_close/src/finance_close_detail.sql",
+      "databricks/mig_20260927c/finance_close/src/finance_close.sql"
+    ],
+    "fresh": "pass",
+    "evolved": "unsupported",
+    "passed": true,
+    "findings": [],
+    "notes": [],
+    "tables": [
+      "finance_close",
+      "finance_close_detail"
+    ],
+    "source_digest": "d7acc6c2e518cbede56c4f8a8097221c8d6a94f0ee786c3767cfd521bede2bca",
+    "evidence": {
+      "fresh": "jobs/579787184853100/runs/662817900379275 (ow_tp_20260927c_finance_close, fresh mig_20260927c_gold target, TERMINATED SUCCESS)"
+    },
+    "shape": {
+      "tables": {
+        "finance_close_detail": [
+          {
+            "name": "invoice_id",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "cust_id",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "tenant_id",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "invoice_dt",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "total_amt",
+            "type": "decimal(14,2)",
+            "nullable": true
+          },
+          {
+            "name": "batch_no",
+            "type": "bigint",
+            "nullable": true
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": true
+          },
+          {
+            "name": "cust_no",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "period_end",
+            "type": "date",
+            "nullable": true
+          },
+          {
+            "name": "currency",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "rec_type",
+            "type": "string",
+            "nullable": true
+          }
+        ],
+        "finance_close": [
+          {
+            "name": "ns",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "currency",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "rec_type",
+            "type": "string",
+            "nullable": true
+          },
+          {
+            "name": "total_amt",
+            "type": "decimal(24,2)",
+            "nullable": true
+          },
+          {
+            "name": "record_count",
+            "type": "bigint",
+            "nullable": true
+          },
+          {
+            "name": "close_run_at",
+            "type": "timestamp",
+            "nullable": true
+          }
+        ]
+      }
+    },
+    "shape_digest": "57adf0dc4c6185e176465bbd9b588746c472ab62d0dae341506794fd525f1be5",
+    "unsupported_reason": "no evolved record: pre-create the table in its previous committed shape (the prior proof's shape) and run again"
+  },
+  "merge_block_reasons": [
+    "structural_gap",
+    "warnings",
+    "rerun_unsupported"
+  ],
+  "routine_parity": [],
+  "routine_writers": [],
+  "routine_dependencies": ".migration/recon/finance_close_gold/dependencies.json"
+}

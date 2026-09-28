@@ -1,0 +1,123 @@
+{
+  "unit": "finance_close_gold",
+  "mode": "live",
+  "mapping_version": "map-20260927c-finance_close_gold-v1",
+  "tolerance_version": "tol-20260927c-v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {
+    "ns": "demo",
+    "batch_no": "85559852",
+    "admin_tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "fixture_tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  "snapshot": null,
+  "cost": {
+    "source_statements": 14,
+    "source_rows_fetched": 18750,
+    "target_statements": 9,
+    "target_rows_fetched": 18750,
+    "elapsed_s": 21.612
+  },
+  "generated_at": "2026-09-28T01:33:17.958558+00:00",
+  "tiers": [
+    {
+      "tier": 0,
+      "name": "structural_parity",
+      "passed": true,
+      "checks_run": 0,
+      "stats": {
+        "dictionary_unavailable": [
+          "finance_close_detail: finance_close_detail: information_schema.table_privileges read failed (ServerOperationError)"
+        ],
+        "structural_checks": {
+          "constraints": "unsupported",
+          "triggers": "unsupported",
+          "indexes": "unsupported",
+          "sequences_identity": "unsupported",
+          "grants": "unsupported"
+        },
+        "structural_diff": {},
+        "dictionary": {
+          "source": "live",
+          "target": "live"
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "OW_BILLING.INVOICE_HEADER": 18750
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 7,
+      "stats": {
+        "deferred_to_tier3": [
+          "finance_close_detail.invoice_dt"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 18750,
+      "stats": {
+        "finance_close_detail": {
+          "mode": "full_diff",
+          "population": 18750,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [
+    "UNVERIFIED structural_parity: structure unavailable: finance_close_detail: finance_close_detail: information_schema.table_privileges read failed (ServerOperationError)"
+  ],
+  "verdict": "PASS",
+  "merge_eligible": false,
+  "merge_authority": {
+    "kind": "harness",
+    "decision_id": null
+  },
+  "type_map": {
+    "family": "oracle",
+    "target_kind": "databricks",
+    "filled": [
+      "finance_close_detail.INVOICE_ID",
+      "finance_close_detail.CUST_ID",
+      "finance_close_detail.TENANT_ID",
+      "finance_close_detail.INVOICE_DT",
+      "finance_close_detail.STATUS_CD",
+      "finance_close_detail.TOTAL_AMT",
+      "finance_close_detail.BATCH_NO"
+    ],
+    "unmapped": []
+  },
+  "rerun_proof": null,
+  "merge_block_reasons": [
+    "structural_gap",
+    "warnings",
+    "rerun_missing"
+  ],
+  "routine_parity": [],
+  "routine_writers": [],
+  "routine_dependencies": ".migration/recon/finance_close_gold/dependencies.json"
+}

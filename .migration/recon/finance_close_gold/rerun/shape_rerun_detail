@@ -1,0 +1,65 @@
+{
+  "target_kind": "databricks",
+  "catalog": "ow_tp",
+  "schema": "mig_20260927c_gold",
+  "read_at": "2026-09-28T01:35:29.449495+00:00",
+  "tables": {
+    "finance_close_detail": [
+      {
+        "name": "invoice_id",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "cust_id",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "tenant_id",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "invoice_dt",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "total_amt",
+        "type": "decimal(14,2)",
+        "nullable": true
+      },
+      {
+        "name": "batch_no",
+        "type": "bigint",
+        "nullable": true
+      },
+      {
+        "name": "status_cd",
+        "type": "bigint",
+        "nullable": true
+      },
+      {
+        "name": "cust_no",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "period_end",
+        "type": "date",
+        "nullable": true
+      },
+      {
+        "name": "currency",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "rec_type",
+        "type": "string",
+        "nullable": true
+      }
+    ]
+  }
+}

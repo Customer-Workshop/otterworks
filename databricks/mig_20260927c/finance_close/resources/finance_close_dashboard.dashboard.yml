@@ -1,0 +1,7 @@
+resources:
+  dashboards:
+    finance_close_dashboard:
+      display_name: ow_tp_20260927c_finance_close_dashboard
+      warehouse_id: ${var.warehouse_id}
+      file_path: ../../dashboards/ow_tp_20260927c_finance_close_dashboard.lvdash.json
+      embed_credentials: true

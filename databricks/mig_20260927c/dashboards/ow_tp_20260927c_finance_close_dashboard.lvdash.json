@@ -1,0 +1,199 @@
+{
+  "datasets": [
+    {
+      "name": "finance_close_ds",
+      "catalog": "ow_tp",
+      "schema": "mig_20260927c_gold",
+      "displayName": "Finance close by currency / record type",
+      "queryLines": [
+        "SELECT ns, currency, rec_type,\n",
+        "       CASE rec_type WHEN '01' THEN 'INVOICE' WHEN '02' THEN 'CREDIT' ELSE rec_type END AS rec_type_name,\n",
+        "       total_amt, record_count, close_run_at\n",
+        "FROM finance_close\n",
+        "ORDER BY currency, rec_type"
+      ]
+    },
+    {
+      "name": "detail_count_ds",
+      "catalog": "ow_tp",
+      "schema": "mig_20260927c_gold",
+      "displayName": "Finance close detail row count",
+      "queryLines": [
+        "SELECT COUNT(*) AS detail_rows FROM finance_close_detail"
+      ]
+    },
+    {
+      "name": "custbill_manifest_ds",
+      "catalog": "ow_tp",
+      "schema": "mig_20260927c_silver",
+      "displayName": "CUSTBILL file manifest",
+      "queryLines": [
+        "SELECT file, bytes, sha256, generated_at\n",
+        "FROM custbill_file_manifest\n",
+        "ORDER BY generated_at DESC LIMIT 1"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "finance_close_page",
+      "displayName": "Finance close (ns=demo)",
+      "layout": [
+        {
+          "widget": {
+            "name": "title",
+            "multilineTextboxSpec": {"lines": ["## OtterWorks finance close - migration run 20260927c"]}
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "subtitle",
+            "multilineTextboxSpec": {"lines": ["Gold `finance_close` / `finance_close_detail` built from the parsed CUSTBILL records (ns=demo, batch 85559852 or admin tenant); the same computation as the legacy `GET /api/reports/finance?ns=demo`."]}
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "close-total",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "finance_close_ds",
+                "fields": [{"name": "sum(total_amt)", "expression": "SUM(`total_amt`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_amt)",
+                  "displayName": "Close total",
+                  "format": {"type": "number-currency", "currencyCode": "USD", "abbreviation": "none", "decimalPlaces": {"type": "exact", "places": 2}}
+                }
+              },
+              "frame": {"showTitle": true, "title": "Close total (all currencies / record types)"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "detail-rows",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "detail_count_ds",
+                "fields": [{"name": "detail_rows", "expression": "`detail_rows`"}],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "detail_rows", "displayName": "Detail rows", "format": {"type": "number", "abbreviation": "none", "decimalPlaces": {"type": "exact", "places": 0}}}
+              },
+              "frame": {"showTitle": true, "title": "finance_close_detail rows"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "close-records",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "finance_close_ds",
+                "fields": [{"name": "sum(record_count)", "expression": "SUM(`record_count`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(record_count)", "displayName": "Records in close", "format": {"type": "number", "abbreviation": "none", "decimalPlaces": {"type": "exact", "places": 0}}}
+              },
+              "frame": {"showTitle": true, "title": "Records in close"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "close-by-currency-rectype",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "finance_close_ds",
+                "fields": [
+                  {"name": "ns", "expression": "`ns`"},
+                  {"name": "currency", "expression": "`currency`"},
+                  {"name": "rec_type", "expression": "`rec_type`"},
+                  {"name": "rec_type_name", "expression": "`rec_type_name`"},
+                  {"name": "record_count", "expression": "`record_count`"},
+                  {"name": "total_amt", "expression": "`total_amt`"},
+                  {"name": "close_run_at", "expression": "`close_run_at`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "ns", "displayName": "NS"},
+                  {"fieldName": "currency", "displayName": "Currency"},
+                  {"fieldName": "rec_type", "displayName": "Rec type"},
+                  {"fieldName": "rec_type_name", "displayName": "Record type"},
+                  {"fieldName": "record_count", "displayName": "Record count"},
+                  {"fieldName": "total_amt", "displayName": "Total amount", "format": {"type": "number-currency", "currencyCode": "USD", "abbreviation": "none", "decimalPlaces": {"type": "exact", "places": 2}}},
+                  {"fieldName": "close_run_at", "displayName": "Close run at"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Close total by currency / record type (finance_close)"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 6, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "custbill-manifest",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "custbill_manifest_ds",
+                "fields": [
+                  {"name": "file", "expression": "`file`"},
+                  {"name": "bytes", "expression": "`bytes`"},
+                  {"name": "sha256", "expression": "`sha256`"},
+                  {"name": "generated_at", "expression": "`generated_at`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "file", "displayName": "CUSTBILL file"},
+                  {"fieldName": "bytes", "displayName": "Bytes"},
+                  {"fieldName": "sha256", "displayName": "SHA-256"},
+                  {"fieldName": "generated_at", "displayName": "Generated at"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "CUSTBILL file sha256 (custbill_file_manifest)"}
+            }
+          },
+          "position": {"x": 0, "y": 8, "width": 6, "height": 2}
+        }
+      ]
+    }
+  ]
+}

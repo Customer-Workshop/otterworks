@@ -1,0 +1,40 @@
+{
+  "target_kind": "databricks",
+  "catalog": "ow_tp",
+  "schema": "mig_20260927c_gold",
+  "read_at": "2026-09-28T01:35:33.093907+00:00",
+  "tables": {
+    "finance_close": [
+      {
+        "name": "ns",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "currency",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "rec_type",
+        "type": "string",
+        "nullable": true
+      },
+      {
+        "name": "total_amt",
+        "type": "decimal(24,2)",
+        "nullable": true
+      },
+      {
+        "name": "record_count",
+        "type": "bigint",
+        "nullable": true
+      },
+      {
+        "name": "close_run_at",
+        "type": "timestamp",
+        "nullable": true
+      }
+    ]
+  }
+}

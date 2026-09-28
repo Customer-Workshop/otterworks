@@ -1,0 +1,76 @@
+{
+  "kind": "recon-report",
+  "unit": "finance_close_gold",
+  "wave": 2,
+  "batch_id": "w2-finance-close-gold",
+  "run_id": "20260927c",
+  "branch": "mig/20260927c/w2-finance-close-gold",
+  "base_branch": "tp-run/databricks-20260927T194945Z",
+  "write_targets_written": [
+    "ow_tp.mig_20260927c_gold.finance_close_detail",
+    "ow_tp.mig_20260927c_gold.finance_close",
+    "ow_tp_20260927c_finance_close_dashboard",
+    "ow_tp_20260927c_finance_close"
+  ],
+  "dashboard": {
+    "name": "ow_tp_20260927c_finance_close_dashboard",
+    "dashboard_id": "01f1badd479f1e18b2b20b3879389b06",
+    "url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/dashboardsv3/01f1badd479f1e18b2b20b3879389b06/published?w=7474651138173478",
+    "published": true,
+    "embed_credentials": true,
+    "warehouse_id": "565cd2fd713738c4",
+    "deployed_via": "DAB resources.dashboards (databricks bundle deploy -t mig_20260927c); the guard blocks `databricks lakeview create` (not allowlisted), so dataset catalog/schema are set per dataset in the JSON instead of --dataset-catalog/--dataset-schema",
+    "queries_tested_individually": [
+      {"dataset": "finance_close_ds", "state": "SUCCEEDED"},
+      {"dataset": "detail_count_ds", "state": "SUCCEEDED"},
+      {"dataset": "custbill_manifest_ds", "state": "SUCCEEDED"}
+    ],
+    "json": "databricks/mig_20260927c/dashboards/ow_tp_20260927c_finance_close_dashboard.lvdash.json"
+  },
+  "job": {
+    "name": "ow_tp_20260927c_finance_close",
+    "job_id": "579787184853100",
+    "schedule": "PAUSED",
+    "runs": [
+      {"run_id": "662817900379275", "purpose": "initial build (fresh target)", "result": "SUCCESS"},
+      {"run_id": "826639543532552", "purpose": "idempotency rerun", "result": "SUCCESS", "shape_identical_to_fresh": true}
+    ]
+  },
+  "recon": {
+    "family": "oracle",
+    "mapping": "map-20260927c-finance_close_gold-v1 (.migration/recon/finance_close_gold/mapping_spec.dequalified.json: object dequalified to the bare table name because the harness qualifies with --target-catalog/--target-schema)",
+    "tolerances": "tol-20260927c-v1",
+    "runs": [
+      {"dir": ".migration/recon/finance_close_gold/runs/live-full-1", "mode": "live", "depth": "full", "verdict": "PASS", "merge_eligible": false, "merge_block_reasons": ["structural_gap", "warnings", "rerun_missing"]},
+      {"dir": ".migration/recon/finance_close_gold/runs/live-full-2", "mode": "live", "depth": "full", "verdict": "PASS", "merge_eligible": false, "merge_block_reasons": ["structural_gap", "warnings", "rerun_unsupported"], "final": true},
+      {"dir": ".migration/recon/finance_close_gold/runs/fixture-full-1", "mode": "fixture", "depth": "full", "verdict": "PASS", "merge_eligible": false, "note": "local Oracle fixture (make oracle-billing-up / oracle-billing-seed NS=demo) vs the same gold target; development evidence only"}
+    ],
+    "final_result": ".migration/recon/finance_close_gold/result.json",
+    "harness_findings": [
+      "structural_gap / warnings: ow_tp.information_schema.table_privileges is not readable by the service principal (ServerOperationError), so Tier-0 structural_parity is UNVERIFIED; known from wave 1 (D-023), a harness finding, not a parity failure",
+      "rerun_unsupported: rerun_proof fresh=pass; evolved leg unsupported because this is the unit's first run (no prior committed proof / manifest-declared old shape). The batch job is CREATE OR REPLACE TABLE, idempotency proven by the actual second job run (identical shape, identical totals)."
+    ]
+  },
+  "gates": [
+    {"id": "w2-detail-parity", "kind": "row_parity", "status": "passed", "evidence": ".migration/recon/finance_close_gold/result.json"},
+    {"id": "w2-close-total", "kind": "publish_leg", "status": "passed", "evidence": ".migration/recon/finance_close_gold/close_total.json"},
+    {"id": "w2-dashboard", "kind": "structural", "status": "passed", "evidence": ".migration/recon/finance_close_gold/finance_close_gold.recon.json"}
+  ],
+  "pre_pr_self_check": {
+    "null_missing_attribution_cannot_fail_open": "true: detail is an inner join silver custbill_records -> bronze invoice_header on invoice_id; 18750 = 18750 = 18750 distinct ids, null_key_rows source 0 / target 0 (Tier 3)",
+    "references_scoped_to_unit_namespace": "true: only ow_tp.mig_20260927c_{bronze,silver,gold}; job/dashboard prefixed ow_tp_20260927c_",
+    "no_shared_table_ddl": "true: CREATE OR REPLACE only on ow_tp.mig_20260927c_gold.*",
+    "retention_cleanup_safe_on_rerun": "true: full rebuild per run, no cleanup/deletion logic",
+    "cleanup_retains_evidence": "true: no cleanup paths",
+    "no_secrets_in_source_or_evidence": "true: secrets referenced by name only (OW_BILLING_RO_DSN); dashboard embeds SP credentials server-side",
+    "parity_vs_tolerance_matches_contract": "true: tol-20260927c-v1 unchanged, mapping scope unchanged",
+    "idempotency_proven_by_rerun": "true: job run 826639543532552 after 662817900379275, identical shape and totals",
+    "recon_values_recomputed_from_target": "true: gold/detail values re-queried on warehouse 565cd2fd713738c4; Tier-2 sum re-read through the harness adapters",
+    "unverified_paths": [
+      "Tier-0 structural_parity (table_privileges unreadable by SP)",
+      "rerun_proof evolved leg (first run; no prior shape)"
+    ],
+    "capability_preflight": "factory doctor ready=True (ok 13, skipped 1: named_secrets_exist - wave references no Databricks secret names)",
+    "tp_smoke": "see PR body"
+  }
+}

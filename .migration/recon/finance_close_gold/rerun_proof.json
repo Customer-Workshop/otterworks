@@ -1,0 +1,115 @@
+{
+  "unit": "finance_close_gold",
+  "sources": [
+    "databricks/mig_20260927c/finance_close/src/finance_close_detail.sql",
+    "databricks/mig_20260927c/finance_close/src/finance_close.sql"
+  ],
+  "fresh": "pass",
+  "evolved": "unsupported",
+  "passed": true,
+  "findings": [],
+  "notes": [],
+  "tables": [
+    "finance_close",
+    "finance_close_detail"
+  ],
+  "source_digest": "d7acc6c2e518cbede56c4f8a8097221c8d6a94f0ee786c3767cfd521bede2bca",
+  "evidence": {
+    "fresh": "jobs/579787184853100/runs/662817900379275 (ow_tp_20260927c_finance_close, fresh mig_20260927c_gold target, TERMINATED SUCCESS)"
+  },
+  "shape": {
+    "tables": {
+      "finance_close_detail": [
+        {
+          "name": "invoice_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "cust_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "invoice_dt",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "total_amt",
+          "type": "decimal(14,2)",
+          "nullable": true
+        },
+        {
+          "name": "batch_no",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "status_cd",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "cust_no",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "period_end",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "currency",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "rec_type",
+          "type": "string",
+          "nullable": true
+        }
+      ],
+      "finance_close": [
+        {
+          "name": "ns",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "currency",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "rec_type",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "total_amt",
+          "type": "decimal(24,2)",
+          "nullable": true
+        },
+        {
+          "name": "record_count",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "close_run_at",
+          "type": "timestamp",
+          "nullable": true
+        }
+      ]
+    }
+  },
+  "shape_digest": "57adf0dc4c6185e176465bbd9b588746c472ab62d0dae341506794fd525f1be5",
+  "unsupported_reason": "no evolved record: pre-create the table in its previous committed shape (the prior proof's shape) and run again"
+}

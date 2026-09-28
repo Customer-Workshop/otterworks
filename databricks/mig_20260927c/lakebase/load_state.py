@@ -29,12 +29,11 @@ import sys
 from collections.abc import Iterator
 
 import psycopg
-
 from state_tables import TABLES, TARGET_DATABASE, TARGET_SCHEMA
 
-_SEQUENCE_COLUMNS: list[tuple[str, str]] = [
-    ("subscriptions_hist", "hist_id"),
-    ("billing_audit_log", "log_id"),
+_SEQUENCE_COLUMNS: list[tuple[str, str, str]] = [
+    ("subscriptions_hist", "hist_id", "subscriptions_hist_seq"),
+    ("billing_audit_log", "log_id", "billing_audit_log_seq"),
 ]
 
 
@@ -124,10 +123,10 @@ def main(argv: list[str] | None = None) -> int:
                 landed = _scalar(cur.fetchone())
                 if landed != counts[tgt]:
                     raise SystemExit(f"{tgt}: copied {counts[tgt]} rows but {landed} landed")
-            for table, column in _SEQUENCE_COLUMNS:
+            for table, column, sequence in _SEQUENCE_COLUMNS:
                 qualified = f"{TARGET_SCHEMA}.{table}"
                 cur.execute(
-                    f"SELECT setval(pg_get_serial_sequence('{qualified}', '{column}'), "
+                    f"SELECT setval('{TARGET_SCHEMA}.{sequence}', "
                     f"COALESCE(max({column}), 0) + 1, false) FROM {qualified}")
         pg.commit()
     for tgt in order:

@@ -8,13 +8,11 @@
 - Tolerance version: `tol-20260927c-v1`
 - Seed: `0` | Params: `{'ns': 'demo', 'batch_no': '85559852', 'admin_tenant_id': 'a0000000-0000-0000-0000-000000000001', 'fixture_tenant_id': '00000000-0000-0000-0000-000000000001'}`
 - Tier 3 depth: `full`
-- Generated: 2026-09-27T22:57:14.739330+00:00
+- Generated: 2026-09-28T00:24:46.884053+00:00
 
-## Routine parity: routine_parity_missing (the unit has writing routines and no parity list; run `dbx-recon routine-parity` and pass `--routine-parity`)
+## Routine parity: 11 proven, 0 unproven, 0 failed
 
-- `ow_billing.pkg_ow_util.log_msg` no row
-- `ow_billing.job_purge_audit_log` no row
-- Cost: `{"source_statements": 14, "source_rows_fetched": 0, "target_statements": 11, "target_rows_fetched": 0, "elapsed_s": 1.21}`
+- Cost: `{"source_statements": 14, "source_rows_fetched": 0, "target_statements": 11, "target_rows_fetched": 0, "elapsed_s": 1.405}`
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

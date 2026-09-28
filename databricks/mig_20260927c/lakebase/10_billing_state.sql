@@ -49,7 +49,6 @@ CREATE TABLE billing.subscriptions_hist (
     suspended_on timestamp(0),
     CONSTRAINT pk_subscriptions_hist PRIMARY KEY (hist_id)
 );
-ALTER SEQUENCE billing.subscriptions_hist_seq OWNED BY billing.subscriptions_hist.hist_id;
 
 -- pkg_rating ---------------------------------------------------------------------------------
 CREATE TABLE billing.rating_periods (
@@ -125,4 +124,3 @@ CREATE TABLE billing.billing_audit_log (
     message   varchar(4000),
     CONSTRAINT pk_billing_audit_log PRIMARY KEY (log_id)
 );
-ALTER SEQUENCE billing.billing_audit_log_seq OWNED BY billing.billing_audit_log.log_id;

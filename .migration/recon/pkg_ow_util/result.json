@@ -17,9 +17,9 @@
     "source_rows_fetched": 0,
     "target_statements": 11,
     "target_rows_fetched": 0,
-    "elapsed_s": 1.21
+    "elapsed_s": 1.405
   },
-  "generated_at": "2026-09-27T22:57:14.739330+00:00",
+  "generated_at": "2026-09-28T00:24:46.884053+00:00",
   "tiers": [
     {
       "tier": 0,
@@ -171,13 +171,77 @@
   "merge_block_reasons": [
     "structural_gap",
     "tier_failed",
-    "routine_parity_missing",
     "rerun_missing"
   ],
-  "routine_parity": null,
+  "routine_parity": [
+    {
+      "routine": "ow_billing.pkg_ow_util.log_msg",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/log_msg.run.json"
+    },
+    {
+      "routine": "ow_billing.job_purge_audit_log",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/job_purge_audit_log.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_plans.fn_list_plans",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/fn_list_plans.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_plans.sp_change_plan",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/sp_change_plan.run.json"
+    },
+    {
+      "routine": "ow_billing.trg_subscriptions_hist",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/trg_subscriptions_hist.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.compute_rating",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/compute_rating.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.fn_usage_rating",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/fn_usage_rating.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.sp_finalize_rating",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/sp_finalize_rating.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.compute_preview",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/compute_preview.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.fn_invoice_preview",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/fn_invoice_preview.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.sp_issue_invoice",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_ow_util/routine_parity/sp_issue_invoice.run.json"
+    }
+  ],
   "routine_writers": [
     "ow_billing.pkg_ow_util.log_msg",
-    "ow_billing.job_purge_audit_log"
+    "ow_billing.job_purge_audit_log",
+    "ow_billing.pkg_plans.fn_list_plans",
+    "ow_billing.pkg_plans.sp_change_plan",
+    "ow_billing.trg_subscriptions_hist",
+    "ow_billing.pkg_rating.compute_rating",
+    "ow_billing.pkg_rating.fn_usage_rating",
+    "ow_billing.pkg_rating.sp_finalize_rating",
+    "ow_billing.pkg_invoicing.compute_preview",
+    "ow_billing.pkg_invoicing.fn_invoice_preview",
+    "ow_billing.pkg_invoicing.sp_issue_invoice"
   ],
-  "routine_dependencies": ".migration/units/pkg_ow_util/dependencies.json"
+  "routine_dependencies": ".migration/recon/pkg_ow_util/dependencies.json"
 }

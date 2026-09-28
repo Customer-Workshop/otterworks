@@ -12,7 +12,7 @@ Production Oracle `OW_BILLING` and Lakebase branch `production` were read-only /
 | Finance close total, ns=demo | **187,618,458.58** | gold `ow_tp.mig_20260927c_gold.finance_close` **187,618,458.58** = SUM(detail, 18,750 rows) | PASS x2 (Tier-2 aggregate 187,618,458.58); dashboard published |
 
 ## Also recorded live
-Mar-2026 issue_invoice on Lakebase exec vs Oracle fixture: invoice `8faeec95-94c1-b099-c60d-3857d0481bf1`, total 53.04, 5 lines on both.
+Mar-2026 (psql) and Apr-2026 (through the legacy-billing app UI, side by side) issue_invoice on Lakebase exec vs Oracle fixture: same invoice ids (`8faeec95-...`, `a0e5370d-...`), total 53.04, 5 lines on both.
 
 ## What moved
 - Wave 0: `billing` schema + reference tables on Lakebase `mig-20260927c-w0` (918 rows). PR #1729.

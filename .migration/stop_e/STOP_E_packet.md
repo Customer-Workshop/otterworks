@@ -12,10 +12,11 @@ See `what_moved.md` for the one-screen table. Raw artifacts in `evidence/`:
 - Dashboard: https://dbc-8bc9474f-40ae.cloud.databricks.com/dashboardsv3/01f1badd479f1e18b2b20b3879389b06/published?w=7474651138173478
 
 ## Recordings (mp4, not committed; sha256 in `recordings.sha256`)
-1. `01-legacy-flow.mp4`: fixture signup/subscription state, Feb issue_invoice on Oracle, ksh/perl CUSTBILL chain -> sha256 + close total.
-2. `02-databricks-flow.mp4`: gold close total, CUSTBILL manifest sha256, Lakeflow update COMPLETED (0e649210-...), job run 662817900379275 SUCCESS, expectations 18,750 pass / 0 fail, quarantine sample. Dashboard shown via committed evidence + live metadata: the browser had no workspace session for the SP and the guard blocks SQL statement POSTs from the session (findings, not bypassed).
-3. `03-live-issue-invoice.mp4`: live CALL billing.sp_issue_invoice on `mig-20260927c-exec` for Mar-2026 next to the same call on the Oracle fixture.
-Caveats: signup/subscription in recording 1 are pre-seeded fixture rows, not a fresh signup; pipeline shows IDLE (non-continuous), PAUSED is the render job schedule.
+Same legacy-billing Flask app in Chrome, `BILLING_BACKEND=oracle` (local Oracle fixture, :8096) vs `BILLING_BACKEND=postgres` against Lakebase `mig-20260927c-exec` schema `billing` (:8097).
+1. `01-legacy-flow.mp4`: app on Oracle: health, plans, Tenant One STARTER entitlement, Feb invoice `109bb68d-...` lines (49.00/0.00/2.02/2.02/0.00 = 53.04), `/api/reports/finance?ns=demo` 18,750 records / 187,618,458.58 from the ksh/perl chain output.
+2. `02-databricks-flow.mp4`: same app, same clicks on Lakebase exec, same invoice id and lines = 53.04; dashboard login barrier shown (no browser session for the SP), then committed `close_total.json` four-way 187,618,458.58.
+3. `03-live-issue-invoice.mp4`: both apps side by side, live POST `/api/invoices/<tenant>/issue` Apr-2026 on each; both `issued`, same invoice id `a0e5370d-c45a-ca95-38fc-848bcd67d4aa`, 5 lines = 53.04 on both.
+Notes: preview endpoints show unrounded per-line tax (2.02125) on both backends; persisted lines round to 2.02. JSON typing differs (Oracle strings vs Postgres ints/timestamps), amounts identical. Earlier terminal-based recordings kept in `recordings_old/` on the box only.
 
 ## PRs (run branch `tp-run/databricks-20260927T194945Z`; human merges)
 #1729 wave 0 scaffold, #1730 wave 1 packages, #1731 wave 1 CUSTBILL Lakeflow, #1732 wave 2 finance close gold + dashboard.

@@ -1,0 +1,91 @@
+{
+  "routine": "OW_BILLING.PKG_PLANS.SP_CHANGE_PLAN",
+  "target_family": "lakebase",
+  "target_branch": "mig-20260927c-exec",
+  "snapshot": "fixture:.migration/recon/pkg_rating/routine_parity/fixture/scenarios.json",
+  "evidence": ".migration/recon/pkg_rating/routine_parity/sp_change_plan.run.json",
+  "golden": {
+    "subscriptions": [
+      {
+        "id": "20000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000001",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-02-28",
+        "status_cd": "10.00",
+        "suspended_on": null
+      },
+      {
+        "id": "70ba8e87-c0a5-42ba-cdc2-7cab80f04445",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000002",
+        "starts_on": "2026-03-01",
+        "ends_on": null,
+        "status_cd": "10.00",
+        "suspended_on": null
+      }
+    ],
+    "subscriptions_hist": [
+      {
+        "hist_id": "1.00",
+        "hist_op": "UPD",
+        "id": "20000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000001",
+        "starts_on": "2026-01-01",
+        "ends_on": null,
+        "status_cd": "10.00",
+        "suspended_on": null
+      }
+    ],
+    "billing_audit_log": [
+      {
+        "log_id": "8.00",
+        "module": "PLANS",
+        "message": "sp_change_plan tenant=00000000-0000-0000-0000-000000000001 plan=10000000-0000-0000-0000-000000000002 eff=2026-03-01"
+      }
+    ]
+  },
+  "observed": {
+    "subscriptions": [
+      {
+        "id": "20000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000001",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-02-28",
+        "status_cd": "10.00",
+        "suspended_on": null
+      },
+      {
+        "id": "70ba8e87-c0a5-42ba-cdc2-7cab80f04445",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000002",
+        "starts_on": "2026-03-01",
+        "ends_on": null,
+        "status_cd": "10.00",
+        "suspended_on": null
+      }
+    ],
+    "subscriptions_hist": [
+      {
+        "hist_id": "1.00",
+        "hist_op": "UPD",
+        "id": "20000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000001",
+        "starts_on": "2026-01-01",
+        "ends_on": null,
+        "status_cd": "10.00",
+        "suspended_on": null
+      }
+    ],
+    "billing_audit_log": [
+      {
+        "log_id": "8.00",
+        "module": "PLANS",
+        "message": "sp_change_plan tenant=00000000-0000-0000-0000-000000000001 plan=10000000-0000-0000-0000-000000000002 eff=2026-03-01"
+      }
+    ]
+  }
+}

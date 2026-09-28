@@ -1,0 +1,125 @@
+{
+  "routine": "OW_BILLING.PKG_RATING.SP_FINALIZE_RATING",
+  "target_family": "lakebase",
+  "target_branch": "mig-20260927c-exec",
+  "snapshot": "fixture:.migration/recon/pkg_plans/routine_parity/fixture/scenarios.json",
+  "evidence": ".migration/recon/pkg_plans/routine_parity/sp_finalize_rating.run.json",
+  "golden": {
+    "rating_periods": [
+      {
+        "id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
+        "tenant_id": "00000000-0000-0000-0000-000000000004",
+        "period_start": "2026-02-01",
+        "period_end": "2026-02-28"
+      }
+    ],
+    "rating_results": [
+      {
+        "id": "4c5e7931-abd4-a1b6-e27d-7958b3bd4b6b",
+        "period_id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
+        "subscription_id": "20000000-0000-0000-0000-000000000004",
+        "used_units": "50.00",
+        "quota_units": "100.00",
+        "rollover_units": "50.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      }
+    ],
+    "billing_audit_log": [
+      {
+        "log_id": "1.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "2.00",
+        "module": "RATING",
+        "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"
+      },
+      {
+        "log_id": "3.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "9.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000007 used=260 billable=160"
+      },
+      {
+        "log_id": "10.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000003 used=2201 billable=201"
+      },
+      {
+        "log_id": "11.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000004 used=50 billable=0"
+      },
+      {
+        "log_id": "12.00",
+        "module": "RATING",
+        "message": "finalized period=93503474-dde4-608b-cda9-1a7dbeedb1df"
+      }
+    ]
+  },
+  "observed": {
+    "rating_periods": [
+      {
+        "id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
+        "tenant_id": "00000000-0000-0000-0000-000000000004",
+        "period_start": "2026-02-01",
+        "period_end": "2026-02-28"
+      }
+    ],
+    "rating_results": [
+      {
+        "id": "4c5e7931-abd4-a1b6-e27d-7958b3bd4b6b",
+        "period_id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
+        "subscription_id": "20000000-0000-0000-0000-000000000004",
+        "used_units": "50.00",
+        "quota_units": "100.00",
+        "rollover_units": "50.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      }
+    ],
+    "billing_audit_log": [
+      {
+        "log_id": "1.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "2.00",
+        "module": "RATING",
+        "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"
+      },
+      {
+        "log_id": "3.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "9.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000007 used=260 billable=160"
+      },
+      {
+        "log_id": "10.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000003 used=2201 billable=201"
+      },
+      {
+        "log_id": "11.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000004 used=50 billable=0"
+      },
+      {
+        "log_id": "12.00",
+        "module": "RATING",
+        "message": "finalized period=93503474-dde4-608b-cda9-1a7dbeedb1df"
+      }
+    ]
+  }
+}

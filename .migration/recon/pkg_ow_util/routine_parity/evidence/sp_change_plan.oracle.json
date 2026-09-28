@@ -1,0 +1,698 @@
+{
+  "subscriptions": [
+    {
+      "id": "013adf36-54c4-13b3-9a07-b3082f2df28e",
+      "tenant_id": "7f0620c4-4161-2f50-3869-0805321b660a",
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "07330edf-bc2c-f0c1-b600-2cbe17ab397c",
+      "tenant_id": "f728912a-ebf8-82ac-be73-1fe298558559",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "075fae55-9c98-640f-84f4-ccf3b4132ca0",
+      "tenant_id": "40307e58-bcd5-3c67-64bf-d8a6191abc55",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "08592d95-7c93-075e-4c07-db45d72fe626",
+      "tenant_id": "b9ec8219-1696-f85a-982b-a4c751270a2f",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "13976a33-1434-095c-1bd9-a9e515c6f0f4",
+      "tenant_id": "8f4ce569-aed3-daa7-3b12-7f3bbaf6c96f",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "15002b26-5b3e-49eb-f5b9-fa7e2a4fe0b5",
+      "tenant_id": "00687673-074e-917d-cd23-189f799920e7",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "169e612e-4eaa-793e-27ea-f1533316a68b",
+      "tenant_id": "19bae943-e800-7f62-a856-81c2caa7e1cc",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "188035c0-b8d3-fdb6-fe6a-23e55d0fa26d",
+      "tenant_id": "0728a5a2-1ea8-a26b-bbc3-ad06e2dc2491",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "1891b44c-78a4-c871-02e2-62db6b9b429a",
+      "tenant_id": "18d73981-1b10-9666-d46e-bcef13a6dd76",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "1c3ff224-13d9-3127-6248-b1e73da4aead",
+      "tenant_id": "15a698eb-3fbf-eab0-0ccb-4d0f0522e68e",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000001",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": "2026-02-28",
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000002",
+      "tenant_id": "00000000-0000-0000-0000-000000000002",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 20,
+      "suspended_on": "2026-02-15"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000003",
+      "tenant_id": "00000000-0000-0000-0000-000000000003",
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000004",
+      "tenant_id": "00000000-0000-0000-0000-000000000004",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000005",
+      "tenant_id": "00000000-0000-0000-0000-000000000005",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000006",
+      "tenant_id": "00000000-0000-0000-0000-000000000006",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000007",
+      "tenant_id": "00000000-0000-0000-0000-000000000007",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000008",
+      "tenant_id": "00000000-0000-0000-0000-000000000008",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000009",
+      "tenant_id": "00000000-0000-0000-0000-000000000009",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "20000000-0000-0000-0000-00000000a001",
+      "tenant_id": "a0000000-0000-0000-0000-000000000001",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "2c35c879-cc31-a383-18ce-4e10853e5ef0",
+      "tenant_id": "ed1e76b0-27db-87a4-bb5b-8648e639d259",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "2f42bc1f-8071-994f-3c2e-b28d7e99dcbf",
+      "tenant_id": "21e5f154-e962-a281-bd95-0783489231ef",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "30562d66-b9b4-3085-c03a-a2a15bde1479",
+      "tenant_id": "e9162eb2-d954-b3fb-81c2-efcbf6f6b7ad",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "326a72cf-2778-8a84-48bf-5297b74d93b3",
+      "tenant_id": "6c50471c-ef5c-58c2-e050-b8bb72715b99",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "3511850f-1c8f-8c14-c82b-ec1811f22511",
+      "tenant_id": "14c97a8c-d41e-67c4-ef80-0ab6b63a0f7e",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "3dcfef0a-205f-b9ac-e56d-472f41eae553",
+      "tenant_id": "dccc1496-5160-4e4d-ec83-84d84ae37f82",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "450873f3-8dfe-1a76-32c9-f8d8fce7e8c2",
+      "tenant_id": "e432f0a7-1e40-fa02-04c4-69d510bbcb3e",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "4e241ff1-1b2e-9a5f-f164-ca8c6ee716c7",
+      "tenant_id": "fd52ea22-b475-5783-4a84-900e36eb5289",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "4ed5755c-1372-38d7-36ab-cf37ff536a23",
+      "tenant_id": "755208d8-95e2-854d-c221-4ee45ef1394a",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "51c9f421-908d-05fd-4bf3-00e394bb3635",
+      "tenant_id": "41d84386-816e-1a8c-46c6-1a6967272eeb",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "5b216a94-58a4-fd66-bfca-47ec3cee626c",
+      "tenant_id": "1ebff090-9150-f94d-395b-9cbfb0f5bf74",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "61f5fb05-5ecb-9eae-a1f8-cfe5c9836109",
+      "tenant_id": "51dca9c5-107c-66fd-7c7e-2a79c46e47fb",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "632143e7-ae38-278a-1aad-c023ab7315b6",
+      "tenant_id": "fbd4c57e-8413-fb09-5842-22c318e2a5af",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "691aabcc-da79-2854-a14a-596904e327b5",
+      "tenant_id": "e1d694db-41cf-2dcd-ddd0-70cbc916829d",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "69f4a990-cdb7-c479-f3b7-612cecede810",
+      "tenant_id": "b1f9d54d-e2b8-e07d-1426-4b66e5971b09",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "70ba8e87-c0a5-42ba-cdc2-7cab80f04445",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-03-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "776480ac-4a3d-4b6e-4b0d-17b6fc19a514",
+      "tenant_id": "e0e35efb-361c-2345-d875-6af07c42abbb",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "776f3efe-b7e3-e9f0-581a-86475d1ff278",
+      "tenant_id": "9092cb1f-7698-530c-25b9-0b5382ae6aa0",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "78706215-8708-f598-9030-4c0c9594587c",
+      "tenant_id": "184051fc-560d-9c24-c910-22728efe1c3a",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "78b7c148-ea97-0153-d90f-ad27886501ff",
+      "tenant_id": "4dc2f443-4974-af80-c214-78aa82b2c812",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "79966628-9281-13ba-583f-7032c0020489",
+      "tenant_id": "9f6bb70d-ceab-0445-bcd9-c7566feaff8b",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "79e7d25b-c2cf-57cd-7b70-e2fdb111a9a3",
+      "tenant_id": "c0480dda-6a51-da95-1deb-a477cb9e339e",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "849cf4fd-9f5b-49ac-8eb2-42b98feae8ca",
+      "tenant_id": "d375649e-647c-8e30-faf7-200bd15f05fb",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "8e625ffb-4485-4154-1581-8e6577bdfc60",
+      "tenant_id": "88b4500d-9e00-753e-54d3-b54d96f26447",
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "8f40ed77-b14d-4870-8861-5326943614c9",
+      "tenant_id": "5e2c0871-6760-c1e1-3f5d-47f34d873f5e",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "9243758e-3c62-0f82-6ee7-97bede8cafbb",
+      "tenant_id": "e9c4b5cd-18ce-a242-91bc-1c1f90226c70",
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "9543b290-423e-95ef-d168-a56b91cba586",
+      "tenant_id": "af6b58a5-5b3c-0f3a-2af0-0f96c0ac513d",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "96ebc22b-1ba4-3508-dc98-3c60e8070385",
+      "tenant_id": "26a2581d-9473-9ca7-7f0f-5ddccf9508bb",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "971e225c-1622-70ff-2ab2-7dbde0b078b4",
+      "tenant_id": "e9432728-4d62-20a5-d779-a01e75ce03bc",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "97c0d0dd-90fd-59ff-c907-5c5fdc3d66ea",
+      "tenant_id": "3c74f709-9c14-0338-188f-66ace530f3e3",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "97ed69b6-f2de-9b1a-21ba-5d827ed5e4db",
+      "tenant_id": "be3e77a7-eb17-9092-98bd-d07bc9dfe363",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "98617f8e-493d-eb7a-cf22-289b9cc1390b",
+      "tenant_id": "e5860aac-5a10-dae1-85e5-a2c47a62810f",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "a53ad033-2248-bf6c-f5e2-2fa791494cc0",
+      "tenant_id": "4d3711a1-9cae-f142-742a-6f556f75dceb",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "b689e026-10de-93c1-4669-32c0742dedfa",
+      "tenant_id": "6917fbb4-dd9a-36a6-7600-562b0d230a83",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "c0d56e8e-6ec4-b740-08e2-7a14503e80b0",
+      "tenant_id": "e9097a34-c840-0332-ce1f-5d07dfb5e67d",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "c8bb98a6-b79c-4c3a-cba6-38cdf82fe22f",
+      "tenant_id": "6adf25e2-4385-1e72-b269-dc5b4c59e0ef",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "c91a45bb-c976-8771-b7b4-0e3b765df603",
+      "tenant_id": "381821f4-1ab5-ba74-896c-8a5347dbae10",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+      "tenant_id": "aad5c229-724a-7a23-7c56-f454994c02a3",
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "ce1ebbeb-a147-75d0-a33f-97a3cb8f78aa",
+      "tenant_id": "3a12dba0-0552-c36f-8b9d-4ae038058ce4",
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "d1b0de83-557c-4d12-1787-84388faa3ed0",
+      "tenant_id": "29a58487-dd89-5bf1-643a-5ef4ea2057cd",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "d415c950-c929-5b4d-de1f-907e7d7cc03e",
+      "tenant_id": "7a0d6000-bb7f-008f-97e0-936febf27c50",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "dc88360b-ae50-3ee7-6be0-6064b11c3ad6",
+      "tenant_id": "9cc3e480-8bac-946d-1475-6bdaaa87a386",
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "dfc46ec5-9349-c0dc-30fe-0ddd3e849c84",
+      "tenant_id": "8bb5e975-44a0-8f8d-45b6-521edeb3bb90",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "e4190402-49e1-d0f8-bf4f-fc971f777dd9",
+      "tenant_id": "6ec66df0-25e0-66c1-a870-8dde5dd9931a",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "e98b0efa-1b8c-d5a3-cef2-e289bf47e163",
+      "tenant_id": "7e3fdd61-00ac-ca5e-e40f-9f61cf288740",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "efe06b9d-125e-e07b-f74b-0582259f94ee",
+      "tenant_id": "64e9ac4f-dde1-472a-8839-2c8a19aa749c",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "f2a87f02-e2e2-8aa8-e31e-2161c1bf83e9",
+      "tenant_id": "d3334902-df8d-8961-85f2-d1447366ac22",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "f8b32eae-d124-a468-e07a-ca200f0b0a79",
+      "tenant_id": "3d949343-14f2-1339-82d1-4fe6ce067374",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "f8fdac37-51e4-b12e-2011-0b2dfd6b8fa2",
+      "tenant_id": "2629f921-c161-b622-6093-e71f1a64d772",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "faba8414-8410-5d16-cf30-b277a156d2b9",
+      "tenant_id": "41b2c6cb-41ce-1af6-7927-fea96127053d",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    },
+    {
+      "id": "fe6f5e18-3d44-a720-dc37-a89edff1cbf6",
+      "tenant_id": "c9ba355d-420e-b405-f3ba-6c4f2ce89bc3",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    }
+  ],
+  "subscriptions_hist": [
+    {
+      "hist_id": 1,
+      "hist_op": "UPD",
+      "id": "20000000-0000-0000-0000-000000000001",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "status_cd": 10,
+      "suspended_on": null
+    }
+  ],
+  "billing_audit_log": [
+    {
+      "log_id": 1,
+      "module": "RATING",
+      "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+    },
+    {
+      "log_id": 2,
+      "module": "RATING",
+      "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"
+    },
+    {
+      "log_id": 3,
+      "module": "RATING",
+      "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+    },
+    {
+      "log_id": 4,
+      "module": "INVOICING",
+      "message": "issued invoice=109bb68d-8fc1-401b-9a8a-fa89e98e2388 total=53.04"
+    },
+    {
+      "log_id": 5,
+      "module": "PARITY",
+      "message": "connectivity probe"
+    },
+    {
+      "log_id": 6,
+      "module": "PARITY",
+      "message": "probe log_msg"
+    },
+    {
+      "log_id": 7,
+      "module": "PLANS",
+      "message": "fn_list_plans"
+    },
+    {
+      "log_id": 8,
+      "module": "PLANS",
+      "message": "sp_change_plan tenant=00000000-0000-0000-0000-000000000001 plan=10000000-0000-0000-0000-000000000002 eff=2026-03-01"
+    }
+  ]
+}

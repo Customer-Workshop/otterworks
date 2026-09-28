@@ -11,20 +11,20 @@ billing table.
 Values arrive as text (Decimal rendered exactly, ISO 8601 timestamps) and are cast by the
 server to the declared column types of 10_billing_state.sql.
 
-Target comes from the env var named by --target-dsn-env (default LAKEBASE_MIGRATION_DSN), a
-postgresql:// DSN whose password is libpq's ~/.pgpass entry (token minted by `databricks
-postgres generate-database-credential`) or the fixture's own password, never an argument and
-never printed. Guardrail: a LAKEBASE_MIGRATION_DSN must land in ow_tp; a fixture DSN
-(OW_BILLING_FIXTURE_DSN) must land in a billing_<ns> database. After the copy commits, the
-identity columns subscriptions_hist.hist_id and billing_audit_log.log_id have their sequences
-bumped past max(id) so generated ids do not collide with loaded rows.
+Target is the literal Lakebase endpoint of project ow-tp-billing, branch mig-20260927c-w0
+(the guard resolves only a literal host; for the -exec branch run a copy with the
+ep-bitter-haze-d1cs5zdx host substituted, outside the repo). The password is libpq's
+~/.pgpass entry (token minted by `databricks postgres generate-database-credential`), never
+an argument and never printed. Guardrail: the connection must land in ow_tp (checked via
+current_database()). After the copy commits, the
+sequence-backed columns subscriptions_hist.hist_id and billing_audit_log.log_id have their
+sequences bumped past max(id) so generated ids do not collide with loaded rows.
 """
 from __future__ import annotations
 
 import argparse
 import itertools
 import json
-import os
 import sys
 from collections.abc import Iterator
 
@@ -32,7 +32,7 @@ import psycopg
 
 from state_tables import TABLES, TARGET_DATABASE, TARGET_SCHEMA
 
-_IDENTITY_COLUMNS: list[tuple[str, str]] = [
+_SEQUENCE_COLUMNS: list[tuple[str, str]] = [
     ("subscriptions_hist", "hist_id"),
     ("billing_audit_log", "log_id"),
 ]
@@ -75,15 +75,7 @@ def stream(lines: Iterator[str], trailer_box: list[dict[str, int] | None]) -> It
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--target-dsn-env", default="LAKEBASE_MIGRATION_DSN",
-                    help="name of the env var holding the postgresql:// target DSN")
-    args = ap.parse_args(argv)
-
-    if args.target_dsn_env != "LAKEBASE_MIGRATION_DSN":
-        raise SystemExit(f"{args.target_dsn_env}: this loader writes only the literal Lakebase "
-                         "migration endpoint; fixture loads go through /home/ubuntu/work/load_fixture_ref.py")
-    if not os.environ.get(args.target_dsn_env):
-        raise SystemExit(f"{args.target_dsn_env} is not set in the environment")
+    ap.parse_args(argv)
 
     by_target = {tgt: (columns, i) for i, (_, tgt, columns) in enumerate(TABLES)}
     order = [tgt for _, tgt, _ in TABLES]
@@ -132,7 +124,7 @@ def main(argv: list[str] | None = None) -> int:
                 landed = _scalar(cur.fetchone())
                 if landed != counts[tgt]:
                     raise SystemExit(f"{tgt}: copied {counts[tgt]} rows but {landed} landed")
-            for table, column in _IDENTITY_COLUMNS:
+            for table, column in _SEQUENCE_COLUMNS:
                 qualified = f"{TARGET_SCHEMA}.{table}"
                 cur.execute(
                     f"SELECT setval(pg_get_serial_sequence('{qualified}', '{column}'), "

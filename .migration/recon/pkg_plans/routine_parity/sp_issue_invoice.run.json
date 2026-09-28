@@ -1,0 +1,299 @@
+{
+  "routine": "OW_BILLING.PKG_INVOICING.SP_ISSUE_INVOICE",
+  "target_family": "lakebase",
+  "target_branch": "mig-20260927c-exec",
+  "snapshot": "fixture:.migration/recon/pkg_plans/routine_parity/fixture/scenarios.json",
+  "evidence": ".migration/recon/pkg_plans/routine_parity/sp_issue_invoice.run.json",
+  "golden": {
+    "invoices": [
+      {
+        "id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+        "subtotal": "49.00",
+        "tax": "4.04",
+        "total": "53.04",
+        "status_cd": "20.00"
+      }
+    ],
+    "invoice_lines": [
+      {
+        "id": "b59cb4c6-277a-bfd6-de48-f8143d2c4de4",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "1.00",
+        "line_type": "plan",
+        "description": "STARTER",
+        "amount": "49.00"
+      },
+      {
+        "id": "2a66ba48-39cc-7ace-97ce-9ae0b655dd17",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "2.00",
+        "line_type": "usage",
+        "description": "usage overage",
+        "amount": "0.00"
+      },
+      {
+        "id": "aa79ae93-45e5-25b1-4a99-897cbb16d3ab",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "3.00",
+        "line_type": "tax",
+        "description": "regional tax",
+        "amount": "2.02"
+      },
+      {
+        "id": "1c515ed4-0115-0a0d-c160-eb592fd6c39e",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "4.00",
+        "line_type": "tax",
+        "description": "local tax",
+        "amount": "2.02"
+      },
+      {
+        "id": "4e154337-5229-e44b-349a-936989c6dddd",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "5.00",
+        "line_type": "credit",
+        "description": "credit notes",
+        "amount": "0.00"
+      }
+    ],
+    "credit_notes": [],
+    "rating_periods": [
+      {
+        "id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_start": "2026-02-01",
+        "period_end": "2026-02-28"
+      },
+      {
+        "id": "40000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_start": "2025-12-01",
+        "period_end": "2025-12-31"
+      },
+      {
+        "id": "40000000-0000-0000-0000-000000000002",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_start": "2026-01-01",
+        "period_end": "2026-01-31"
+      },
+      {
+        "id": "40000000-0000-0000-0000-000000000003",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_start": "2025-11-01",
+        "period_end": "2025-11-30"
+      }
+    ],
+    "rating_results": [
+      {
+        "id": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a",
+        "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+        "subscription_id": "20000000-0000-0000-0000-000000000001",
+        "used_units": "260.00",
+        "quota_units": "100.00",
+        "rollover_units": "0.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000001",
+        "period_id": "40000000-0000-0000-0000-000000000001",
+        "subscription_id": "20000000-0000-0000-0000-000000000001",
+        "used_units": "0.00",
+        "quota_units": "100.00",
+        "rollover_units": "100.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000002",
+        "period_id": "40000000-0000-0000-0000-000000000002",
+        "subscription_id": "20000000-0000-0000-0000-000000000001",
+        "used_units": "0.00",
+        "quota_units": "100.00",
+        "rollover_units": "100.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000003",
+        "period_id": "40000000-0000-0000-0000-000000000003",
+        "subscription_id": "20000000-0000-0000-0000-000000000001",
+        "used_units": "0.00",
+        "quota_units": "100.00",
+        "rollover_units": "100.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      }
+    ],
+    "billing_audit_log": [
+      {
+        "log_id": 1,
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": 2,
+        "module": "RATING",
+        "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"
+      },
+      {
+        "log_id": 3,
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": 4,
+        "module": "INVOICING",
+        "message": "issued invoice=109bb68d-8fc1-401b-9a8a-fa89e98e2388 total=53.04"
+      }
+    ]
+  },
+  "observed": {
+    "invoices": [
+      {
+        "id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+        "subtotal": "49.00",
+        "tax": "4.04",
+        "total": "53.04",
+        "status_cd": "20.00"
+      }
+    ],
+    "invoice_lines": [
+      {
+        "id": "b59cb4c6-277a-bfd6-de48-f8143d2c4de4",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "1.00",
+        "line_type": "plan",
+        "description": "STARTER",
+        "amount": "49.00"
+      },
+      {
+        "id": "2a66ba48-39cc-7ace-97ce-9ae0b655dd17",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "2.00",
+        "line_type": "usage",
+        "description": "usage overage",
+        "amount": "0.00"
+      },
+      {
+        "id": "aa79ae93-45e5-25b1-4a99-897cbb16d3ab",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "3.00",
+        "line_type": "tax",
+        "description": "regional tax",
+        "amount": "2.02"
+      },
+      {
+        "id": "1c515ed4-0115-0a0d-c160-eb592fd6c39e",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "4.00",
+        "line_type": "tax",
+        "description": "local tax",
+        "amount": "2.02"
+      },
+      {
+        "id": "4e154337-5229-e44b-349a-936989c6dddd",
+        "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+        "line_no": "5.00",
+        "line_type": "credit",
+        "description": "credit notes",
+        "amount": "0.00"
+      }
+    ],
+    "credit_notes": [],
+    "rating_periods": [
+      {
+        "id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_start": "2026-02-01",
+        "period_end": "2026-02-28"
+      },
+      {
+        "id": "40000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_start": "2025-12-01",
+        "period_end": "2025-12-31"
+      },
+      {
+        "id": "40000000-0000-0000-0000-000000000002",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_start": "2026-01-01",
+        "period_end": "2026-01-31"
+      },
+      {
+        "id": "40000000-0000-0000-0000-000000000003",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "period_start": "2025-11-01",
+        "period_end": "2025-11-30"
+      }
+    ],
+    "rating_results": [
+      {
+        "id": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a",
+        "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+        "subscription_id": "20000000-0000-0000-0000-000000000001",
+        "used_units": "260.00",
+        "quota_units": "100.00",
+        "rollover_units": "0.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000001",
+        "period_id": "40000000-0000-0000-0000-000000000001",
+        "subscription_id": "20000000-0000-0000-0000-000000000001",
+        "used_units": "0.00",
+        "quota_units": "100.00",
+        "rollover_units": "100.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000002",
+        "period_id": "40000000-0000-0000-0000-000000000002",
+        "subscription_id": "20000000-0000-0000-0000-000000000001",
+        "used_units": "0.00",
+        "quota_units": "100.00",
+        "rollover_units": "100.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000003",
+        "period_id": "40000000-0000-0000-0000-000000000003",
+        "subscription_id": "20000000-0000-0000-0000-000000000001",
+        "used_units": "0.00",
+        "quota_units": "100.00",
+        "rollover_units": "100.00",
+        "billable_units": "0.00",
+        "overage_amount": "0.00"
+      }
+    ],
+    "billing_audit_log": [
+      {
+        "log_id": 1,
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": 2,
+        "module": "RATING",
+        "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"
+      },
+      {
+        "log_id": 3,
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": 4,
+        "module": "INVOICING",
+        "message": "issued invoice=109bb68d-8fc1-401b-9a8a-fa89e98e2388 total=53.04"
+      }
+    ]
+  }
+}

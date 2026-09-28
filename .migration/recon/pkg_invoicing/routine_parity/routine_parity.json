@@ -1,0 +1,84 @@
+{
+  "routine_parity": [
+    {
+      "routine": "ow_billing.pkg_ow_util.log_msg",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/log_msg.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/log_msg.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.job_purge_audit_log",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/job_purge_audit_log.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/job_purge_audit_log.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.pkg_plans.fn_list_plans",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/fn_list_plans.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/fn_list_plans.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.pkg_plans.sp_change_plan",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/sp_change_plan.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/sp_change_plan.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.trg_subscriptions_hist",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/trg_subscriptions_hist.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/trg_subscriptions_hist.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.compute_rating",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/compute_rating.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/compute_rating.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.fn_usage_rating",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/fn_usage_rating.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/fn_usage_rating.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.sp_finalize_rating",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/sp_finalize_rating.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/sp_finalize_rating.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.compute_preview",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/compute_preview.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/compute_preview.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.fn_invoice_preview",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/fn_invoice_preview.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/fn_invoice_preview.run.json is not a committed file"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.sp_issue_invoice",
+      "status": "unproven",
+      "evidence": ".migration/recon/pkg_invoicing/routine_parity/sp_issue_invoice.run.json",
+      "reason": "evidence .migration/recon/pkg_invoicing/routine_parity/sp_issue_invoice.run.json is not a committed file"
+    }
+  ],
+  "unproven": [
+    "ow_billing.pkg_ow_util.log_msg",
+    "ow_billing.job_purge_audit_log",
+    "ow_billing.pkg_plans.fn_list_plans",
+    "ow_billing.pkg_plans.sp_change_plan",
+    "ow_billing.trg_subscriptions_hist",
+    "ow_billing.pkg_rating.compute_rating",
+    "ow_billing.pkg_rating.fn_usage_rating",
+    "ow_billing.pkg_rating.sp_finalize_rating",
+    "ow_billing.pkg_invoicing.compute_preview",
+    "ow_billing.pkg_invoicing.fn_invoice_preview",
+    "ow_billing.pkg_invoicing.sp_issue_invoice"
+  ],
+  "failed": []
+}

@@ -1,0 +1,85 @@
+{
+  "routine": "OW_BILLING.PKG_INVOICING.FN_INVOICE_PREVIEW",
+  "target_family": "lakebase",
+  "target_branch": "mig-20260927c-exec",
+  "snapshot": "fixture:.migration/recon/pkg_rating/routine_parity/fixture/scenarios.json",
+  "evidence": ".migration/recon/pkg_rating/routine_parity/fn_invoice_preview.run.json",
+  "golden": {
+    "billing_audit_log": [
+      {
+        "log_id": "1.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "3.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "9.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000007 used=260 billable=160"
+      },
+      {
+        "log_id": "10.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000003 used=2201 billable=201"
+      },
+      {
+        "log_id": "11.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000004 used=50 billable=0"
+      },
+      {
+        "log_id": "13.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000006 used=201 billable=101"
+      },
+      {
+        "log_id": "14.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000006 used=201 billable=101"
+      }
+    ]
+  },
+  "observed": {
+    "billing_audit_log": [
+      {
+        "log_id": "1.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "3.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "9.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000007 used=260 billable=160"
+      },
+      {
+        "log_id": "10.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000003 used=2201 billable=201"
+      },
+      {
+        "log_id": "11.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000004 used=50 billable=0"
+      },
+      {
+        "log_id": "13.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000006 used=201 billable=101"
+      },
+      {
+        "log_id": "14.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000006 used=201 billable=101"
+      }
+    ]
+  }
+}

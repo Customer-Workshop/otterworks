@@ -1,0 +1,25 @@
+{
+  "routine": "OW_BILLING.PKG_PLANS.FN_LIST_PLANS",
+  "target_family": "lakebase",
+  "target_branch": "mig-20260927c-exec",
+  "snapshot": "fixture:.migration/recon/pkg_rating/routine_parity/fixture/scenarios.json",
+  "evidence": ".migration/recon/pkg_rating/routine_parity/fn_list_plans.run.json",
+  "golden": {
+    "billing_audit_log": [
+      {
+        "log_id": "7.00",
+        "module": "PLANS",
+        "message": "fn_list_plans"
+      }
+    ]
+  },
+  "observed": {
+    "billing_audit_log": [
+      {
+        "log_id": "7.00",
+        "module": "PLANS",
+        "message": "fn_list_plans"
+      }
+    ]
+  }
+}

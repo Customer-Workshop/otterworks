@@ -1,0 +1,34 @@
+{
+  "billing_audit_log": [
+    {
+      "log_id": 1,
+      "module": "RATING",
+      "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+    },
+    {
+      "log_id": 2,
+      "module": "RATING",
+      "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"
+    },
+    {
+      "log_id": 3,
+      "module": "RATING",
+      "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+    },
+    {
+      "log_id": 4,
+      "module": "INVOICING",
+      "message": "issued invoice=109bb68d-8fc1-401b-9a8a-fa89e98e2388 total=53.04"
+    },
+    {
+      "log_id": 5,
+      "module": "PARITY",
+      "message": "connectivity probe"
+    },
+    {
+      "log_id": 6,
+      "module": "PARITY",
+      "message": "probe log_msg"
+    }
+  ]
+}

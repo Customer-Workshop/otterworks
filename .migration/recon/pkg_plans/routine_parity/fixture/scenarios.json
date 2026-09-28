@@ -1,0 +1,18 @@
+{
+  "fixture": "oracle-billing local container (docker-compose.oracle-billing.yml), schema OW_BILLING, seed manifest testdata/legacy/manifests/demo.json (ns=demo, batch_no=85559852)",
+  "target": "Lakebase project ow-tp-billing branch mig-20260927c-exec, database ow_tp, schema billing",
+  "sequence": [
+    "pre-existing pair: pkg_invoicing.sp_issue_invoice('00000000-0000-0000-0000-000000000001', DATE '2026-02-01', DATE '2026-02-28') on both sides (invoice_fixture.json)",
+    "log_msg('PARITY','probe log_msg')",
+    "fn_list_plans()",
+    "sp_change_plan('00000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002','2026-03-01') [PLANS-004]",
+    "uncancel probe: insert cancelled sub 99999999-9999-9999-9999-999999999999 (tenant6, STARTER, 2025-01-01, status 30) then UPDATE status_cd=10 (trg_sub_no_uncancel keeps 30; trg_subscriptions_hist logs UPD)",
+    "compute_rating('00000000-0000-0000-0000-000000000007','2026-02-01','2026-02-28') [RATING-001]",
+    "fn_usage_rating('00000000-0000-0000-0000-000000000003','2026-02-01','2026-02-28') [RATING-003]",
+    "sp_finalize_rating('00000000-0000-0000-0000-000000000004','2026-02-01','2026-02-28')",
+    "compute_preview('00000000-0000-0000-0000-000000000006','2026-02-01','2026-02-28') [INVOICE-001]",
+    "fn_invoice_preview('00000000-0000-0000-0000-000000000006','2026-02-01','2026-02-28')",
+    "insert stale audit row (logged_at 2020-01-01) then job_purge_audit_log()"
+  ],
+  "capture": "written tables, scoped to scenario rows; volatile columns excluded (logged_at, hist_dt, created_at, issued_at/on); numerics normalized to 2dp text"
+}

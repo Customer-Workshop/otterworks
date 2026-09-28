@@ -1,0 +1,59 @@
+{
+  "routine": "OW_BILLING.TRG_SUBSCRIPTIONS_HIST",
+  "target_family": "lakebase",
+  "target_branch": "mig-20260927c-exec",
+  "snapshot": "fixture:.migration/recon/pkg_ow_util/routine_parity/fixture/scenarios.json",
+  "evidence": ".migration/recon/pkg_ow_util/routine_parity/trg_subscriptions_hist.run.json",
+  "golden": {
+    "subscriptions_hist": [
+      {
+        "hist_id": "1.00",
+        "hist_op": "UPD",
+        "id": "20000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000001",
+        "starts_on": "2026-01-01",
+        "ends_on": null,
+        "status_cd": "10.00",
+        "suspended_on": null
+      },
+      {
+        "hist_id": "2.00",
+        "hist_op": "UPD",
+        "id": "99999999-9999-9999-9999-999999999999",
+        "tenant_id": "00000000-0000-0000-0000-000000000006",
+        "plan_id": "10000000-0000-0000-0000-000000000001",
+        "starts_on": "2025-01-01",
+        "ends_on": null,
+        "status_cd": "30.00",
+        "suspended_on": null
+      }
+    ]
+  },
+  "observed": {
+    "subscriptions_hist": [
+      {
+        "hist_id": "1.00",
+        "hist_op": "UPD",
+        "id": "20000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000001",
+        "starts_on": "2026-01-01",
+        "ends_on": null,
+        "status_cd": "10.00",
+        "suspended_on": null
+      },
+      {
+        "hist_id": "2.00",
+        "hist_op": "UPD",
+        "id": "99999999-9999-9999-9999-999999999999",
+        "tenant_id": "00000000-0000-0000-0000-000000000006",
+        "plan_id": "10000000-0000-0000-0000-000000000001",
+        "starts_on": "2025-01-01",
+        "ends_on": null,
+        "status_cd": "30.00",
+        "suspended_on": null
+      }
+    ]
+  }
+}

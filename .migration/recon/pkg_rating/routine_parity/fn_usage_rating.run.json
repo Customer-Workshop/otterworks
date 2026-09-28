@@ -1,0 +1,55 @@
+{
+  "routine": "OW_BILLING.PKG_RATING.FN_USAGE_RATING",
+  "target_family": "lakebase",
+  "target_branch": "mig-20260927c-exec",
+  "snapshot": "fixture:.migration/recon/pkg_rating/routine_parity/fixture/scenarios.json",
+  "evidence": ".migration/recon/pkg_rating/routine_parity/fn_usage_rating.run.json",
+  "golden": {
+    "billing_audit_log": [
+      {
+        "log_id": "1.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "3.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "9.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000007 used=260 billable=160"
+      },
+      {
+        "log_id": "10.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000003 used=2201 billable=201"
+      }
+    ]
+  },
+  "observed": {
+    "billing_audit_log": [
+      {
+        "log_id": "1.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "3.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+      },
+      {
+        "log_id": "9.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000007 used=260 billable=160"
+      },
+      {
+        "log_id": "10.00",
+        "module": "RATING",
+        "message": "compute tenant=00000000-0000-0000-0000-000000000003 used=2201 billable=201"
+      }
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "routine": "OW_BILLING.PKG_OW_UTIL.LOG_MSG",
+  "target_family": "lakebase",
+  "target_branch": "mig-20260927c-exec",
+  "snapshot": "fixture:.migration/recon/pkg_rating/routine_parity/fixture/scenarios.json",
+  "evidence": ".migration/recon/pkg_rating/routine_parity/log_msg.run.json",
+  "golden": {
+    "billing_audit_log": [
+      {
+        "log_id": "6.00",
+        "module": "PARITY",
+        "message": "probe log_msg"
+      }
+    ]
+  },
+  "observed": {
+    "billing_audit_log": [
+      {
+        "log_id": "6.00",
+        "module": "PARITY",
+        "message": "probe log_msg"
+      }
+    ]
+  }
+}

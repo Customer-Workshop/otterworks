@@ -201,8 +201,10 @@ ORACLE_ARGS=(--namespace "${NS}" --create-namespace=false
   --set "initJob.enabled=true" --set "initJob.image.repository=${ORACLE_JOB_IMAGE%:*}" --set "initJob.image.tag=${ORACLE_JOB_IMAGE##*:}")
 # The EBS volume comes from demo-aws Terraform (the token's one source-estate volume); static PV (§12.4).
 [ -n "${DB2_VOLUME_ID}" ] && ORACLE_ARGS+=(--set "pv.create=true" --set "pv.volumeId=${DB2_VOLUME_ID}" --set "pv.zone=${DB2_VOLUME_AZ}")
+# --wait covers the post-install seed hook too: 5.3M rows over SQL*Net from one pod take ~45 min at
+# scale 1.0 on the SPOT node group, so the budget matches initJob.activeDeadlineSeconds (90 min).
 # shellcheck disable=SC2086
-run helm upgrade --install "${ORACLE_RELEASE}" "${ORACLE_CHART_DIR}" "${ORACLE_ARGS[@]}" --wait --timeout 40m ${ORACLE_HELM_ARGS:-}
+run helm upgrade --install "${ORACLE_RELEASE}" "${ORACLE_CHART_DIR}" "${ORACLE_ARGS[@]}" --wait --timeout 90m ${ORACLE_HELM_ARGS:-}
 wait_for_seed_job "${ORACLE_RELEASE}" "Oracle ${ORACLE_SERVICE}"
 SOURCE_ENV="$(printf 'ORACLE_HOST=%s.%s.svc.cluster.local\nORACLE_PORT=%s\nORACLE_SERVICE=%s\nORACLE_USER=%s\nORACLE_PASSWORD=%s\n' \
   "${ORACLE_RELEASE}" "${NS}" "${ORACLE_PORT}" "${ORACLE_SERVICE}" "${ORACLE_USER}" "${ORACLE_PASSWORD}")"
@@ -248,14 +250,16 @@ stage_end 0
 fi
 
 # --- 4. wiring: archive-store-credentials (source) -----------------------------------------
-# ARCHIVE_STORE=<driver>: report-service/audit-service read the Db2 estate directly on a before
-# tenant; the Oracle read path in those services is a follow-up, so an oracle before-tenant's
-# archive endpoints answer 503 (misconfigured store) until it lands - the migration itself does
-# not use them.
+# ARCHIVE_STORE=db2: report-service/audit-service read the Db2 estate directly on a before tenant.
+# ArchiveStoreType knows off|db2|postgresql|azuresql only; an Oracle read path in those services is
+# a follow-up, so an oracle before-tenant gets ARCHIVE_STORE=off (archive endpoints report the
+# feature as disabled rather than a misconfigured store). The migration itself never uses them.
+APP_SOURCE_STORE="${SOURCE_DRIVER}"
+[ "${SOURCE_DRIVER}" = "oracle" ] && APP_SOURCE_STORE=off
 wiring_rc=0
 stage_begin "wiring (${SOURCE_DRIVER})"
 {
-  printf 'ARCHIVE_STORE=%s\nLDM_NAMESPACE=%s\nLDM_RUN_TOKEN=%s\n' "${SOURCE_DRIVER}" "${TOKEN}" "${RUN}"
+  printf 'ARCHIVE_STORE=%s\nLDM_NAMESPACE=%s\nLDM_RUN_TOKEN=%s\n' "${APP_SOURCE_STORE}" "${TOKEN}" "${RUN}"
   printf '%s\n' "${SOURCE_ENV}"
   printf 'LDM_S3_BUCKET=%s\nLDM_S3_PREFIX=%s/\n' "${DEMO_BUCKET}" "${TOKEN}"
 } | apply_secret_from_stdin "${NS}" "${ARCHIVE_STORE_SECRET}" "${TOKEN}"
@@ -391,7 +395,7 @@ echo
 dlog "namespace   : ${NS}   (expires ${EXPIRES})"
 dlog "web         : https://${WEB_HOST}"
 dlog "api         : https://${API_HOST}"
-ARCHIVE_STORE_KIND="${SOURCE_DRIVER}"
+ARCHIVE_STORE_KIND="${APP_SOURCE_STORE}"
 [ "${WANT_MIGRATE}" = "true" ] && ARCHIVE_STORE_KIND=postgresql
 [ "${WANT_AZURE}" = "true" ] && ARCHIVE_STORE_KIND=azuresql
 if [ "${SOURCE_DRIVER}" = "oracle" ]; then

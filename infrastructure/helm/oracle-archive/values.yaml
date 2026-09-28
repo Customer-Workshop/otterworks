@@ -85,7 +85,7 @@ initJob:
     pullPolicy: IfNotPresent
   scale: "1"                    # 0.01 for smoke tests
   workers: 4
-  activeDeadlineSeconds: 5400
+  activeDeadlineSeconds: 7200   # scale 1.0 (5.3M rows) measured at ~80 min on the SPOT node group
   ttlSecondsAfterFinished: 86400
   waitForOracleSeconds: 1800
   resources:

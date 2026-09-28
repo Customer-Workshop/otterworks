@@ -1,0 +1,15 @@
+{
+  "legacy": {
+    "path": "/home/ubuntu/custbill_legacy/CUSTBILL_DEMO_ORACLE.dat",
+    "sha256": "c3e2cf43e099f9e17cc59a2b202cd876c103b8f21a8693eba45fb5fd7eb946db",
+    "bytes": 1237500,
+    "records": 18750
+  },
+  "databricks": {
+    "path": "/home/ubuntu/custbill_dbx/CUSTBILL_DEMO_ORACLE.dat",
+    "sha256": "c3e2cf43e099f9e17cc59a2b202cd876c103b8f21a8693eba45fb5fd7eb946db",
+    "bytes": 1237500,
+    "records": 18750
+  },
+  "equal": true
+}

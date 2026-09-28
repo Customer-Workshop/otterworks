@@ -1,0 +1,49 @@
+{
+  "unit": "finance_close_gold",
+  "ns": "demo",
+  "scope": {
+    "batch_no": 85559852,
+    "admin_tenant_id": "a0000000-0000-0000-0000-000000000001"
+  },
+  "gate": "w2-close-total",
+  "all_four_equal": true,
+  "values": {
+    "gold_total": "187618458.58",
+    "sum_detail": "187618458.58",
+    "legacy_close_total": "187618458.58",
+    "dbx_recon_tier2_aggregate_sum_TOTAL_AMT": "187618458.58"
+  },
+  "gold_row": {
+    "table": "ow_tp.mig_20260927c_gold.finance_close",
+    "ns": "demo",
+    "currency": "USD",
+    "rec_type": "01",
+    "rec_type_legacy_name": "INVOICE",
+    "total_amt": "187618458.58",
+    "record_count": 18750,
+    "job": "ow_tp_20260927c_finance_close",
+    "job_run": "jobs/579787184853100/runs/662817900379275"
+  },
+  "detail": {
+    "table": "ow_tp.mig_20260927c_gold.finance_close_detail",
+    "rows": 18750,
+    "distinct_invoice_id": 18750,
+    "sum_total_amt": "187618458.58"
+  },
+  "legacy": {
+    "chain": "oracle_custbill_extract (OW_BILLING_RO, read-only) -> parse_custbill_fixedwidth -> finance_excel_report.pl / GET /api/reports/finance?ns=demo parser",
+    "currency": "USD",
+    "record_type": "INVOICE",
+    "record_count": 18750,
+    "total_amount": "187618458.58",
+    "custbill_file_sha256": "c3e2cf43e099f9e17cc59a2b202cd876c103b8f21a8693eba45fb5fd7eb946db",
+    "custbill_file_bytes": 1237500
+  },
+  "dbx_recon_tier2": {
+    "run": ".migration/recon/finance_close_gold/runs/live-full-2",
+    "probe": "sum_probe(OW_BILLING.INVOICE_HEADER, TOTAL_AMT, root_where) via recon.adapters.OracleSourceAdapter",
+    "source_aggregate_sum_TOTAL_AMT": "187618458.58",
+    "target_aggregate_sum_total_amt": "187618458.58",
+    "note": "result.json records Tier-2 per_field_aggregates PASS (7 checks, 0 findings) without the values; the probe value was re-read through the same adapter code path."
+  }
+}

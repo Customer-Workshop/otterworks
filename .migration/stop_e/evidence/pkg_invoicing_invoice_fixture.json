@@ -1,0 +1,73 @@
+{
+  "gate": "w1-pkg-invoice-fixture",
+  "run": "20260927c",
+  "scenario": {
+    "tenant_id": "00000000-0000-0000-0000-000000000001",
+    "tenant_name": "Tenant One",
+    "plan": "STARTER",
+    "usage": {"units": 260, "event_date": "2026-02-10"},
+    "period_start": "2026-02-01",
+    "period_end": "2026-02-28",
+    "entrypoint": "sp_issue_invoice(tenant_id, period_start, period_end)"
+  },
+  "oracle": {
+    "target": "local Oracle billing fixture (make oracle-billing-up; make oracle-billing-seed NS=demo), schema OW_BILLING, pkg_invoicing.sp_issue_invoice",
+    "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+    "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+    "subtotal": "49.00",
+    "tax": "4.04",
+    "total": "53.04",
+    "line_count": 5,
+    "status_cd": 20,
+    "status": "issued",
+    "lines": [
+      {"line_no": 1, "line_type": "plan", "description": "STARTER", "amount": "49.00"},
+      {"line_no": 2, "line_type": "usage", "description": "usage overage", "amount": "0.00"},
+      {"line_no": 3, "line_type": "tax", "description": "regional tax", "amount": "2.02"},
+      {"line_no": 4, "line_type": "tax", "description": "local tax", "amount": "2.02"},
+      {"line_no": 5, "line_type": "credit", "description": "credit notes", "amount": "0.00"}
+    ],
+    "billing_audit_log": [
+      {"log_id": 1, "module": "RATING", "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"},
+      {"log_id": 2, "module": "RATING", "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"},
+      {"log_id": 3, "module": "RATING", "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"},
+      {"log_id": 4, "module": "INVOICING", "message": "issued invoice=109bb68d-8fc1-401b-9a8a-fa89e98e2388 total=53.04"}
+    ]
+  },
+  "lakebase_exec": {
+    "target": "Lakebase project ow-tp-billing, branch mig-20260927c-exec, database ow_tp, schema billing, CALL billing.sp_issue_invoice",
+    "host": "ep-bitter-haze-d1cs5zdx.database.us-west-2.cloud.databricks.com",
+    "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+    "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+    "subtotal": "49.00",
+    "tax": "4.04",
+    "total": "53.04",
+    "line_count": 5,
+    "status_cd": 20,
+    "status": "issued",
+    "lines": [
+      {"line_no": 1, "line_type": "plan", "description": "STARTER", "amount": "49.00"},
+      {"line_no": 2, "line_type": "usage", "description": "usage overage", "amount": "0.00"},
+      {"line_no": 3, "line_type": "tax", "description": "regional tax", "amount": "2.02"},
+      {"line_no": 4, "line_type": "tax", "description": "local tax", "amount": "2.02"},
+      {"line_no": 5, "line_type": "credit", "description": "credit notes", "amount": "0.00"}
+    ],
+    "billing_audit_log": [
+      {"log_id": 1, "module": "RATING", "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"},
+      {"log_id": 2, "module": "RATING", "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"},
+      {"log_id": 3, "module": "RATING", "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"},
+      {"log_id": 4, "module": "INVOICING", "message": "issued invoice=109bb68d-8fc1-401b-9a8a-fa89e98e2388 total=53.04"}
+    ]
+  },
+  "comparison": {
+    "subtotal": "match",
+    "tax": "match",
+    "total": "match",
+    "line_count": "match",
+    "status": "match",
+    "invoice_id": "match",
+    "audit_order": "match (logged_at not graded, DEP-003 / D-011)"
+  },
+  "verdict": "PASS",
+  "notes": "w0 (mig-20260927c-w0) was never written by sp_issue_invoice / sp_change_plan; the exec branch carries the only issued Tenant One invoice."
+}

@@ -1,0 +1,710 @@
+{
+  "unit": "pkg_plans",
+  "mode": "live",
+  "mapping_version": "map-20260927c-pkg_plans-v1",
+  "tolerance_version": "tol-20260927c-v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {
+    "ns": "demo",
+    "batch_no": "85559852",
+    "admin_tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "fixture_tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  "snapshot": null,
+  "cost": {
+    "source_statements": 27,
+    "source_rows_fetched": 69,
+    "target_statements": 20,
+    "target_rows_fetched": 69,
+    "elapsed_s": 2.289
+  },
+  "generated_at": "2026-09-28T00:35:13.690707+00:00",
+  "tiers": [
+    {
+      "tier": 0,
+      "name": "structural_parity",
+      "passed": false,
+      "checks_run": 2,
+      "stats": {
+        "foreign_keys_out_of_scope": [
+          "subscriptions: ('plan_id',) -> ow_billing.plans",
+          "subscriptions: ('tenant_id',) -> ow_billing.tenants",
+          "subscriptions: target FK ('plan_id',) -> billing.plans",
+          "subscriptions: target FK ('tenant_id',) -> billing.tenants"
+        ],
+        "subscriptions": {
+          "source": {
+            "primary_key": [
+              "id"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [
+              [
+                [
+                  "plan_id"
+                ],
+                "ow_billing.plans",
+                [
+                  "id"
+                ],
+                "no action",
+                "no action"
+              ],
+              [
+                [
+                  "tenant_id"
+                ],
+                "ow_billing.tenants",
+                [
+                  "id"
+                ],
+                "no action",
+                "no action"
+              ]
+            ],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "id",
+              "plan_id",
+              "starts_on",
+              "status_cd",
+              "tenant_id"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "target": {
+            "primary_key": [
+              "id"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [
+              [
+                [
+                  "plan_id"
+                ],
+                "billing.plans",
+                [
+                  "id"
+                ],
+                "no action",
+                "no action"
+              ],
+              [
+                [
+                  "tenant_id"
+                ],
+                "billing.tenants",
+                [
+                  "id"
+                ],
+                "no action",
+                "no action"
+              ]
+            ],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "id",
+              "plan_id",
+              "starts_on",
+              "status_cd",
+              "tenant_id"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {
+              "trg_sub_no_uncancel": [
+                "before",
+                [
+                  "update"
+                ],
+                "row"
+              ],
+              "trg_subscriptions_hist": [
+                "after",
+                [
+                  "delete",
+                  "update"
+                ],
+                "row"
+              ]
+            },
+            "grants": {},
+            "unsupported": []
+          },
+          "identity": null
+        },
+        "subscriptions_hist": {
+          "source": {
+            "primary_key": [
+              "hist_id"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "hist_id"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "target": {
+            "primary_key": [
+              "hist_id"
+            ],
+            "primary_key_informational": [],
+            "unique": [],
+            "unique_nulls_equal": [],
+            "foreign_keys": [],
+            "foreign_keys_informational": [],
+            "not_null": [
+              "hist_id"
+            ],
+            "indexes": [],
+            "check_count": 0,
+            "checks": [],
+            "identity_columns": [],
+            "partial": [],
+            "expression_unique": [],
+            "expression_indexes": [],
+            "triggers": {},
+            "grants": {},
+            "unsupported": []
+          },
+          "identity": null
+        },
+        "structural_checks": {
+          "constraints": "checked",
+          "triggers": "checked",
+          "indexes": "checked",
+          "sequences_identity": "checked",
+          "grants": "direct_only"
+        },
+        "structural_diff": {
+          "subscriptions": {
+            "triggers": [
+              "after delete row: target 1, source 0: writes the legacy app makes today behave differently",
+              "after update row: target 1, source 0: writes the legacy app makes today behave differently",
+              "before update row: target 1, source 0: writes the legacy app makes today behave differently"
+            ]
+          }
+        },
+        "dictionary": {
+          "source": "live",
+          "target": "live"
+        }
+      },
+      "findings": [
+        {
+          "object": "subscriptions",
+          "check": "trigger_extra",
+          "detail": "after delete row: target 1, source 0: writes the legacy app makes today behave differently",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        },
+        {
+          "object": "subscriptions",
+          "check": "trigger_extra",
+          "detail": "after update row: target 1, source 0: writes the legacy app makes today behave differently",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        },
+        {
+          "object": "subscriptions",
+          "check": "trigger_extra",
+          "detail": "before update row: target 1, source 0: writes the legacy app makes today behave differently",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        }
+      ]
+    },
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "source_counts": {
+          "OW_BILLING.SUBSCRIPTIONS": 69,
+          "OW_BILLING.SUBSCRIPTIONS_HIST": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 17,
+      "stats": {
+        "deferred_to_tier3": [
+          "subscriptions_hist.hist_dt",
+          "subscriptions_hist.hist_op"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 69,
+      "stats": {
+        "subscriptions": {
+          "mode": "full_diff",
+          "population": 69,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "subscriptions_hist": {
+          "mode": "full_diff",
+          "population": 0,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "FAIL",
+  "merge_eligible": false,
+  "merge_authority": {
+    "kind": "harness",
+    "decision_id": null
+  },
+  "type_map": {
+    "family": "oracle",
+    "target_kind": "lakebase",
+    "filled": [],
+    "unmapped": []
+  },
+  "rerun_proof": {
+    "unit": "pkg_plans",
+    "sources": [
+      "databricks/mig_20260927c/lakebase/10_billing_state.sql"
+    ],
+    "prior_from": "/home/ubuntu/w0scaffold/rerun/prior_shape.json",
+    "fresh": "pass",
+    "evolved": "unsupported",
+    "passed": true,
+    "findings": [],
+    "notes": [],
+    "tables": [
+      "billing_audit_log",
+      "credit_notes",
+      "invoice_lines",
+      "invoices",
+      "rating_periods",
+      "rating_results",
+      "subscriptions",
+      "subscriptions_hist"
+    ],
+    "source_digest": "6679f7059301989a3377a3268d8e80bb2422578b02b6ebf2575e0d1cf22e7f94",
+    "evidence": {
+      "fresh": "exec:apply 10_billing_state.sql fresh 2026-09-28T00:30:47Z",
+      "evolved": "exec:apply 10_billing_state.sql over prior identity shape 2026-09-28T00:30:47Z"
+    },
+    "shape": {
+      "tables": {
+        "billing_audit_log": [
+          {
+            "name": "log_id",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "logged_at",
+            "type": "timestamp(0)",
+            "nullable": false
+          },
+          {
+            "name": "module",
+            "type": "varchar(30)",
+            "nullable": true
+          },
+          {
+            "name": "message",
+            "type": "varchar(4000)",
+            "nullable": true
+          }
+        ],
+        "credit_notes": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "issued_on",
+            "type": "timestamp(0)",
+            "nullable": false
+          },
+          {
+            "name": "amount",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "remaining_amount",
+            "type": "decimal(12,2)",
+            "nullable": false
+          }
+        ],
+        "invoice_lines": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "invoice_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "line_no",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "line_type",
+            "type": "varchar(10)",
+            "nullable": false
+          },
+          {
+            "name": "description",
+            "type": "varchar(400)",
+            "nullable": false
+          },
+          {
+            "name": "amount",
+            "type": "decimal(12,2)",
+            "nullable": false
+          }
+        ],
+        "invoices": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "period_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "issued_at",
+            "type": "timestamp(6)",
+            "nullable": false
+          },
+          {
+            "name": "subtotal",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "tax",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": false
+          }
+        ],
+        "rating_periods": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "period_start",
+            "type": "timestamp(0)",
+            "nullable": false
+          },
+          {
+            "name": "period_end",
+            "type": "timestamp(0)",
+            "nullable": false
+          }
+        ],
+        "rating_results": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "period_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "subscription_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "used_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "quota_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "rollover_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "billable_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "overage_amount",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp(6)",
+            "nullable": false
+          }
+        ],
+        "subscriptions": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "plan_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "starts_on",
+            "type": "timestamp(0)",
+            "nullable": false
+          },
+          {
+            "name": "ends_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "suspended_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          }
+        ],
+        "subscriptions_hist": [
+          {
+            "name": "hist_id",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "hist_dt",
+            "type": "varchar(20)",
+            "nullable": true
+          },
+          {
+            "name": "hist_op",
+            "type": "varchar(3)",
+            "nullable": true
+          },
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": true
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": true
+          },
+          {
+            "name": "plan_id",
+            "type": "varchar(36)",
+            "nullable": true
+          },
+          {
+            "name": "starts_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          },
+          {
+            "name": "ends_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": true
+          },
+          {
+            "name": "suspended_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          }
+        ]
+      }
+    },
+    "shape_digest": "d7a72f9748d00d3b4311f55d82e71d0c23f8f05a3e3884aee67a9ade4dd95b71",
+    "prior_digest": "d7a72f9748d00d3b4311f55d82e71d0c23f8f05a3e3884aee67a9ade4dd95b71",
+    "unsupported_reason": "evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved"
+  },
+  "merge_block_reasons": [
+    "structural_gap",
+    "tier_failed",
+    "rerun_unsupported"
+  ],
+  "routine_parity": [
+    {
+      "routine": "ow_billing.pkg_ow_util.log_msg",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/log_msg.run.json"
+    },
+    {
+      "routine": "ow_billing.job_purge_audit_log",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/job_purge_audit_log.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_plans.fn_list_plans",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/fn_list_plans.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_plans.sp_change_plan",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/sp_change_plan.run.json"
+    },
+    {
+      "routine": "ow_billing.trg_subscriptions_hist",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/trg_subscriptions_hist.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.compute_rating",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/compute_rating.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.fn_usage_rating",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/fn_usage_rating.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_rating.sp_finalize_rating",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/sp_finalize_rating.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.compute_preview",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/compute_preview.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.fn_invoice_preview",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/fn_invoice_preview.run.json"
+    },
+    {
+      "routine": "ow_billing.pkg_invoicing.sp_issue_invoice",
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_plans/routine_parity/sp_issue_invoice.run.json"
+    }
+  ],
+  "routine_writers": [
+    "ow_billing.pkg_ow_util.log_msg",
+    "ow_billing.job_purge_audit_log",
+    "ow_billing.pkg_plans.fn_list_plans",
+    "ow_billing.pkg_plans.sp_change_plan",
+    "ow_billing.trg_subscriptions_hist",
+    "ow_billing.pkg_rating.compute_rating",
+    "ow_billing.pkg_rating.fn_usage_rating",
+    "ow_billing.pkg_rating.sp_finalize_rating",
+    "ow_billing.pkg_invoicing.compute_preview",
+    "ow_billing.pkg_invoicing.fn_invoice_preview",
+    "ow_billing.pkg_invoicing.sp_issue_invoice"
+  ],
+  "routine_dependencies": ".migration/recon/pkg_plans/dependencies.json"
+}

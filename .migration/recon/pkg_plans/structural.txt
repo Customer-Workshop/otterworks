@@ -1,0 +1,12 @@
+         tgname         |                                                                  pg_get_triggerdef                                                                   
+------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------
+ trg_subscriptions_hist | CREATE TRIGGER trg_subscriptions_hist AFTER DELETE OR UPDATE ON billing.subscriptions FOR EACH ROW EXECUTE FUNCTION billing.trg_subscriptions_hist()
+ trg_sub_no_uncancel    | CREATE TRIGGER trg_sub_no_uncancel BEFORE UPDATE OF status_cd ON billing.subscriptions FOR EACH ROW EXECUTE FUNCTION billing.trg_sub_no_uncancel()
+(2 rows)
+
+CREATE OR REPLACE TRIGGER trg_subscriptions_hist
+AFTER UPDATE OR DELETE ON subscriptions
+FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_sub_no_uncancel
+BEFORE UPDATE OF status_cd ON subscriptions
+FOR EACH ROW

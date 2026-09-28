@@ -1,6 +1,6 @@
 # Recon report: unit `pkg_ow_util`
 
-- **Verdict: FAIL**
+- **Verdict: PASS**
 - Mode: `live`
 - Merge eligible: no (fixture/continuous evidence never merges)
 - Merge authority: `harness` (human_override needs a merge_override row in .migration/06_decisions.md naming the unit)
@@ -8,15 +8,16 @@
 - Tolerance version: `tol-20260927c-v1`
 - Seed: `0` | Params: `{'ns': 'demo', 'batch_no': '85559852', 'admin_tenant_id': 'a0000000-0000-0000-0000-000000000001', 'fixture_tenant_id': '00000000-0000-0000-0000-000000000001'}`
 - Tier 3 depth: `full`
-- Generated: 2026-09-28T00:24:46.884053+00:00
+- Generated: 2026-09-28T00:35:09.729818+00:00
 
 ## Routine parity: 11 proven, 0 unproven, 0 failed
 
-- Cost: `{"source_statements": 14, "source_rows_fetched": 0, "target_statements": 11, "target_rows_fetched": 0, "elapsed_s": 1.405}`
+- Cost: `{"source_statements": 14, "source_rows_fetched": 0, "target_statements": 11, "target_rows_fetched": 0, "elapsed_s": 1.307}`
+- Rerun proof: fresh `pass`, evolved `unsupported` (evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved)
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|
-| 0 | structural_parity | 1 | FAIL (1 findings) |
+| 0 | structural_parity | 1 | PASS |
 | 1 | counts_through_mapping | 1 | PASS |
 | 2 | per_field_aggregates | 4 | PASS |
 | 3 | keyed_diffs | 0 | PASS |
@@ -65,9 +66,7 @@
       "indexes": [],
       "check_count": 0,
       "checks": [],
-      "identity_columns": [
-        "log_id"
-      ],
+      "identity_columns": [],
       "partial": [],
       "expression_unique": [],
       "expression_indexes": [],
@@ -84,22 +83,13 @@
     "sequences_identity": "checked",
     "grants": "direct_only"
   },
-  "structural_diff": {
-    "billing_audit_log": {
-      "sequences_identity": [
-        "target log_id is identity but source log_id is not: target-generated keys diverge from the source's"
-      ]
-    }
-  },
+  "structural_diff": {},
   "dictionary": {
     "source": "live",
     "target": "live"
   }
 }
 ```
-
-## Tier 0 findings (1)
-- `billing_audit_log` identity_extra: target log_id is identity but source log_id is not: target-generated keys diverge from the source's
 
 ## Tier 1 coverage
 ```json

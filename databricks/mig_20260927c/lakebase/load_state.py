@@ -29,6 +29,7 @@ import sys
 from collections.abc import Iterator
 
 import psycopg
+
 from state_tables import TABLES, TARGET_DATABASE, TARGET_SCHEMA
 
 _SEQUENCE_COLUMNS: list[tuple[str, str, str]] = [

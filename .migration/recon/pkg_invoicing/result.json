@@ -17,9 +17,9 @@
     "source_rows_fetched": 10,
     "target_statements": 29,
     "target_rows_fetched": 10,
-    "elapsed_s": 3.006
+    "elapsed_s": 3.303
   },
-  "generated_at": "2026-09-28T00:24:48.443183+00:00",
+  "generated_at": "2026-09-28T00:35:23.071747+00:00",
   "tiers": [
     {
       "tier": 0,
@@ -410,9 +410,323 @@
     "filled": [],
     "unmapped": []
   },
-  "rerun_proof": null,
+  "rerun_proof": {
+    "unit": "pkg_invoicing",
+    "sources": [
+      "databricks/mig_20260927c/lakebase/10_billing_state.sql"
+    ],
+    "prior_from": "/home/ubuntu/w0scaffold/rerun/prior_shape.json",
+    "fresh": "pass",
+    "evolved": "unsupported",
+    "passed": true,
+    "findings": [],
+    "notes": [],
+    "tables": [
+      "billing_audit_log",
+      "credit_notes",
+      "invoice_lines",
+      "invoices",
+      "rating_periods",
+      "rating_results",
+      "subscriptions",
+      "subscriptions_hist"
+    ],
+    "source_digest": "6679f7059301989a3377a3268d8e80bb2422578b02b6ebf2575e0d1cf22e7f94",
+    "evidence": {
+      "fresh": "exec:apply 10_billing_state.sql fresh 2026-09-28T00:30:47Z",
+      "evolved": "exec:apply 10_billing_state.sql over prior identity shape 2026-09-28T00:30:47Z"
+    },
+    "shape": {
+      "tables": {
+        "billing_audit_log": [
+          {
+            "name": "log_id",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "logged_at",
+            "type": "timestamp(0)",
+            "nullable": false
+          },
+          {
+            "name": "module",
+            "type": "varchar(30)",
+            "nullable": true
+          },
+          {
+            "name": "message",
+            "type": "varchar(4000)",
+            "nullable": true
+          }
+        ],
+        "credit_notes": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "issued_on",
+            "type": "timestamp(0)",
+            "nullable": false
+          },
+          {
+            "name": "amount",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "remaining_amount",
+            "type": "decimal(12,2)",
+            "nullable": false
+          }
+        ],
+        "invoice_lines": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "invoice_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "line_no",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "line_type",
+            "type": "varchar(10)",
+            "nullable": false
+          },
+          {
+            "name": "description",
+            "type": "varchar(400)",
+            "nullable": false
+          },
+          {
+            "name": "amount",
+            "type": "decimal(12,2)",
+            "nullable": false
+          }
+        ],
+        "invoices": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "period_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "issued_at",
+            "type": "timestamp(6)",
+            "nullable": false
+          },
+          {
+            "name": "subtotal",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "tax",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": false
+          }
+        ],
+        "rating_periods": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "period_start",
+            "type": "timestamp(0)",
+            "nullable": false
+          },
+          {
+            "name": "period_end",
+            "type": "timestamp(0)",
+            "nullable": false
+          }
+        ],
+        "rating_results": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "period_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "subscription_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "used_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "quota_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "rollover_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "billable_units",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "overage_amount",
+            "type": "decimal(12,2)",
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp(6)",
+            "nullable": false
+          }
+        ],
+        "subscriptions": [
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "plan_id",
+            "type": "varchar(36)",
+            "nullable": false
+          },
+          {
+            "name": "starts_on",
+            "type": "timestamp(0)",
+            "nullable": false
+          },
+          {
+            "name": "ends_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "suspended_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          }
+        ],
+        "subscriptions_hist": [
+          {
+            "name": "hist_id",
+            "type": "bigint",
+            "nullable": false
+          },
+          {
+            "name": "hist_dt",
+            "type": "varchar(20)",
+            "nullable": true
+          },
+          {
+            "name": "hist_op",
+            "type": "varchar(3)",
+            "nullable": true
+          },
+          {
+            "name": "id",
+            "type": "varchar(36)",
+            "nullable": true
+          },
+          {
+            "name": "tenant_id",
+            "type": "varchar(36)",
+            "nullable": true
+          },
+          {
+            "name": "plan_id",
+            "type": "varchar(36)",
+            "nullable": true
+          },
+          {
+            "name": "starts_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          },
+          {
+            "name": "ends_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          },
+          {
+            "name": "status_cd",
+            "type": "bigint",
+            "nullable": true
+          },
+          {
+            "name": "suspended_on",
+            "type": "timestamp(0)",
+            "nullable": true
+          }
+        ]
+      }
+    },
+    "shape_digest": "d7a72f9748d00d3b4311f55d82e71d0c23f8f05a3e3884aee67a9ade4dd95b71",
+    "prior_digest": "d7a72f9748d00d3b4311f55d82e71d0c23f8f05a3e3884aee67a9ade4dd95b71",
+    "unsupported_reason": "evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved"
+  },
   "merge_block_reasons": [
-    "rerun_missing"
+    "rerun_unsupported"
   ],
   "routine_parity": [
     {

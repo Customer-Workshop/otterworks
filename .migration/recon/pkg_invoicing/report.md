@@ -8,11 +8,12 @@
 - Tolerance version: `tol-20260927c-v1`
 - Seed: `0` | Params: `{'ns': 'demo', 'batch_no': '85559852', 'admin_tenant_id': 'a0000000-0000-0000-0000-000000000001', 'fixture_tenant_id': '00000000-0000-0000-0000-000000000001'}`
 - Tier 3 depth: `full`
-- Generated: 2026-09-28T00:24:48.443183+00:00
+- Generated: 2026-09-28T00:35:23.071747+00:00
 
 ## Routine parity: 11 proven, 0 unproven, 0 failed
 
-- Cost: `{"source_statements": 40, "source_rows_fetched": 10, "target_statements": 29, "target_rows_fetched": 10, "elapsed_s": 3.006}`
+- Cost: `{"source_statements": 40, "source_rows_fetched": 10, "target_statements": 29, "target_rows_fetched": 10, "elapsed_s": 3.303}`
+- Rerun proof: fresh `pass`, evolved `unsupported` (evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved)
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

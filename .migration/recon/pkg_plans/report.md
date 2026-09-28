@@ -8,15 +8,16 @@
 - Tolerance version: `tol-20260927c-v1`
 - Seed: `0` | Params: `{'ns': 'demo', 'batch_no': '85559852', 'admin_tenant_id': 'a0000000-0000-0000-0000-000000000001', 'fixture_tenant_id': '00000000-0000-0000-0000-000000000001'}`
 - Tier 3 depth: `full`
-- Generated: 2026-09-28T00:24:47.471919+00:00
+- Generated: 2026-09-28T00:35:13.690707+00:00
 
 ## Routine parity: 11 proven, 0 unproven, 0 failed
 
-- Cost: `{"source_statements": 27, "source_rows_fetched": 69, "target_statements": 20, "target_rows_fetched": 69, "elapsed_s": 2.033}`
+- Cost: `{"source_statements": 27, "source_rows_fetched": 69, "target_statements": 20, "target_rows_fetched": 69, "elapsed_s": 2.289}`
+- Rerun proof: fresh `pass`, evolved `unsupported` (evolved pre_shape equals the fresh shape: nothing evolved, so the run proves only what fresh proved)
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|
-| 0 | structural_parity | 2 | FAIL (4 findings) |
+| 0 | structural_parity | 2 | FAIL (3 findings) |
 | 1 | counts_through_mapping | 2 | PASS |
 | 2 | per_field_aggregates | 17 | PASS |
 | 3 | keyed_diffs | 69 | PASS |
@@ -188,9 +189,7 @@
       "indexes": [],
       "check_count": 0,
       "checks": [],
-      "identity_columns": [
-        "hist_id"
-      ],
+      "identity_columns": [],
       "partial": [],
       "expression_unique": [],
       "expression_indexes": [],
@@ -214,11 +213,6 @@
         "after update row: target 1, source 0: writes the legacy app makes today behave differently",
         "before update row: target 1, source 0: writes the legacy app makes today behave differently"
       ]
-    },
-    "subscriptions_hist": {
-      "sequences_identity": [
-        "target hist_id is identity but source hist_id is not: target-generated keys diverge from the source's"
-      ]
     }
   },
   "dictionary": {
@@ -228,11 +222,10 @@
 }
 ```
 
-## Tier 0 findings (4)
+## Tier 0 findings (3)
 - `subscriptions` trigger_extra: after delete row: target 1, source 0: writes the legacy app makes today behave differently
 - `subscriptions` trigger_extra: after update row: target 1, source 0: writes the legacy app makes today behave differently
 - `subscriptions` trigger_extra: before update row: target 1, source 0: writes the legacy app makes today behave differently
-- `subscriptions_hist` identity_extra: target hist_id is identity but source hist_id is not: target-generated keys diverge from the source's
 
 ## Tier 1 coverage
 ```json

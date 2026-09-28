@@ -1,0 +1,227 @@
+=== Estate Make targets parse (dry-run) ===
+=== Oracle billing compose config lint ===
+docker compose -f docker-compose.oracle-billing.yml config > /dev/null
+docker compose -f docker-compose.yml -f docker-compose.tp.yml config > /dev/null
+time="2026-09-28T00:38:03Z" level=warning msg="/home/ubuntu/repos/otterworks/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-09-28T00:38:03Z" level=warning msg="/home/ubuntu/repos/otterworks/docker-compose.infra.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+=== Golden 'make -n test' still parses ===
+=== TP portal visual renderers (stdlib-only, sample inputs) ===
+python3 scripts/tp_portal/render_scorecard.py scripts/tp_portal/samples/sample-parity.recon.json --out /tmp/tp-smoke-scorecard.html > /dev/null
+python3 scripts/tp_portal/render_load_charts.py --before scripts/tp_portal/samples/sample-load-monolith.json --after scripts/tp_portal/samples/sample-load-aws.json --out /tmp/tp-smoke-loadcharts.html > /dev/null
+=== TP portal demo harness self-tests (offline, nothing started) ===
+scripts/tp_portal/pain_portal.sh selftest > /dev/null
+scripts/tp_portal/demo_incident_generic.sh self-test > /dev/null
+=== API Gateway (Go) ===
+cd services/api-gateway && go vet ./... && go test ./... && go build -o /dev/null ./cmd/server
+go: downloading github.com/stretchr/testify v1.8.4
+go: downloading gopkg.in/yaml.v3 v3.0.1
+go: downloading github.com/davecgh/go-spew v1.1.1
+go: downloading github.com/pmezard/go-difflib v1.0.0
+?   	github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/cmd/server	[no test files]
+ok  	github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/config	0.002s
+ok  	github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/health	0.002s
+ok  	github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/middleware	0.004s
+ok  	github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/proxy	0.005s
+=== Collab Service (Node.js) ===
+cd services/collab-service && { [ -d node_modules ] || npm ci; } && npm run lint && npm test && npm run build
+
+> @otterworks/collab-service@0.1.0 lint
+> eslint src/ --ext .ts
+
+
+> @otterworks/collab-service@0.1.0 test
+> jest --coverage
+
+PASS src/__tests__/awareness.test.ts
+PASS src/__tests__/document-store.test.ts
+PASS src/__tests__/collaboration.test.ts
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+--------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------
+File                | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                    
+--------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------
+All files           |   64.04 |     37.4 |      49 |   65.11 |                                                                                                      
+ src                |   77.77 |        0 |      25 |   77.77 |                                                                                                      
+  config.ts         |       0 |        0 |       0 |       0 | 32-33                                                                                                
+  metrics.ts        |    87.5 |      100 |   33.33 |    87.5 | 90-94                                                                                                
+ src/handlers       |   56.67 |    34.28 |   52.27 |   57.52 |                                                                                                      
+  collaboration.ts  |    59.6 |    41.37 |   54.05 |   60.51 | 46-50,84,118-129,176-179,202,219-220,229-234,264-265,305-433,471-472,486,506,524-539,552-562,580-591 
+  presence.ts       |   29.62 |        0 |   42.85 |   30.76 | 30-31,49-79                                                                                          
+ src/middleware     |     100 |    58.33 |     100 |     100 |                                                                                                      
+  auth.ts           |     100 |    58.33 |     100 |     100 | 44-67                                                                                                
+ src/services       |   69.89 |       60 |   44.89 |   71.34 |                                                                                                      
+  awareness.ts      |   86.59 |       56 |     100 |   92.94 | 91-98                                                                                                
+  document-store.ts |     100 |      100 |     100 |     100 |                                                                                                      
+  redis-adapter.ts  |       0 |        0 |       0 |       0 | 1-142                                                                                                
+--------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------
+
+Test Suites: 3 passed, 3 total
+Tests:       45 passed, 45 total
+Snapshots:   0 total
+Time:        4.413 s
+Ran all test suites.
+
+> @otterworks/collab-service@0.1.0 build
+> tsc
+
+=== Client App (Node.js) ===
+cd frontend/client-app && { [ -d node_modules ] || npm ci; } && npm run lint && npm test -- --run && npm run build
+
+> @otterworks/client-app@0.1.0 lint
+> eslint src --ext .ts,.tsx
+
+
+/home/ubuntu/repos/otterworks/frontend/client-app/src/pages/file-detail.tsx
+  84:6  warning  React Hook useEffect has a missing dependency: 'resolvedUsers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+✖ 1 problem (0 errors, 1 warning)
+
+
+> @otterworks/client-app@0.1.0 test
+> vitest run --run
+
+
+ RUN  v4.1.10 /home/ubuntu/repos/otterworks/frontend/client-app
+
+
+ Test Files  5 passed (5)
+      Tests  13 passed (13)
+   Start at  00:38:16
+   Duration  1.30s (transform 366ms, setup 628ms, import 917ms, tests 612ms, environment 1.87s)
+
+
+> @otterworks/client-app@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v8.1.4 building client environment for production...
+[2Ktransforming...✓ 2457 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.85 kB │ gzip:   0.44 kB
+dist/assets/otter-logo-BbIoNcMb.png     59.89 kB
+dist/assets/index-D7G511HR.css          30.28 kB │ gzip:   6.16 kB
+dist/assets/index-CV4jI_X5.js        1,403.16 kB │ gzip: 406.28 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 823ms
+=== Search Service (Python) ===
+cd services/search-service && uv run --no-project --with-requirements requirements-dev.txt python -m pytest
+WARN `--no-project` was provided, but no project was found
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-8.1.1, pluggy-1.6.0
+rootdir: /home/ubuntu/repos/otterworks/services/search-service
+plugins: cov-5.0.0, flask-1.3.0
+collected 41 items
+
+tests/test_health.py ....                                                [  9%]
+tests/test_index_api.py .........                                        [ 31%]
+tests/test_indexer.py ............                                       [ 60%]
+tests/test_models.py .....                                               [ 73%]
+tests/test_search_api.py ...........                                     [100%]
+
+============================== 41 passed in 0.27s ==============================
+=== Legacy Billing (Python) ===
+cd services/legacy-billing && uv run --with pytest --with boto3==1.40.35 --with requests==2.32.5 --with flask==3.1.1 --with oracledb==2.5.1 --with 'psycopg[binary]==3.2.9' python -m pytest -q && uv run --with pytest --with boto3==1.40.35 --with requests==2.32.5 python -m pytest -q bridge/tests
+INFO add_decision: Id::<PubGrubPackage>(0) @ 0a0.dev0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(4) @ 1.40.35 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(5) @ 2.32.5 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(6) @ 3.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(7) @ 2.5.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(1) @ 3.2.9 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(2) @ 3.2.9 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(22) @ 3.2.9 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(25) @ 3.2.9 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(26) @ 3.2.9 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(27) @ 3.2.9 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(3) @ 9.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(8) @ 1.40.76 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(9) @ 1.1.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(10) @ 0.14.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(11) @ 3.5.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(12) @ 3.20 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(13) @ 2.8.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(32) @ 2.8.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(34) @ 2.8.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(14) @ 2026.7.22 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(15) @ 1.9.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(16) @ 8.5.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(17) @ 2.2.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(18) @ 3.1.6 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(19) @ 3.0.3 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(20) @ 3.1.9 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(21) @ 50.0.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(23) @ 4.16.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(24) @ 4.16.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(37) @ 4.16.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(28) @ 2.3.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(29) @ 26.3 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(30) @ 1.6.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(31) @ 2.21.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(33) @ 2.9.0.post0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(35) @ 2.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(36) @ 2.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(39) @ 2.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(38) @ 1.17.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(40) @ 3.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(41) @ 3.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(42) @ 3.0 without checking dependencies    
+Downloading botocore (13.5MiB)
+Downloading pygments (1.2MiB)
+Downloading psycopg-binary (4.2MiB)
+ Downloaded pygments
+ Downloaded psycopg-binary
+ Downloaded botocore
+Installed 30 packages in 25ms
+........................................                                 [100%]
+40 passed in 1.17s
+INFO add_decision: Id::<PubGrubPackage>(0) @ 0a0.dev0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(2) @ 1.40.35 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(3) @ 2.32.5 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(1) @ 9.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(4) @ 1.40.76 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(5) @ 1.1.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(6) @ 0.14.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(7) @ 3.5.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(8) @ 3.20 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(9) @ 2.8.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(15) @ 2.8.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(17) @ 2.8.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(10) @ 2026.7.22 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(11) @ 2.3.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(12) @ 26.3 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(13) @ 1.6.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(14) @ 2.21.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(16) @ 2.9.0.post0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(18) @ 1.17.0 without checking dependencies    
+Installed 16 packages in 28ms
+......                                                                   [100%]
+6 passed in 0.38s
+cd etl/legacy-extra/tools && uv run --with pytest --with flask==3.1.1 --with oracledb==2.5.1 python -m pytest -q
+INFO add_decision: Id::<PubGrubPackage>(0) @ 0a0.dev0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(2) @ 3.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(3) @ 2.5.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(1) @ 9.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(4) @ 1.9.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(5) @ 8.5.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(6) @ 2.2.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(7) @ 3.1.6 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(8) @ 3.0.3 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(9) @ 3.1.9 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(10) @ 50.0.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(11) @ 2.3.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(12) @ 26.3 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(13) @ 1.6.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(14) @ 2.21.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(15) @ 2.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(16) @ 2.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(17) @ 2.1.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(18) @ 3.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(19) @ 3.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(20) @ 3.0 without checking dependencies    
+Installed 16 packages in 4ms
+......                                                                   [100%]
+6 passed in 0.44s
+tp-smoke: all checks passed

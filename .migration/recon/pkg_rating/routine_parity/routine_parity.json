@@ -2,194 +2,60 @@
   "routine_parity": [
     {
       "routine": "ow_billing.pkg_ow_util.log_msg",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/log_msg.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/log_msg.run.json"
     },
     {
       "routine": "ow_billing.job_purge_audit_log",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/job_purge_audit_log.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/job_purge_audit_log.run.json"
     },
     {
       "routine": "ow_billing.pkg_plans.fn_list_plans",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/fn_list_plans.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/fn_list_plans.run.json"
     },
     {
       "routine": "ow_billing.pkg_plans.sp_change_plan",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/sp_change_plan.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.subscriptions",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.subscriptions_hist",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/sp_change_plan.run.json"
     },
     {
       "routine": "ow_billing.trg_subscriptions_hist",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/trg_subscriptions_hist.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.subscriptions_hist",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/trg_subscriptions_hist.run.json"
     },
     {
       "routine": "ow_billing.pkg_rating.compute_rating",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/compute_rating.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/compute_rating.run.json"
     },
     {
       "routine": "ow_billing.pkg_rating.fn_usage_rating",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/fn_usage_rating.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/fn_usage_rating.run.json"
     },
     {
       "routine": "ow_billing.pkg_rating.sp_finalize_rating",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/sp_finalize_rating.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.rating_periods",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.rating_results",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/sp_finalize_rating.run.json"
     },
     {
       "routine": "ow_billing.pkg_invoicing.compute_preview",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/compute_preview.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/compute_preview.run.json"
     },
     {
       "routine": "ow_billing.pkg_invoicing.fn_invoice_preview",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/fn_invoice_preview.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/fn_invoice_preview.run.json"
     },
     {
       "routine": "ow_billing.pkg_invoicing.sp_issue_invoice",
-      "status": "failed",
-      "evidence": ".migration/recon/pkg_rating/routine_parity/sp_issue_invoice.run.json",
-      "findings": [
-        {
-          "table": "ow_billing.invoices",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.invoice_lines",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.credit_notes",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.rating_periods",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.rating_results",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        },
-        {
-          "table": "ow_billing.billing_audit_log",
-          "check": "no_golden",
-          "detail": "written by the routine but not in the golden set"
-        }
-      ]
+      "status": "proven",
+      "evidence": ".migration/recon/pkg_rating/routine_parity/sp_issue_invoice.run.json"
     }
   ],
   "unproven": [],
-  "failed": [
-    "ow_billing.pkg_ow_util.log_msg",
-    "ow_billing.job_purge_audit_log",
-    "ow_billing.pkg_plans.fn_list_plans",
-    "ow_billing.pkg_plans.sp_change_plan",
-    "ow_billing.trg_subscriptions_hist",
-    "ow_billing.pkg_rating.compute_rating",
-    "ow_billing.pkg_rating.fn_usage_rating",
-    "ow_billing.pkg_rating.sp_finalize_rating",
-    "ow_billing.pkg_invoicing.compute_preview",
-    "ow_billing.pkg_invoicing.fn_invoice_preview",
-    "ow_billing.pkg_invoicing.sp_issue_invoice"
-  ]
+  "failed": []
 }

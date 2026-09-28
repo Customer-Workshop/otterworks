@@ -1,0 +1,19 @@
+bundle:
+  name: ow_tp_20260927c_finance_close
+
+include:
+  - resources/*.yml
+
+variables:
+  warehouse_id:
+    description: SQL warehouse that runs the finance close SQL tasks
+    default: 565cd2fd713738c4
+  ns:
+    description: Legacy CUSTBILL namespace the close covers
+    default: demo
+
+targets:
+  mig_20260927c:
+    default: true
+    workspace:
+      host: https://dbc-8bc9474f-40ae.cloud.databricks.com

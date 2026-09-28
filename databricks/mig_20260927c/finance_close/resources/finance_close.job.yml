@@ -1,0 +1,26 @@
+resources:
+  jobs:
+    finance_close:
+      name: ow_tp_20260927c_finance_close
+      schedule:
+        quartz_cron_expression: "0 30 2 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      parameters:
+        - name: ns
+          default: ${var.ns}
+      tasks:
+        - task_key: finance_close_detail
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../src/finance_close_detail.sql
+        - task_key: finance_close
+          depends_on:
+            - task_key: finance_close_detail
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            parameters:
+              ns: "{{job.parameters.ns}}"
+            file:
+              path: ../src/finance_close.sql

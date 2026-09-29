@@ -1,7 +1,0 @@
-/home/ubuntu/repos/otterworks/ticketing/services/confirmations/src/test/java/com/boxoffice/confirmations/contract/ConfirmationsContractTest.java
-/home/ubuntu/repos/otterworks/ticketing/services/confirmations/src/test/java/com/boxoffice/confirmations/contract/ContractFixture.java
-/home/ubuntu/repos/otterworks/ticketing/services/confirmations/src/test/java/com/boxoffice/confirmations/contract/InboxStubConfig.java
-/home/ubuntu/repos/otterworks/ticketing/services/confirmations/src/test/java/com/boxoffice/confirmations/domain/FulfilmentServiceTest.java
-/home/ubuntu/repos/otterworks/ticketing/services/confirmations/src/test/java/com/boxoffice/confirmations/domain/MonolithFormatsTest.java
-/home/ubuntu/repos/otterworks/ticketing/services/confirmations/src/test/java/com/boxoffice/confirmations/domain/RefsTest.java
-/home/ubuntu/repos/otterworks/ticketing/services/confirmations/src/test/java/com/boxoffice/confirmations/events/InboxDeliveryTest.java

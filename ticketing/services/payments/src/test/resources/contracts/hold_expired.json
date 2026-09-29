@@ -1,0 +1,18 @@
+{
+  "source": "monolith 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/monolith:c342ecec4714, HoldExpiryBean.releaseExpired via POST /api/admin/expire-holds on a PENDING_PAYMENT order whose seat_hold expires_at < now()",
+  "case": "hold_expired",
+  "sweepResponse": {
+    "released": 1
+  },
+  "order": {
+    "status": "CANCELLED",
+    "totalCents": 42836
+  },
+  "payments": [],
+  "paymentAttempts": [],
+  "hold": {
+    "hold_status": "EXPIRED",
+    "seats_still_held": 0
+  },
+  "note": "the monolith never calls the gateway for a lapsed hold: no payments row, no payment_attempts row, order -> CANCELLED, hold -> EXPIRED, seats released"
+}

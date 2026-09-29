@@ -1,0 +1,24 @@
+# Topics payments produces. order-placed is owned (as a KafkaTopic) by orders; payments only consumes it.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: ${TOKEN}-payment-captured
+  namespace: ${TOKEN}-after
+  labels: {strimzi.io/cluster: ${TOKEN}-kafka, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  partitions: 6
+  replicas: 1
+  config:
+    retention.ms: "86400000"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: ${TOKEN}-payment-failed
+  namespace: ${TOKEN}-after
+  labels: {strimzi.io/cluster: ${TOKEN}-kafka, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  partitions: 6
+  replicas: 1
+  config:
+    retention.ms: "86400000"

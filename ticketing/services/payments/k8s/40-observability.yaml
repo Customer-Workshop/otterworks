@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ${TOKEN}-payments
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  selector:
+    matchLabels: {app: ${TOKEN}-payments}
+  namespaceSelector:
+    matchNames: [${TOKEN}-after]
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+      scrapeTimeout: 10s
+---
+# Only the namespace itself and the platform namespaces may reach payments (and its DB).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ${TOKEN}-payments-isolate
+  namespace: ${TOKEN}-after
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app, operator: In, values: [${TOKEN}-payments, ${TOKEN}-payments-db]}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kourier-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: knative-serving}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: keda}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {demo.otterworks.app/run-token: "${TOKEN}"}}

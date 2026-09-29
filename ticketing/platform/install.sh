@@ -3,7 +3,9 @@
 # Knative Serving (Kourier, ClusterIP only), KEDA, the Strimzi operator, and a
 # ServiceMonitor so Prometheus scrapes ingress-nginx latency. Idempotent.
 # Nothing here creates an AWS resource: Kourier's gateway is forced to ClusterIP
-# before it is applied, and traffic enters through the shared ingress-nginx.
+# before it is applied, and traffic enters through the shared ingress-nginx. The one
+# AWS change is a tag: the VPC's private subnets get kubernetes.io/role/cni=1 so the
+# VPC CNI can place pod IPs there (see scripts/pod-ip-capacity.sh).
 set -euo pipefail
 
 KNATIVE_VERSION="${KNATIVE_VERSION:-1.20.0}"
@@ -66,6 +68,10 @@ spec:
     - port: metrics
       interval: 15s
 YAML
+
+log "pod IP capacity (CNI subnets + alerts)"
+"$(dirname "$0")/../scripts/pod-ip-capacity.sh" --ensure
+kubectl apply -f "$(dirname "$0")/alerts.yaml"
 
 log "done"
 kubectl get pods -n knative-serving -n kourier-system 2>/dev/null || true

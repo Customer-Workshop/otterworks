@@ -42,6 +42,9 @@ ensure_kubeconfig() {
     aws eks update-kubeconfig --name "${CLUSTER_NAME}" --region "${AWS_REGION}" >/dev/null
 }
 
+# Refuse to deploy into an AZ where no pod can get an IP (see scripts/pod-ip-capacity.sh).
+check_pod_ip_capacity() { "${TKT_ROOT}/scripts/pod-ip-capacity.sh" --check >&2 || die "pod IP capacity check failed"; }
+
 monolith_tag() { git -C "${REPO_ROOT}" rev-parse --short=12 "HEAD:ticketing/monolith"; }
 
 # Render a manifest template with the token/knob variables substituted.

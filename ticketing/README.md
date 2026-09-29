@@ -10,8 +10,8 @@ event-driven services on the shared `otterworks-dev` cluster — as one dynamic 
 | `workflow/modernize.py` | The `run_workflow` script: assess → build ×4 → integrate → verify ⇄ fix (≤2) → ship |
 | `workflow/run-config.json` | Run token, base branch, fix-round budget, the verification shape |
 | `workflow/PLAYBOOK.md` | The orchestrator playbook (registered in the Demo org as `!ticketing_modernize`) |
-| `platform/install.sh` | One-time cluster platform: Knative Serving + Kourier (ClusterIP), KEDA, Strimzi |
-| `scripts/` | `deploy-before.sh`, `reset.sh`, `status.sh`, `destroy.sh` (all take the run token) |
+| `platform/install.sh` | One-time cluster platform: Knative Serving + Kourier (ClusterIP), KEDA, Strimzi, pod-IP alerts (`platform/alerts.yaml`) |
+| `scripts/` | `deploy-before.sh`, `reset.sh`, `status.sh`, `destroy.sh` (all take the run token); `pod-ip-capacity.sh` (free /28 pod-IP blocks per AZ, `--ensure` tags the CNI subnets; every deploy runs it as a preflight) |
 
 ```bash
 make ticketing-before NS=tkt01     # monolith at 1 replica, CPU-limited, seeded

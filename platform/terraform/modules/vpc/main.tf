@@ -82,6 +82,7 @@ resource "aws_subnet" "private" {
   tags = merge(local.common_tags, local.karpenter_discovery_private, {
     Name                                        = "${var.project}-private-${local.azs[count.index]}"
     "kubernetes.io/role/internal-elb"           = "1"
+    "kubernetes.io/role/cni"                    = "1" # VPC CNI subnet discovery: pod ENIs/prefixes live here
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   })
 }

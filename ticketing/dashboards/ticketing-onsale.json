@@ -1,6 +1,6 @@
 {
   "uid": "ticketing-onsale",
-  "title": "Ticketing on-sale — before vs after",
+  "title": "Ticketing on-sale \u2014 before vs after",
   "tags": [
     "ticketing",
     "demo"
@@ -70,7 +70,7 @@
     {
       "id": 1,
       "type": "row",
-      "title": "Before — monolith",
+      "title": "Before \u2014 monolith",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -83,7 +83,7 @@
     {
       "id": 2,
       "type": "timeseries",
-      "title": "Request rate (shared ingress → monolith)",
+      "title": "Request rate (shared ingress \u2192 monolith)",
       "description": "Requests per second entering the before host, by HTTP status (201 confirmed, 402 declined/timeout, 5xx errors).",
       "datasource": {
         "type": "prometheus",
@@ -417,7 +417,7 @@
     {
       "id": 7,
       "type": "row",
-      "title": "After — services",
+      "title": "After \u2014 services",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -430,7 +430,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Request rate by service (shared ingress → Kourier → Knative)",
+      "title": "Request rate by service (shared ingress \u2192 Kourier \u2192 Knative)",
       "description": "Requests per second entering the after host, per Ingress (= per service).",
       "datasource": {
         "type": "prometheus",
@@ -618,7 +618,7 @@
     {
       "id": 11,
       "type": "timeseries",
-      "title": "Replicas per service (0 → 6)",
+      "title": "Replicas per service (0 \u2192 6)",
       "description": "Available replicas: Knative revisions (rps autoscaling, min 0 max 6), KEDA-scaled payments (Kafka lag, 0..6) and the outbox relay (0..1).",
       "datasource": {
         "type": "prometheus",
@@ -715,7 +715,7 @@
     {
       "id": 12,
       "type": "timeseries",
-      "title": "Kafka consumer lag (order-placed → payments)",
+      "title": "Kafka consumer lag (order-placed \u2192 payments)",
       "description": "Consumer-group lag from the Strimzi Kafka Exporter and the value KEDA scales payments on (lagThreshold 40 per replica).",
       "datasource": {
         "type": "prometheus",
@@ -782,7 +782,7 @@
     {
       "id": 13,
       "type": "timeseries",
-      "title": "Outbox backlog (orders → order-placed)",
+      "title": "Outbox backlog (orders \u2192 order-placed)",
       "description": "Unpublished outbox rows in the orders database; the relay drains them into Kafka (0..1 replica by KEDA).",
       "datasource": {
         "type": "prometheus",
@@ -918,6 +918,93 @@
           },
           "min": 0,
           "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Pods not ready & nodes without pod IPs",
+      "description": "Pods of this run stuck Pending/ContainerCreating, and Karpenter nodes whose aws-cni holds no pod IP to hand out (FailedCreatePodSandBox). Both should be flat at zero; anything else explains a slow drain or scale-to-zero.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (namespace) (kube_pod_container_status_waiting_reason{namespace=~\"$token-(before|after)\",reason=\"ContainerCreating\"})",
+          "legendFormat": "{{namespace}} ContainerCreating",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (namespace) (kube_pod_status_phase{namespace=~\"$token-(before|after)\",phase=\"Pending\"})",
+          "legendFormat": "{{namespace}} Pending",
+          "refId": "B",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(awscni_total_ip_addresses == 0) or vector(0)",
+          "legendFormat": "nodes with 0 pod IPs",
+          "refId": "C",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(awscni_no_available_ip_addresses[2m]))",
+          "legendFormat": "pod IP assignments refused (2m)",
+          "refId": "D",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "min": 0,
+          "decimals": 0
         },
         "overrides": []
       },

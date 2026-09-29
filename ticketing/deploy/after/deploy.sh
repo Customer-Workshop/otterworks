@@ -9,7 +9,7 @@ source "$(dirname "$0")/../../scripts/lib.sh"
 TOKEN="${1:-}"; validate_token "${TOKEN}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SVC="${TKT_ROOT}/services"
-aws_account_id; ensure_kubeconfig
+aws_account_id; ensure_kubeconfig; check_pod_ip_capacity
 NS="$(ns_after "${TOKEN}")"; HOST="$(host_after "${TOKEN}")"
 source "${HERE}/images.sh"
 export ORDERS_IMAGE SEATS_IMAGE PAYMENTS_IMAGE CONFIRMATIONS_IMAGE

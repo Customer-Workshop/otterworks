@@ -1,0 +1,64 @@
+# Run-independent alerting for the ticketing demo (applied by platform/install.sh).
+# Prometheus in `monitoring` selects every PrometheusRule and PodMonitor in the cluster.
+#
+# The VPC CNI (aws-node) exposes its IP pool on :61678; scraping it turns "a node registered Ready but cannot
+# give any pod an address" into a metric instead of a FailedCreatePodSandBox event nobody watches.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: aws-node-ipam
+  namespace: kube-system
+  labels: {app.kubernetes.io/part-of: ticketing-platform}
+spec:
+  selector: {matchLabels: {k8s-app: aws-node}}
+  namespaceSelector: {matchNames: [kube-system]}
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
+      relabelings:
+        - {sourceLabels: [__meta_kubernetes_pod_node_name], targetLabel: node}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ticketing-pod-scheduling
+  namespace: monitoring
+  labels: {app.kubernetes.io/part-of: ticketing-platform}
+spec:
+  groups:
+    - name: ticketing.pod-ips
+      rules:
+        - alert: NodeWithoutPodIPs
+          expr: awscni_total_ip_addresses == 0
+          for: 2m
+          labels: {severity: critical, team: ticketing}
+          annotations:
+            summary: "{{ $labels.node }} has no pod IPs to hand out"
+            description: >-
+              aws-node on {{ $labels.node }} holds zero pod IP addresses two minutes after start: the node subnet
+              has no free /28 for prefix delegation and no same-AZ subnet is tagged kubernetes.io/role/cni=1.
+              Pods land there and sit in ContainerCreating (FailedCreatePodSandBox). Cordon the node and run
+              ticketing/scripts/pod-ip-capacity.sh --ensure.
+        - alert: PodIPAssignmentFailing
+          expr: increase(awscni_no_available_ip_addresses[5m]) > 0
+          for: 0m
+          labels: {severity: warning, team: ticketing}
+          annotations:
+            summary: "aws-cni on {{ $labels.node }} refused pod IP requests"
+            description: "{{ $value | printf \"%.0f\" }} pod sandbox creations failed on {{ $labels.node }} in 5m for lack of an IP address."
+    - name: ticketing.pods
+      rules:
+        - alert: TicketingPodsStuckCreating
+          expr: sum by (namespace, pod, node) (kube_pod_container_status_waiting_reason{namespace=~"tkt[a-z0-9]+-(before|after)", reason="ContainerCreating"} * on (namespace, pod) group_left (node) kube_pod_info) > 0
+          for: 2m
+          labels: {severity: critical, team: ticketing}
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} stuck in ContainerCreating on {{ $labels.node }}"
+            description: "Pod has been ContainerCreating for over 2 minutes; check `kubectl describe pod` for FailedCreatePodSandBox and the node's aws-node pod IP pool."
+        - alert: TicketingPodsPending
+          expr: sum by (namespace, pod) (kube_pod_status_phase{namespace=~"tkt[a-z0-9]+-(before|after)", phase="Pending"}) > 0
+          for: 3m
+          labels: {severity: warning, team: ticketing}
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} pending for over 3 minutes"
+            description: "Unschedulable or waiting on a node: check quota, Karpenter capacity and node readiness."

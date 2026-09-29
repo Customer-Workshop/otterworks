@@ -11,4 +11,7 @@ for ns in "$(ns_before "${TOKEN}")" "$(ns_after "${TOKEN}")"; do
   kubectl -n "${ns}" get ksvc -o custom-columns='KSVC:.metadata.name,READY:.status.conditions[?(@.type=="Ready")].status,URL:.status.url' 2>/dev/null || true
   kubectl -n "${ns}" get scaledobject -o custom-columns='SCALEDOBJECT:.metadata.name,TARGET:.spec.scaleTargetRef.name,MIN:.spec.minReplicaCount,MAX:.spec.maxReplicaCount,ACTIVE:.status.conditions[?(@.type=="Active")].status' 2>/dev/null || true
   echo "   running pods: $(kubectl -n "${ns}" get pods --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l)"
+  kubectl -n "${ns}" get pods --field-selector=status.phase=Pending -o wide --no-headers 2>/dev/null | sed 's/^/   NOT READY: /'
 done
+echo "== pod IP capacity"
+"${TKT_ROOT}/scripts/pod-ip-capacity.sh" 2>&1 | sed 's/^/   /' || true

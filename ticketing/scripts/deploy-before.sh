@@ -4,7 +4,7 @@
 #   usage: deploy-before.sh <token>
 source "$(dirname "$0")/lib.sh"
 TOKEN="${1:-}"; validate_token "${TOKEN}"
-aws_account_id; ensure_kubeconfig
+aws_account_id; ensure_kubeconfig; check_pod_ip_capacity
 NS="$(ns_before "${TOKEN}")"
 MONOLITH_IMAGE="${MONOLITH_IMAGE:-${ECR_PREFIX}/monolith:$(monolith_tag)}"
 aws ecr describe-images --region "${AWS_REGION}" --repository-name otterworks-demo/ticketing/monolith \

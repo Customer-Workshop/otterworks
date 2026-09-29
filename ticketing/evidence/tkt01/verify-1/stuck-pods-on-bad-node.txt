@@ -1,0 +1,22 @@
+tkt01-confirmations-00001-deployment-5bffcc4dd6-q75wl   0/2   ContainerCreating   0     5m1s    <none>         ip-10-0-100-116.ec2.internal   <none>   <none>
+tkt01-payments-6557d88f48-5ssrs                         0/1   ContainerCreating   0     5m3s    <none>         ip-10-0-100-116.ec2.internal   <none>   <none>
+tkt01-payments-6557d88f48-w5cbr                         0/1   ContainerCreating   0     4m22s   <none>         ip-10-0-100-116.ec2.internal   <none>   <none>
+tkt01-seats-sweep-29844253-wb4mv                        0/1   ContainerCreating   0     41s     <none>         ip-10-0-100-116.ec2.internal   <none>   <none>
+kube-system             aws-node-fwrrq                                          2/2   Running             0                  3m14s   10.0.100.115   ip-10-0-100-115.ec2.internal   <none>   <none>
+kube-system             ebs-csi-node-8p77d                                      0/3   ContainerCreating   0                  3m13s   <none>         ip-10-0-100-115.ec2.internal   <none>   <none>
+kube-system             kube-proxy-wz8x2                                        1/1   Running             0                  3m14s   10.0.100.115   ip-10-0-100-115.ec2.internal   <none>   <none>
+monitoring              prometheus-prometheus-node-exporter-rt6wb               1/1   Running             0                  3m13s   10.0.100.115   ip-10-0-100-115.ec2.internal   <none>   <none>
+otterworks-platform     demo-platform-reaper-29844255-qnmz4                     0/1   ContainerCreating   0                  2m19s   <none>         ip-10-0-100-115.ec2.internal   <none>   <none>
+otterworks-platform     otter-projects-poller-29844257-c9mh9                    0/1   ContainerCreating   0                  19s     <none>         ip-10-0-100-115.ec2.internal   <none>   <none>
+otterworks-system       tenant-reaper-29844255-8jsxp                            0/1   ContainerCreating   0                  2m19s   <none>         ip-10-0-100-115.ec2.internal   <none>   <none>
+tkt01-after             tkt01-seats-00001-deployment-7556c8c6b8-49q6b           0/2   ContainerCreating   0                  3m35s   <none>         ip-10-0-100-115.ec2.internal   <none>   <none>
+tkt01-after             tkt01-seats-sweep-29844257-z2842                        0/1   ContainerCreating   0                  5s      <none>         ip-10-0-100-115.ec2.internal   <none>   <none>
+kube-system             aws-node-22lfw                                          2/2   Running             0                  2m41s   10.0.100.33    ip-10-0-100-33.ec2.internal    <none>   <none>
+kube-system             ebs-csi-node-mtpn5                                      0/3   ContainerCreating   0                  2m41s   <none>         ip-10-0-100-33.ec2.internal    <none>   <none>
+kube-system             kube-proxy-4dhjf                                        1/1   Running             0                  2m41s   10.0.100.33    ip-10-0-100-33.ec2.internal    <none>   <none>
+monitoring              prometheus-prometheus-node-exporter-s8sn4               1/1   Running             0                  2m41s   10.0.100.33    ip-10-0-100-33.ec2.internal    <none>   <none>
+otterworks-platform     demo-platform-reaper-29844255-z9q55                     0/1   ContainerCreating   0                  12s     <none>         ip-10-0-100-33.ec2.internal    <none>   <none>
+otterworks-platform     otter-projects-poller-29844260-dqnrr                    0/1   ContainerCreating   0                  28s     <none>         ip-10-0-100-33.ec2.internal    <none>   <none>
+otterworks-system       tenant-reaper-29844255-qzfg4                            0/1   ContainerCreating   0                  12s     <none>         ip-10-0-100-33.ec2.internal    <none>   <none>
+tkt01-after             tkt01-seats-00001-deployment-7556c8c6b8-kbvtw           0/2   ContainerCreating   0                  3m7s    <none>         ip-10-0-100-33.ec2.internal    <none>   <none>
+tkt01-after             tkt01-seats-sweep-29844260-85cgv                        0/1   ContainerCreating   0                  25s     <none>         ip-10-0-100-33.ec2.internal    <none>   <none>

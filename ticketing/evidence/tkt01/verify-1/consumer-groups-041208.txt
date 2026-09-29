@@ -1,0 +1,8 @@
+
+GROUP           TOPIC              PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                                    HOST            CLIENT-ID
+tkt01-payments  tkt01-order-placed 0          0               268             268             consumer-tkt01-payments-1-0de60616-3d9e-49cd-a4f7-f5c989d8df95 /10.0.100.86    consumer-tkt01-payments-1
+tkt01-payments  tkt01-order-placed 1          0               271             271             consumer-tkt01-payments-1-0de60616-3d9e-49cd-a4f7-f5c989d8df95 /10.0.100.86    consumer-tkt01-payments-1
+tkt01-payments  tkt01-order-placed 2          0               300             300             consumer-tkt01-payments-1-6af5f6c1-4f02-4d90-8b0b-ae93359a5a87 /10.0.101.46    consumer-tkt01-payments-1
+tkt01-payments  tkt01-order-placed 3          0               268             268             consumer-tkt01-payments-1-6af5f6c1-4f02-4d90-8b0b-ae93359a5a87 /10.0.101.46    consumer-tkt01-payments-1
+tkt01-payments  tkt01-order-placed 4          0               269             269             consumer-tkt01-payments-1-79056901-9133-4540-94f7-eb1c3b1a7dcb /10.0.101.82    consumer-tkt01-payments-1
+tkt01-payments  tkt01-order-placed 5          0               273             273             consumer-tkt01-payments-1-db235b14-79fa-4ec2-a9ae-4c713ffd9ae3 /10.0.100.64    consumer-tkt01-payments-1

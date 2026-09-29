@@ -1,0 +1,12 @@
+onsale_start=2026-09-29T04:07:36Z
+pod_deleted=tkt01-payments-6557d88f48-6jcz6 at 2026-09-29T04:09:18Z
+delete_cmd_returned=2026-09-29T04:09:19Z
+onsale_exit=0 at 2026-09-29T04:11:40Z
+spike_end(k6 job complete)=tkt01-onsale-verify1t040736 2026-09-29T04:11:38Z
+tkt01-seats-sweep-29844249 2026-09-29T04:09:03Z
+tkt01-seats-sweep-29844250 
+tkt01-seats-sweep-29844251 
+remediation_cordon=2026-09-29T04:13:38Z node ip-10-0-100-116.ec2.internal (aws-cni cannot assign pod IPs; confirmations + 2 payments pods stuck ContainerCreating)
+remediation_cordon2=2026-09-29T04:17:17Z node ip-10-0-100-115.ec2.internal (same aws-cni IP-assign failure; seats pod stuck ContainerCreating)
+remediation_cordon3=2026-09-29T04:20:25Z node ip-10-0-100-33.ec2.internal (same aws-cni failure)
+lag_zero_observed=2026-09-29T04:21:40Z (first sample at 0 after unblocking; previous sample 04:21:14Z lag=548)

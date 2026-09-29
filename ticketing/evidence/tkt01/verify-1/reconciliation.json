@@ -1,0 +1,44 @@
+{
+  "run_id": "verify1t040736",
+  "before": {
+    "placed": 821,
+    "confirmed": 821,
+    "paid_captured": 821,
+    "payment_rows": 821,
+    "duplicates": 0,
+    "tickets": 1642,
+    "orders_by_status": {
+      "CONFIRMED": 821
+    },
+    "payments_by_status": {
+      "CAPTURED": 821
+    }
+  },
+  "after": {
+    "placed": 1649,
+    "confirmed": 6,
+    "paid_captured": 6,
+    "payment_rows": 1649,
+    "payments_by_status": {
+      "EXPIRED": 1643,
+      "CAPTURED": 6
+    },
+    "duplicates": 0,
+    "attempt_rows": 6,
+    "orders_with_multiple_attempts": 0,
+    "settled_confirmations": 6,
+    "tickets": 12,
+    "seats_sold": 0,
+    "holds_converted": 0,
+    "orders_by_status": {
+      "CANCELLED": 1643,
+      "CONFIRMED": 6
+    },
+    "orders_by_payment_outcome": {
+      "HOLD_EXPIRED": 1643,
+      "APPROVED": 6
+    },
+    "outbox_unpublished": 0,
+    "outbox_total": 1649
+  }
+}

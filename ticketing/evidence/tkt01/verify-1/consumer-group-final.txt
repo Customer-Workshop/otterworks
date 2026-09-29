@@ -1,0 +1,8 @@
+
+GROUP           TOPIC              PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+tkt01-payments  tkt01-order-placed 0          268             268             0               -               -               -
+tkt01-payments  tkt01-order-placed 1          271             271             0               -               -               -
+tkt01-payments  tkt01-order-placed 2          300             300             0               -               -               -
+tkt01-payments  tkt01-order-placed 3          268             268             0               -               -               -
+tkt01-payments  tkt01-order-placed 4          269             269             0               -               -               -
+tkt01-payments  tkt01-order-placed 5          273             273             0               -               -               -

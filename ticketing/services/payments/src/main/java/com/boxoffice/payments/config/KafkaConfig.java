@@ -19,8 +19,10 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * Manual offset commit is configured in application.yml (enable.auto.commit=false, ack-mode manual_immediate).
- * A record whose side effects could not be delivered is retried on the same partition without limit, so it is
- * never skipped or lost; the idempotency key makes every retry a no-op on the database.
+ * The only things that can fail before the commit are this service's own database and the Kafka producer, and a
+ * record they reject is retried on the same partition without limit rather than skipped (a skipped record is a lost
+ * payment); the idempotency key makes every retry a no-op on the database. Sibling HTTP inboxes are not on this
+ * path (see InboxRelay), so no external outage can pin a partition.
  */
 @Configuration
 public class KafkaConfig {

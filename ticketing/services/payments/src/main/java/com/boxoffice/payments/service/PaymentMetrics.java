@@ -4,9 +4,13 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
+import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 
-/** Prometheus names: payments_gateway_latency_seconds{outcome} histogram, payments_duplicates_suppressed_total. */
+/**
+ * Prometheus names: payments_gateway_latency_seconds{outcome} histogram, payments_duplicates_suppressed_total,
+ * payments_inbox_deliveries_total{target,result}, payments_inbox_deliveries_pending gauge.
+ */
 @Component
 public class PaymentMetrics {
 
@@ -35,5 +39,13 @@ public class PaymentMetrics {
 
     public void duplicateSuppressed() {
         duplicatesSuppressed.increment();
+    }
+
+    public void delivery(String target, String result) {
+        registry.counter("payments.inbox.deliveries", "target", target, "result", result).increment();
+    }
+
+    public void pendingDeliveries(Supplier<Number> pending) {
+        registry.gauge("payments.inbox.deliveries.pending", pending, s -> s.get().doubleValue());
     }
 }

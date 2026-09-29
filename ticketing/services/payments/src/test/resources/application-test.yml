@@ -16,6 +16,14 @@ payments:
     min-ms: 69
     max-ms: 69
     decline-pct: 0
+  relay:
+    poll-ms: 100
+    batch-size: 20
+    lease-ms: 5000
+    backoff-ms: 200
+    max-backoff-ms: 400
+    max-attempts: 40
+    threads: 2
 logging:
   level:
     root: WARN

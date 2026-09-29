@@ -78,8 +78,10 @@ svc_apply payments/k8s/30-payments.yaml            "${PAYMENTS_IMAGE}"
 svc_apply payments/k8s/40-observability.yaml       "${PAYMENTS_IMAGE}"
 # Deployment/Service first so the image is proven to boot at one replica; the ScaledObject then takes it to 0.
 svc_apply_deferring orders/k8s/40-outbox-relay.yaml "${ORDERS_IMAGE}" ScaledObject
+svc_apply_deferring payments/k8s/35-inbox-relay.yaml "${PAYMENTS_IMAGE}" ScaledObject
 kubectl -n "${NS}" rollout status "deploy/${TOKEN}-payments" --timeout=5m
 kubectl -n "${NS}" rollout status "deploy/${TOKEN}-orders-outbox-relay" --timeout=5m
+kubectl -n "${NS}" rollout status "deploy/${TOKEN}-payments-relay" --timeout=5m
 svc_apply payments/k8s/50-keda.yaml "${PAYMENTS_IMAGE}"
 apply_deferred ScaledObject
 kubectl -n "${NS}" wait ksvc -l "${TOKEN_LABEL}=${TOKEN}" --for=condition=Ready --timeout=10m

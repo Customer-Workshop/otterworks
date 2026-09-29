@@ -53,7 +53,7 @@ class PaymentGatewayClientTest {
 
     @Test
     void realClientHonoursConfiguredLatencyWindow() {
-        PaymentsProperties props = new PaymentsProperties("tkt01", null, null, new PaymentsProperties.Gateway(4000, 5, 10, 0));
+        PaymentsProperties props = new PaymentsProperties("tkt01", null, null, new PaymentsProperties.Gateway(4000, 5, 10, 0), null);
         PaymentGatewayClient.Result r = new PaymentGatewayClient(props).authorizeAndCapture(100, "4242");
         assertThat(r.outcome()).isEqualTo(PaymentGatewayClient.Outcome.APPROVED);
         assertThat(r.latencyMs()).isBetween(5, 10);

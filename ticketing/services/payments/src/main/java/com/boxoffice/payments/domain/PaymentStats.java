@@ -8,5 +8,7 @@ public record PaymentStats(
         long paymentsTimeout,
         long paymentsExpired,
         long attempts,
-        long duplicatesSuppressed) {
+        long duplicatesSuppressed,
+        long deliveriesPending,
+        long deliveriesGivenUp) {
 }

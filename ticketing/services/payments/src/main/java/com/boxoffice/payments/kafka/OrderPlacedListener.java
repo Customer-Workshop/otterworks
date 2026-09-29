@@ -13,7 +13,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * order-placed consumer, group {@code <token>-payments}. Offsets are committed manually, only after the payment
- * transaction has committed and the outcome has been delivered to Kafka and the HTTP inboxes.
+ * transaction (payment + outbox rows) has committed and the outcome record has been acknowledged by Kafka. The HTTP
+ * inbox fan-out is relayed from the outbox and never holds the partition.
  */
 @Component
 public class OrderPlacedListener {

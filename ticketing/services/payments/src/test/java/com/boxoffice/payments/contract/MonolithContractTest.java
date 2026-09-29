@@ -10,6 +10,7 @@ import com.boxoffice.payments.events.OrderPlaced;
 import com.boxoffice.payments.gateway.PaymentGatewayClient;
 import com.boxoffice.payments.repo.PaymentRepository;
 import com.boxoffice.payments.service.OutcomeEvent;
+import com.boxoffice.payments.service.OutcomeOutbox;
 import com.boxoffice.payments.service.PaymentMetrics;
 import com.boxoffice.payments.service.PaymentProcessor;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -43,6 +44,7 @@ class MonolithContractTest extends SpringTestBase {
     @Autowired PaymentMetrics metrics;
     @Autowired JdbcTemplate jdbc;
     @Autowired TransactionTemplate tx;
+    @Autowired OutcomeOutbox outbox;
 
     private final AtomicInteger gatewayCalls = new AtomicInteger();
 
@@ -55,7 +57,7 @@ class MonolithContractTest extends SpringTestBase {
     private PaymentProcessor processor(int timeoutMs, int latency) {
         PaymentGatewayClient gateway = new PaymentGatewayClient(new PaymentsProperties.Gateway(timeoutMs, 40, 120, 0),
                 (lo, hi) -> { if (hi != 99) gatewayCalls.incrementAndGet(); return hi == 99 ? 99 : latency; }, ms -> { });
-        return new PaymentProcessor(repo, gateway, metrics, CLOCK, tx);
+        return new PaymentProcessor(repo, gateway, metrics, CLOCK, tx, outbox);
     }
 
     private static OrderPlaced orderFor(JsonNode fx, String orderRef) {

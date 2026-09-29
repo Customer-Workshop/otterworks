@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
@@ -32,6 +33,8 @@ public abstract class SpringTestBase {
     }
 
     protected static final List<InboxCall> INBOX = new CopyOnWriteArrayList<>();
+    /** When set the stub answers 503 without recording the call, standing in for an unreachable sibling. */
+    protected static final AtomicBoolean INBOX_DOWN = new AtomicBoolean(false);
     private static HttpServer inbox;
 
     @BeforeAll
@@ -39,6 +42,12 @@ public abstract class SpringTestBase {
         if (inbox == null) {
             inbox = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             inbox.createContext("/", exchange -> {
+                if (INBOX_DOWN.get()) {
+                    exchange.getRequestBody().readAllBytes();
+                    exchange.sendResponseHeaders(503, -1);
+                    exchange.close();
+                    return;
+                }
                 try (InputStream in = exchange.getRequestBody()) {
                     INBOX.add(new InboxCall(exchange.getRequestURI().getPath(), new String(in.readAllBytes(), StandardCharsets.UTF_8)));
                 }

@@ -29,7 +29,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
-/** End to end through the real listener: Kafka in, DB row, Kafka out, inbox POSTs, then the offset is committed. */
+/** End to end through the real listener: Kafka in, DB row + outbox rows, Kafka out, offset committed, inbox POSTs relayed. */
 class OrderPlacedFlowTest extends SpringTestBase {
 
     @Autowired KafkaTemplate<String, Object> kafka;
@@ -52,7 +52,7 @@ class OrderPlacedFlowTest extends SpringTestBase {
     }
 
     @Test
-    void approvedOrderPublishesPaymentCapturedAndPostsToConfirmationsBeforeCommitting() throws Exception {
+    void approvedOrderPublishesPaymentCapturedCommitsAndRelaysToConfirmations() throws Exception {
         OrderPlaced placed = Fixtures.orderPlaced("BO-FLOWOK0001", "4242", Instant.now().plusSeconds(600));
         var meta = kafka.send("tkt01-order-placed", placed.orderRef(), placed).get().getRecordMetadata();
 

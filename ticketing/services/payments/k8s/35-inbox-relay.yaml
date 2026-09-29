@@ -1,0 +1,127 @@
+# Inbox relay: the payments image with the Kafka listener switched off, draining outcome_deliveries (the HTTP
+# fan-out outbox written in the payment transaction) while the consumer itself is at zero. Scaled 0..2 by KEDA on
+# pending rows; consumer replicas relay too, so this only covers the tail after the lag drains and any sibling that
+# was unreachable during the spike (rows retry with backoff up to RELAY_MAX_ATTEMPTS, then are marked given_up).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${TOKEN}-payments-db
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments-db, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+type: Opaque
+stringData:
+  POSTGRES_USER: payments
+  POSTGRES_PASSWORD: payments
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${TOKEN}-payments-relay
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments-relay, app.kubernetes.io/name: payments-relay, app.kubernetes.io/part-of: ticketing-demo, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: ${TOKEN}-payments-relay}}
+  template:
+    metadata:
+      labels: {app: ${TOKEN}-payments-relay, app.kubernetes.io/name: payments-relay, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: relay
+          image: ${IMAGE}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          env:
+            - {name: TOKEN, value: "${TOKEN}"}
+            - {name: DB_HOST, value: ${TOKEN}-payments-db}
+            - {name: DB_PORT, value: "5432"}
+            - {name: DB_NAME, value: payments}
+            - {name: DB_USER, valueFrom: {secretKeyRef: {name: ${TOKEN}-payments-db, key: POSTGRES_USER}}}
+            - {name: DB_PASSWORD, valueFrom: {secretKeyRef: {name: ${TOKEN}-payments-db, key: POSTGRES_PASSWORD}}}
+            - {name: KAFKA_BOOTSTRAP, value: ${TOKEN}-kafka-kafka-bootstrap.${TOKEN}-after.svc:9092}
+            - {name: KAFKA_LISTENER_AUTO_STARTUP, value: "false"}
+            - {name: CONFIRMATIONS_URL, value: http://${TOKEN}-confirmations.${TOKEN}-after.svc.cluster.local}
+            - {name: ORDERS_URL, value: http://${TOKEN}-orders.${TOKEN}-after.svc.cluster.local}
+            - {name: SEATS_URL, value: http://${TOKEN}-seats.${TOKEN}-after.svc.cluster.local}
+            - {name: RELAY_BATCH_SIZE, value: "50"}
+            - {name: RELAY_THREADS, value: "8"}
+            - {name: JAVA_TOOL_OPTIONS, value: "-XX:MaxRAMPercentage=70 -Djava.net.preferIPv4Stack=true -Djava.io.tmpdir=/tmp"}
+          ports: [{containerPort: 8080, name: http}]
+          startupProbe: {httpGet: {path: /actuator/health/liveness, port: http}, periodSeconds: 5, failureThreshold: 36}
+          readinessProbe: {httpGet: {path: /actuator/health/readiness, port: http}, periodSeconds: 10, timeoutSeconds: 3}
+          livenessProbe: {httpGet: {path: /actuator/health/liveness, port: http}, periodSeconds: 20, failureThreshold: 3}
+          resources:
+            requests: {cpu: 100m, memory: 320Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-payments-relay
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments-relay, app.kubernetes.io/name: payments-relay, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  type: ClusterIP
+  selector: {app: ${TOKEN}-payments-relay}
+  ports: [{name: http, port: 80, targetPort: http}]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ${TOKEN}-payments-relay
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments-relay, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  selector:
+    matchLabels: {app: ${TOKEN}-payments-relay}
+  namespaceSelector:
+    matchNames: [${TOKEN}-after]
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: ${TOKEN}-payments-db-trigger-auth
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments-relay, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  secretTargetRef:
+    - parameter: password
+      name: ${TOKEN}-payments-db
+      key: POSTGRES_PASSWORD
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ${TOKEN}-payments-relay
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments-relay, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  scaleTargetRef:
+    name: ${TOKEN}-payments-relay
+  pollingInterval: 5
+  cooldownPeriod: 60
+  minReplicaCount: 0
+  maxReplicaCount: 2
+  triggers:
+    - type: postgresql
+      metadata:
+        host: ${TOKEN}-payments-db.${TOKEN}-after.svc
+        port: "5432"
+        userName: payments
+        dbName: payments
+        sslmode: disable
+        query: "SELECT count(*) FROM outcome_deliveries WHERE delivered_at IS NULL AND given_up_at IS NULL"
+        targetQueryValue: "500"
+        activationTargetQueryValue: "0"
+      authenticationRef:
+        name: ${TOKEN}-payments-db-trigger-auth

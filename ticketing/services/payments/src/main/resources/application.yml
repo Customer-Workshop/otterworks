@@ -38,6 +38,8 @@ spring:
     listener:
       ack-mode: manual_immediate
       concurrency: ${KAFKA_CONCURRENCY:1}
+      # false in the inbox-relay Deployment: same image, drains outcome_deliveries only
+      auto-startup: ${KAFKA_LISTENER_AUTO_STARTUP:true}
   jackson:
     default-property-inclusion: always
     serialization:
@@ -58,6 +60,14 @@ payments:
     min-ms: ${GATEWAY_MIN_MS:40}
     max-ms: ${GATEWAY_MAX_MS:120}
     decline-pct: ${GATEWAY_DECLINE_PCT:0}
+  relay:
+    poll-ms: ${RELAY_POLL_MS:250}
+    batch-size: ${RELAY_BATCH_SIZE:20}
+    lease-ms: ${RELAY_LEASE_MS:120000}
+    backoff-ms: ${RELAY_BACKOFF_MS:1000}
+    max-backoff-ms: ${RELAY_MAX_BACKOFF_MS:30000}
+    max-attempts: ${RELAY_MAX_ATTEMPTS:40}
+    threads: ${RELAY_THREADS:4}
 
 management:
   endpoints:

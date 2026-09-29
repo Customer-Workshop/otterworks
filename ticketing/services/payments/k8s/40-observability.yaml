@@ -25,7 +25,7 @@ metadata:
 spec:
   podSelector:
     matchExpressions:
-      - {key: app, operator: In, values: [${TOKEN}-payments, ${TOKEN}-payments-db]}
+      - {key: app, operator: In, values: [${TOKEN}-payments, ${TOKEN}-payments-relay, ${TOKEN}-payments-db]}
   policyTypes: [Ingress]
   ingress:
     - from:

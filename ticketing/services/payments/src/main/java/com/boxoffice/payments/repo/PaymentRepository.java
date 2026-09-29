@@ -73,9 +73,12 @@ public class PaymentRepository {
                   (SELECT COUNT(*) FROM payments WHERE status = 'TIMEOUT') AS timeout,
                   (SELECT COUNT(*) FROM payments WHERE status = 'EXPIRED') AS expired,
                   (SELECT COUNT(*) FROM payment_attempts) AS attempts,
-                  (SELECT COALESCE(SUM(duplicate_deliveries), 0) FROM payments) AS duplicates
+                  (SELECT COALESCE(SUM(duplicate_deliveries), 0) FROM payments) AS duplicates,
+                  (SELECT COUNT(*) FROM outcome_deliveries WHERE delivered_at IS NULL AND given_up_at IS NULL) AS deliveries_pending,
+                  (SELECT COUNT(*) FROM outcome_deliveries WHERE given_up_at IS NOT NULL) AS deliveries_given_up
                 """, (rs, i) -> new PaymentStats(rs.getLong("captured"), rs.getLong("captured_cents"), rs.getLong("declined"),
-                rs.getLong("timeout"), rs.getLong("expired"), rs.getLong("attempts"), rs.getLong("duplicates")));
+                rs.getLong("timeout"), rs.getLong("expired"), rs.getLong("attempts"), rs.getLong("duplicates"),
+                rs.getLong("deliveries_pending"), rs.getLong("deliveries_given_up")));
     }
 
     private static Instant instant(ResultSet rs, String column) throws SQLException {

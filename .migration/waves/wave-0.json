@@ -1,0 +1,63 @@
+{
+  "wave": 0,
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "child_macro": "!mongo_unit_migration",
+  "verify_macro": "!mongo_reconciliation",
+  "breaker_threshold": 3,
+  "auto_merge": false,
+  "source_access": "live",
+  "target_access": "migration_cluster",
+  "stop_mode": "hard",
+  "decision": "D-015",
+  "base_branch": "tp-run/mongodb-20260929T160602Z",
+  "workspace_branch": "migrate/billing/0-setup",
+  "mapping": ".migration/03_mapping_spec.json",
+  "tolerances": ".migration/02_tolerances.json",
+  "source": {
+    "family": "oracle",
+    "live_dsn_secret": "OW_TP_ORACLE_RO_DSN",
+    "fixture_dsn_env": "OW_TP_ORACLE_FIXTURE_DSN",
+    "source_concurrency": 1
+  },
+  "target": {
+    "db": "ow_tp_mmp_live",
+    "live_uri_secret": "OW_TP_MMP_TARGET_URI",
+    "fixture_uri_env": "OW_TP_MMP_FIXTURE_URI",
+    "target_class": "migration_cluster"
+  },
+  "execution": "in-session (serial)",
+  "width": 1,
+  "verify": "one fresh session (!mongo_reconciliation), report on recon/billing-wave-0",
+  "batches": [
+    {
+      "id": "w0-b01",
+      "units": [
+        "U0-reference"
+      ],
+      "branch": "migrate/billing/0-U0-reference",
+      "loader": ".migration/units/U0-reference/load.py",
+      "sources": [
+        "OW_BILLING.CODES",
+        "OW_BILLING.TENANTS",
+        "OW_BILLING.PLANS",
+        "ALL_SEQUENCES (owner OW_BILLING)"
+      ],
+      "write_targets": [
+        "ow_tp_mmp_live.codes",
+        "ow_tp_mmp_live.tenants",
+        "ow_tp_mmp_live.plans",
+        "ow_tp_mmp_live.sequences"
+      ],
+      "recon_collections": [
+        "codes",
+        "tenants",
+        "plans"
+      ],
+      "unverified_by_harness": [
+        "sequences (dictionary view, not a spec collection: loader count vs target count only)"
+      ],
+      "fixture_manifest": ".migration/fixtures/oracle-mmpfix.manifest.json",
+      "brief": "In-session unit (D-015): reference collections pulled out of U3. Loader = U3's codes/tenants/plans/sequences blocks, shared .migration/tools/mongo_load.py. Fixture load x2 (idempotency), fixture recon --collections codes,tenants,plans --target-class local, then one live load + idempotent rerun and one live recon --target-class migration_cluster. TP report via .migration/tools/tp_recon_report.py. One PR into tp-run/mongodb-20260929T160602Z."
+    }
+  ]
+}

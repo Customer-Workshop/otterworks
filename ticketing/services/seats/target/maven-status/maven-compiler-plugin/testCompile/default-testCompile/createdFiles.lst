@@ -1,0 +1,12 @@
+com/otterworks/ticketing/seats/support/SeededServiceTest.class
+com/otterworks/ticketing/seats/support/EmbeddedPostgresConfig.class
+com/otterworks/ticketing/seats/contract/InboxAndSweepContractTest.class
+com/otterworks/ticketing/seats/contract/HoldsApiContractTest.class
+com/otterworks/ticketing/seats/unit/EventPayloadShapeTest.class
+com/otterworks/ticketing/seats/contract/HoldExpiredDeliveryContractTest.class
+com/otterworks/ticketing/seats/unit/HoldExpiredPublisherTest$1.class
+com/otterworks/ticketing/seats/unit/SeatsExceptionTest.class
+com/otterworks/ticketing/seats/support/EmbeddedPostgresConfig$Holder.class
+com/otterworks/ticketing/seats/unit/RefsTest.class
+com/otterworks/ticketing/seats/unit/InboxValidationTest.class
+com/otterworks/ticketing/seats/unit/HoldExpiredPublisherTest.class

@@ -1,0 +1,18 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "after 4 confirmed seats on performance 7",
+  "recordedAt": "2026-09-29T01:34:40.205056Z",
+  "request": {
+    "method": "GET",
+    "path": "/api/performances/7/availability",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "available": 2396,
+      "held": 0,
+      "sold": 4
+    }
+  }
+}

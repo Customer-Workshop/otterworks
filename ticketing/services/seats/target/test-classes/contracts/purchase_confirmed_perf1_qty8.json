@@ -1,0 +1,25 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "max_per_order: next best-available A01 R01 seats 3-10",
+  "recordedAt": "2026-09-29T01:34:39.991174Z",
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 1,
+      "email": "fan00004@example.test",
+      "quantity": 8,
+      "cardLast4": "4242"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "orderRef": "BO-ZV68S5C2S7",
+      "status": "CONFIRMED",
+      "totalCents": 171344,
+      "tickets": 8,
+      "paymentOutcome": "APPROVED"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql",
+  "note": "items of the hall sale",
+  "recordedAt": "2026-09-29T01:35:04.431286Z",
+  "request": {
+    "method": "GET",
+    "path": "/api/orders/BO-CE5VG5N8J4",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": 5,
+      "order_ref": "BO-CE5VG5N8J4",
+      "customer_id": 5,
+      "performance_id": 7,
+      "hold_id": 5,
+      "delivery_method_id": 1,
+      "promo_code_id": null,
+      "status": "CONFIRMED",
+      "subtotal_cents": 75600,
+      "fees_cents": 10072,
+      "total_cents": 85672,
+      "channel": "API",
+      "created_at": "2026-09-29 01:34:40.001122",
+      "updated_at": "2026-09-29 01:34:40.001122",
+      "email": "fan00005@example.test",
+      "event_title": "Hollow Pines Ensemble: Winter Songs",
+      "starts_at": "2026-10-20 20:00:00.0",
+      "venue_name": "Ossery Hall",
+      "items": [
+        {
+          "price_cents": 18900,
+          "section": "H1",
+          "row_label": "R01",
+          "seat_number": 1,
+          "zone": "Premium",
+          "ticket_code": "TK-8NA8SF32XR"
+        },
+        {
+          "price_cents": 18900,
+          "section": "H1",
+          "row_label": "R01",
+          "seat_number": 2,
+          "zone": "Premium",
+          "ticket_code": "TK-5XHLN7WWSQ"
+        },
+        {
+          "price_cents": 18900,
+          "section": "H1",
+          "row_label": "R01",
+          "seat_number": 3,
+          "zone": "Premium",
+          "ticket_code": "TK-GS9JKE4Z92"
+        },
+        {
+          "price_cents": 18900,
+          "section": "H1",
+          "row_label": "R01",
+          "seat_number": 4,
+          "zone": "Premium",
+          "ticket_code": "TK-5K48ZGEQUF"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.otterworks.ticketing.seats.contract.HoldsApiContractTest
+-------------------------------------------------------------------------------
+Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.606 s -- in com.otterworks.ticketing.seats.contract.HoldsApiContractTest

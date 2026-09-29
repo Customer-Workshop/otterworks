@@ -1,0 +1,16 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "after aging the ACTIVE hold past expires_at: released 1, seats back to AVAILABLE",
+  "recordedAt": "2026-09-29T01:34:40.400485Z",
+  "request": {
+    "method": "POST",
+    "path": "/api/admin/expire-holds",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "released": 1
+    }
+  }
+}

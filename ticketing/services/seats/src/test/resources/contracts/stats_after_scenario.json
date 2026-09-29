@@ -1,0 +1,26 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "seatsSold/seatsHeld after the recorded scenario: 2+2+8+4 sold, 0 held",
+  "recordedAt": "2026-09-29T01:34:40.465010Z",
+  "request": {
+    "method": "GET",
+    "path": "/api/stats",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "ordersTotal": 5,
+      "ordersByStatus": {
+        "CONFIRMED": 4,
+        "PAYMENT_FAILED": 1
+      },
+      "paymentsCaptured": 4,
+      "capturedCents": 342688,
+      "ticketsIssued": 16,
+      "confirmationsQueued": 4,
+      "seatsSold": 16,
+      "seatsHeld": 0
+    }
+  }
+}

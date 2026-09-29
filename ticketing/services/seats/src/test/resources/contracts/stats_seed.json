@@ -1,0 +1,23 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "seat counts on the pristine seed",
+  "recordedAt": "2026-09-29T01:34:39.234567Z",
+  "request": {
+    "method": "GET",
+    "path": "/api/stats",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "ordersTotal": 0,
+      "ordersByStatus": {},
+      "paymentsCaptured": 0,
+      "capturedCents": 0,
+      "ticketsIssued": 0,
+      "confirmationsQueued": 0,
+      "seatsSold": 0,
+      "seatsHeld": 0
+    }
+  }
+}

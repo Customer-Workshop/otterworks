@@ -1,0 +1,219 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql",
+  "note": "seat_holds after the recorded scenario (DB view): CONVERTED holds keep SOLD seats, the RELEASED (declined) and EXPIRED (swept) holds' seats are AVAILABLE again",
+  "recordedAt": "2026-09-29T01:35:04.488718Z",
+  "holds": [
+    {
+      "holdRef": "H-43HG47E2ML",
+      "status": "CONVERTED",
+      "seats": [
+        {
+          "seatInventoryId": 6,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 1,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 12,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 2,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        }
+      ]
+    },
+    {
+      "holdRef": "H-B6KJBWKX9G",
+      "status": "RELEASED",
+      "seats": [
+        {
+          "seatInventoryId": 18,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 3,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 24,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 4,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 30,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 5,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        }
+      ]
+    },
+    {
+      "holdRef": "H-9SED782V2W",
+      "status": "CONVERTED",
+      "seats": [
+        {
+          "seatInventoryId": 12006,
+          "section": "A02",
+          "rowLabel": "R01",
+          "seatNumber": 1,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 12012,
+          "section": "A02",
+          "rowLabel": "R01",
+          "seatNumber": 2,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        }
+      ]
+    },
+    {
+      "holdRef": "H-2XYWCUC6S6",
+      "status": "CONVERTED",
+      "seats": [
+        {
+          "seatInventoryId": 18,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 3,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 24,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 4,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 30,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 5,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 36,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 6,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 42,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 7,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 48,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 8,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 54,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 9,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 60,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 10,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        }
+      ]
+    },
+    {
+      "holdRef": "H-Y86XQ9BAJA",
+      "status": "CONVERTED",
+      "seats": [
+        {
+          "seatInventoryId": 120006,
+          "section": "H1",
+          "rowLabel": "R01",
+          "seatNumber": 1,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 120015,
+          "section": "H1",
+          "rowLabel": "R01",
+          "seatNumber": 2,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 120024,
+          "section": "H1",
+          "rowLabel": "R01",
+          "seatNumber": 3,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        },
+        {
+          "seatInventoryId": 120033,
+          "section": "H1",
+          "rowLabel": "R01",
+          "seatNumber": 4,
+          "zoneCode": "P1",
+          "inventoryStatus": "SOLD"
+        }
+      ]
+    },
+    {
+      "holdRef": "H-P6MNAH5DDB",
+      "status": "EXPIRED",
+      "seats": [
+        {
+          "seatInventoryId": 66,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 11,
+          "zoneCode": "P1",
+          "inventoryStatus": "AVAILABLE"
+        },
+        {
+          "seatInventoryId": 72,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 12,
+          "zoneCode": "P1",
+          "inventoryStatus": "AVAILABLE"
+        },
+        {
+          "seatInventoryId": 78,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 13,
+          "zoneCode": "P1",
+          "inventoryStatus": "AVAILABLE"
+        }
+      ]
+    }
+  ]
+}

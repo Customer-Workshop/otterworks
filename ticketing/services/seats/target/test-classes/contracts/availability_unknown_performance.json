@@ -1,0 +1,17 @@
+{
+  "source": "https://tkt01-before.demo.otterworks.app (monolith before-state, live)",
+  "recordedAt": "2026-09-29T01:31:06.830468Z",
+  "request": {
+    "method": "GET",
+    "path": "/api/performances/999/availability",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "available": 0,
+      "held": 0,
+      "sold": 0
+    }
+  }
+}

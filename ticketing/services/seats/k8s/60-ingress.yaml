@@ -1,0 +1,39 @@
+# Kourier routing pattern from CONVENTIONS.md: nginx Ingress -> ExternalName Service -> kourier-internal,
+# with upstream-vhost set to the Knative Service's cluster-local host.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-seats-kourier
+  labels:
+    app.kubernetes.io/name: seats
+    app.kubernetes.io/part-of: ticketing
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+spec:
+  type: ExternalName
+  externalName: kourier-internal.kourier-system.svc.cluster.local
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${TOKEN}-seats
+  labels:
+    app.kubernetes.io/name: seats
+    app.kubernetes.io/part-of: ticketing
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/upstream-vhost: ${TOKEN}-seats.${TOKEN}-after.svc.cluster.local
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  tls: [{hosts: ["${TOKEN}-after.demo.otterworks.app"], secretName: ${TOKEN}-after-tls}]
+  rules:
+    - host: ${TOKEN}-after.demo.otterworks.app
+      http:
+        paths:
+          - {path: /api/holds, pathType: Prefix, backend: {service: {name: ${TOKEN}-seats-kourier, port: {number: 80}}}}
+          - {path: /api/performances, pathType: Prefix, backend: {service: {name: ${TOKEN}-seats-kourier, port: {number: 80}}}}
+          - {path: /api/admin/expire-holds, pathType: Prefix, backend: {service: {name: ${TOKEN}-seats-kourier, port: {number: 80}}}}

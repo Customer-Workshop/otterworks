@@ -1,0 +1,20 @@
+{
+  "source": "https://tkt01-before.demo.otterworks.app (monolith before-state, live)",
+  "recordedAt": "2026-09-29T01:31:05.209404Z",
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 999,
+      "email": "fan00001@example.test",
+      "quantity": 2
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": {
+      "message": "performance 999 not found",
+      "error": "NOT_FOUND"
+    }
+  }
+}

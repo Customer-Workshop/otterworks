@@ -1,0 +1,18 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "a 3-seat web-cart hold is ACTIVE (held=3)",
+  "recordedAt": "2026-09-29T01:34:40.279931Z",
+  "request": {
+    "method": "GET",
+    "path": "/api/performances/1/availability",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "available": 19985,
+      "held": 3,
+      "sold": 12
+    }
+  }
+}

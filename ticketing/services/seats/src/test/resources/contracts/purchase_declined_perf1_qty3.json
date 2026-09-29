@@ -1,0 +1,25 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "card 0000 is always DECLINED: hold RELEASED, seats back to AVAILABLE",
+  "recordedAt": "2026-09-29T01:34:39.653850Z",
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 1,
+      "email": "fan00002@example.test",
+      "quantity": 3,
+      "cardLast4": "0000"
+    }
+  },
+  "response": {
+    "status": 402,
+    "body": {
+      "orderRef": "BO-PX7SVLG2NT",
+      "status": "PAYMENT_FAILED",
+      "totalCents": 64254,
+      "tickets": 0,
+      "paymentOutcome": "DECLINED"
+    }
+  }
+}

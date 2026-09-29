@@ -1,0 +1,21 @@
+{
+  "source": "https://tkt01-before.demo.otterworks.app (monolith before-state, live)",
+  "recordedAt": "2026-09-29T01:31:05.980260Z",
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 1,
+      "email": "fan00001@example.test",
+      "quantity": 2,
+      "section": "ZZ9"
+    }
+  },
+  "response": {
+    "status": 409,
+    "body": {
+      "message": "not enough seats available",
+      "error": "SOLD_OUT"
+    }
+  }
+}

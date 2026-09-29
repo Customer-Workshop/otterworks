@@ -1,0 +1,99 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql",
+  "note": "items of the 8-seat sale (continues A01 R01 after seats 1-2)",
+  "recordedAt": "2026-09-29T01:35:04.426598Z",
+  "request": {
+    "method": "GET",
+    "path": "/api/orders/BO-ZV68S5C2S7",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": 4,
+      "order_ref": "BO-ZV68S5C2S7",
+      "customer_id": 4,
+      "performance_id": 1,
+      "hold_id": 4,
+      "delivery_method_id": 1,
+      "promo_code_id": null,
+      "status": "CONFIRMED",
+      "subtotal_cents": 151200,
+      "fees_cents": 20144,
+      "total_cents": 171344,
+      "channel": "API",
+      "created_at": "2026-09-29 01:34:39.827461",
+      "updated_at": "2026-09-29 01:34:39.827461",
+      "email": "fan00004@example.test",
+      "event_title": "Static Meridian: The Long Signal Tour",
+      "starts_at": "2026-10-06 20:00:00.0",
+      "venue_name": "Tallowmere Arena",
+      "items": [
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 3,
+          "zone": "Premium",
+          "ticket_code": "TK-AA9NZWXQ4K"
+        },
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 4,
+          "zone": "Premium",
+          "ticket_code": "TK-D2NZ4U32CH"
+        },
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 5,
+          "zone": "Premium",
+          "ticket_code": "TK-452YZP7RT6"
+        },
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 6,
+          "zone": "Premium",
+          "ticket_code": "TK-83SEMSN9Y3"
+        },
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 7,
+          "zone": "Premium",
+          "ticket_code": "TK-HXJTPCMU3S"
+        },
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 8,
+          "zone": "Premium",
+          "ticket_code": "TK-T3T7N9LEFC"
+        },
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 9,
+          "zone": "Premium",
+          "ticket_code": "TK-4AZMEMHSPN"
+        },
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 10,
+          "zone": "Premium",
+          "ticket_code": "TK-Q7LVMW4NUL"
+        }
+      ]
+    }
+  }
+}

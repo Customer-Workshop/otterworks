@@ -1,0 +1,47 @@
+{
+  "source": "monolith 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/monolith:c342ecec4714 on a fresh schema.sql+seed.sql database (docker), POST /api/purchase performanceId=1 quantity=2",
+  "case": "approved",
+  "monolithEnv": {
+    "PAYMENT_TIMEOUT_MS": 4000,
+    "GATEWAY_MIN_MS": 40,
+    "GATEWAY_MAX_MS": 120,
+    "GATEWAY_DECLINE_PCT": 0
+  },
+  "request": {
+    "performanceId": 1,
+    "quantity": 2,
+    "cardLast4": "4242"
+  },
+  "httpStatus": 201,
+  "purchaseResponse": {
+    "orderRef": "BO-ZAFYCTFGA3",
+    "status": "CONFIRMED",
+    "totalCents": 42836,
+    "tickets": 2,
+    "paymentOutcome": "APPROVED"
+  },
+  "order": {
+    "status": "CONFIRMED",
+    "totalCents": 42836
+  },
+  "payments": [
+    {
+      "amount_cents": 42836,
+      "currency": "USD",
+      "status": "CAPTURED",
+      "has_gateway_ref": true,
+      "card_last4": "4242"
+    }
+  ],
+  "paymentAttempts": [
+    {
+      "attempt_no": 1,
+      "outcome": "APPROVED",
+      "latency_ms": 69
+    }
+  ],
+  "hold": {
+    "hold_status": "CONVERTED",
+    "seats_still_held": 0
+  }
+}

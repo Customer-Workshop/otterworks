@@ -1,0 +1,46 @@
+# payments' own PostgreSQL (emptyDir; Flyway creates the schema on first start). Rendered with
+# envsubst '${TOKEN} ${IMAGE}' into namespace ${TOKEN}-after by the integration stage.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${TOKEN}-payments-db
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments-db, app.kubernetes.io/part-of: ticketing-demo, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: ${TOKEN}-payments-db}}
+  template:
+    metadata:
+      labels: {app: ${TOKEN}-payments-db, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+    spec:
+      containers:
+        - name: postgres
+          image: 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/postgres:16-alpine
+          env:
+            - {name: POSTGRES_DB, value: payments}
+            - {name: POSTGRES_USER, value: payments}
+            - {name: POSTGRES_PASSWORD, value: payments}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          args: ["-c", "max_connections=100", "-c", "shared_buffers=128MB"]
+          ports: [{containerPort: 5432, name: pg}]
+          readinessProbe: {exec: {command: ["pg_isready", "-U", "payments", "-d", "payments"]}, periodSeconds: 5}
+          livenessProbe: {exec: {command: ["pg_isready", "-U", "payments", "-d", "payments"]}, periodSeconds: 20, failureThreshold: 6}
+          resources:
+            requests: {cpu: 200m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+      volumes:
+        - {name: data, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-payments-db
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments-db, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  type: ClusterIP
+  selector: {app: ${TOKEN}-payments-db}
+  ports: [{name: pg, port: 5432, targetPort: 5432}]

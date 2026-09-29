@@ -1,0 +1,18 @@
+{
+  "source": "monolith GET /api/stats after approved+declined+timeout+hold_expired on the fresh seed",
+  "stats": {
+    "ordersTotal": 4,
+    "ordersByStatus": {
+      "CANCELLED": 1,
+      "CONFIRMED": 1,
+      "PAYMENT_FAILED": 1,
+      "PAYMENT_TIMEOUT": 1
+    },
+    "paymentsCaptured": 1,
+    "capturedCents": 42836,
+    "ticketsIssued": 2,
+    "confirmationsQueued": 1,
+    "seatsSold": 2,
+    "seatsHeld": 0
+  }
+}

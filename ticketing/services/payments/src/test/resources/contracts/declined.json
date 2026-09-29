@@ -1,0 +1,47 @@
+{
+  "source": "monolith 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/monolith:c342ecec4714 on a fresh schema.sql+seed.sql database (docker), POST /api/purchase performanceId=1 quantity=2",
+  "case": "declined",
+  "monolithEnv": {
+    "PAYMENT_TIMEOUT_MS": 4000,
+    "GATEWAY_MIN_MS": 40,
+    "GATEWAY_MAX_MS": 120,
+    "GATEWAY_DECLINE_PCT": 0
+  },
+  "request": {
+    "performanceId": 1,
+    "quantity": 2,
+    "cardLast4": "0000"
+  },
+  "httpStatus": 402,
+  "purchaseResponse": {
+    "orderRef": "BO-Y8Z5HAE8HS",
+    "status": "PAYMENT_FAILED",
+    "totalCents": 42836,
+    "tickets": 0,
+    "paymentOutcome": "DECLINED"
+  },
+  "order": {
+    "status": "PAYMENT_FAILED",
+    "totalCents": 42836
+  },
+  "payments": [
+    {
+      "amount_cents": 42836,
+      "currency": "USD",
+      "status": "DECLINED",
+      "has_gateway_ref": true,
+      "card_last4": "0000"
+    }
+  ],
+  "paymentAttempts": [
+    {
+      "attempt_no": 1,
+      "outcome": "DECLINED",
+      "latency_ms": 120
+    }
+  ],
+  "hold": {
+    "hold_status": "RELEASED",
+    "seats_still_held": 0
+  }
+}

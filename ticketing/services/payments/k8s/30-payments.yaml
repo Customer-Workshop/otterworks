@@ -1,0 +1,62 @@
+# The payments consumer: a plain Deployment scaled 0..6 by KEDA on order-placed lag (see 50-keda.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${TOKEN}-payments
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments, app.kubernetes.io/name: payments, app.kubernetes.io/part-of: ticketing-demo, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: ${TOKEN}-payments}}
+  template:
+    metadata:
+      labels: {app: ${TOKEN}-payments, app.kubernetes.io/name: payments, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+    spec:
+      terminationGracePeriodSeconds: 45
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: payments
+          image: ${IMAGE}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          env:
+            - {name: TOKEN, value: "${TOKEN}"}
+            - {name: DB_HOST, value: ${TOKEN}-payments-db}
+            - {name: DB_PORT, value: "5432"}
+            - {name: DB_NAME, value: payments}
+            - {name: DB_USER, value: payments}
+            - {name: DB_PASSWORD, value: payments}
+            - {name: KAFKA_BOOTSTRAP, value: ${TOKEN}-kafka-kafka-bootstrap.${TOKEN}-after.svc:9092}
+            - {name: KAFKA_CONCURRENCY, value: "1"}
+            # HTTP inboxes of the sibling Knative Services (CONVENTIONS: <ksvc>.<token>-after.svc.cluster.local via Kourier)
+            - {name: CONFIRMATIONS_URL, value: http://${TOKEN}-confirmations.${TOKEN}-after.svc.cluster.local}
+            - {name: ORDERS_URL, value: http://${TOKEN}-orders.${TOKEN}-after.svc.cluster.local}
+            - {name: SEATS_URL, value: http://${TOKEN}-seats.${TOKEN}-after.svc.cluster.local}
+            # monolith parity knobs (Config.java defaults)
+            - {name: HOLD_MINUTES, value: "10"}
+            - {name: PAYMENT_TIMEOUT_MS, value: "4000"}
+            - {name: GATEWAY_MIN_MS, value: "40"}
+            - {name: GATEWAY_MAX_MS, value: "120"}
+            - {name: GATEWAY_DECLINE_PCT, value: "0"}
+            - {name: JAVA_TOOL_OPTIONS, value: "-XX:MaxRAMPercentage=70 -Djava.net.preferIPv4Stack=true -Djava.io.tmpdir=/tmp"}
+          ports: [{containerPort: 8080, name: http}]
+          startupProbe: {httpGet: {path: /actuator/health/liveness, port: http}, periodSeconds: 5, failureThreshold: 36}
+          readinessProbe: {httpGet: {path: /actuator/health/readiness, port: http}, periodSeconds: 10, timeoutSeconds: 3}
+          livenessProbe: {httpGet: {path: /actuator/health/liveness, port: http}, periodSeconds: 20, failureThreshold: 3}
+          resources:
+            requests: {cpu: 250m, memory: 384Mi}
+            limits: {cpu: "1", memory: 768Mi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-payments
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments, app.kubernetes.io/name: payments, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  type: ClusterIP
+  selector: {app: ${TOKEN}-payments}
+  ports: [{name: http, port: 80, targetPort: http}]

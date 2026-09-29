@@ -1,0 +1,36 @@
+# KEDA scales the consumer on order-placed lag: 0 replicas when idle, one per ~40 lagging records, capped at
+# 6 (= partitions), and back to zero within 60s of the queue draining. The consumer commits initial offsets
+# on assignment so the scaler never sees "no committed offset" as infinite lag.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ${TOKEN}-payments
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-payments, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  scaleTargetRef:
+    name: ${TOKEN}-payments
+  pollingInterval: 5
+  cooldownPeriod: 60
+  minReplicaCount: 0
+  maxReplicaCount: 6
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{type: Pods, value: 6, periodSeconds: 15}]
+        scaleDown:
+          stabilizationWindowSeconds: 30
+          policies: [{type: Percent, value: 100, periodSeconds: 15}]
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: ${TOKEN}-kafka-kafka-bootstrap.${TOKEN}-after.svc:9092
+        consumerGroup: ${TOKEN}-payments
+        topic: ${TOKEN}-order-placed
+        lagThreshold: "40"
+        activationLagThreshold: "1"
+        offsetResetPolicy: earliest
+        allowIdleConsumers: "false"
+        scaleToZeroOnInvalidOffset: "true"

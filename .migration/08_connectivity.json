@@ -1,0 +1,30 @@
+{
+  "policy": "online",
+  "family": "oracle",
+  "source_access": "live",
+  "target_access": "migration_cluster",
+  "source_secret": "OW_TP_ORACLE_RO_DSN",
+  "target_secret": "OW_TP_MMP_TARGET_URI",
+  "target_db": "ow_tp_mmp_live",
+  "source": {
+    "access": "live",
+    "reason": "probe_ok",
+    "blocked": false,
+    "detail": "",
+    "evidence": [
+      "CREATE SESSION",
+      "SELECT ANY DICTIONARY",
+      "SELECT ANY TABLE"
+    ]
+  },
+  "target": {
+    "access": "migration_cluster",
+    "reason": "privilege_excess",
+    "blocked": true,
+    "detail": "over-scoped principal: dbAdmin@ow_tp_mmp_live, readWrite@ow_tp_mmp_live_quarantine, dbAdmin@ow_tp_mmp_live_quarantine",
+    "evidence": []
+  },
+  "blocked": true,
+  "probe_tool": ".migration/tools/connectivity_probe_oracle.py (port of mongo-migration 0.3.2 connectivity_probe.py)",
+  "probed_at": "2026-09-29T16:47:03.758822+00:00"
+}

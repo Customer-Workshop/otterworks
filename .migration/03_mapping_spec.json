@@ -1,0 +1,6 @@
+{
+  "version": "0",
+  "source_family": "oracle",
+  "target_db": "ow_tp_mmp_live",
+  "collections": []
+}

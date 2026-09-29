@@ -1,0 +1,32 @@
+{
+  "captured_at_db_time": "2026-09-29T16:06:15.767327",
+  "checks": {
+    "customer_master_columns": 155,
+    "invoice_line_orphans": 37
+  },
+  "read_via_secret": "OW_TP_ORACLE_RO_DSN",
+  "source": "oracle OW_BILLING @ ow-tp-oracle (FREEPDB1)",
+  "table_count": 20,
+  "tables": {
+    "BILLING_AUDIT_LOG": 0,
+    "CODES": 32,
+    "CREDIT_NOTES": 5,
+    "CUSTOMER_MASTER": 25000,
+    "CUSTOMER_MASTER_HIST": 0,
+    "DUNNING_ATTEMPTS": 1,
+    "ENTITY_ATTR_VALUE": 8333,
+    "FIXTURE_META": 1,
+    "INVOICES": 3,
+    "INVOICE_HEADER": 18750,
+    "INVOICE_LINE": 150000,
+    "INVOICE_LINES": 2,
+    "NOTIFICATIONS": 1,
+    "PLANS": 3,
+    "RATING_PERIODS": 3,
+    "RATING_RESULTS": 3,
+    "SUBSCRIPTIONS": 69,
+    "SUBSCRIPTIONS_HIST": 0,
+    "TENANTS": 69,
+    "USAGE_EVENTS": 814
+  }
+}

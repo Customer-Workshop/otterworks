@@ -1,0 +1,7 @@
+{
+  "databases": ["ow_tp_mmp_live"],
+  "catalogs": ["ow_tp_mmp_live"],
+  "legacy_sources": ["OW_TP_ORACLE_RO_DSN", "OW_TP_ORACLE_APP_PASSWORD", "52.201.36.9", "ow-tp-oracle"],
+  "guard_mode": "block",
+  "run_mode": "live"
+}

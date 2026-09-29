@@ -6,12 +6,12 @@
 |---|---|---|---|
 | Oracle read (assessment tier) | `OW_TP_ORACLE_RO_DSN` | WORKS | privileges: CREATE SESSION, SELECT ANY TABLE, SELECT ANY DICTIONARY (read-only; broader than OW_BILLING but no write grant) |
 | Oracle app read for captures | `OW_TP_ORACLE_APP_PASSWORD` + `BILLING_READONLY=1` | WORKS | before capture done, recount matched |
-| Atlas migration write (migration tier) | `OW_TP_MMP_TARGET_URI` -> `ow_tp_mmp_live` | BLOCKED: privilege_excess | roles: dbAdmin@ow_tp_mmp_live, readWrite@ow_tp_mmp_live_quarantine, dbAdmin@ow_tp_mmp_live_quarantine. No probe document was written |
+| Atlas migration write (migration tier) | `OW_TP_MMP_TARGET_URI` -> `ow_tp_mmp_live` | WORKS (rescoped 2026-09-29) | roles: readWrite@ow_tp_mmp_live only; insert/delete probe in `_connectivity_probe` ok. Earlier: privilege_excess (dbAdmin@ow_tp_mmp_live, readWrite+dbAdmin@ow_tp_mmp_live_quarantine) |
 | Cutover (cutover tier) | customer-held | NOT APPLICABLE to Devin | customer team repoints production |
 | Network Devin -> Oracle | 52.201.36.9:1521 | WORKS | probe connected |
 | Network Devin -> Atlas | otterworks-demo | WORKS | connectionStatus returned |
 
-## Request for the BLOCKED item (D4)
+## Request for the formerly BLOCKED item (D4), resolved 2026-09-29
 
 Approver: the Atlas project owner for `otterworks-demo`.
 Change: the database user inside `OW_TP_MMP_TARGET_URI` keeps exactly one role,

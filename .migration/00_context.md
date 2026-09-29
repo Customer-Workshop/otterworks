@@ -18,8 +18,8 @@ Markers: FACT (user said it), DISCOVERED (probed), PROPOSED (default, confirm at
 | Target driver | Python `pymongo` (pinned version in `services/legacy-billing` requirements; 4.10.1 already pinned by `scripts/tp_preflight`) | PROPOSED |
 | App target | `BILLING_BACKEND=mongo` in legacy-billing serving the same routes from `ow_tp_mmp_live`; CI uses a `mongo:7` fixture container | FACT |
 | Run branch | `tp-run/mongodb-20260929T160602Z` (off `tech-partnerships`); every PR targets it | FACT |
-| Connectivity policy | `online` (merge evidence needs live source + migration cluster; no silent fallback) | PROPOSED |
-| source_access / target_access | live / migration_cluster, BLOCKED on target privilege_excess (see `08_connectivity.json`) | DISCOVERED |
+| Connectivity policy | `online` (merge evidence needs live source + migration cluster; no silent fallback) | FACT (STOP A) |
+| source_access / target_access | live / migration_cluster, both probe_ok (see `08_connectivity.json`) | DISCOVERED |
 | Children reach the source | unverified; children develop on fixtures and do not read Oracle; the one live read runs from the parent/verifier | PROPOSED |
 | Stop routing | this Devin web session only | FACT |
 | Pings | only STOP A/B/C, wave close, halt (AGENTS rule 9) | FACT |

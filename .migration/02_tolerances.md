@@ -1,4 +1,4 @@
-# 02 Tolerances (correctness contract), version 1 (PROPOSED, confirm at STOP A)
+# 02 Tolerances (correctness contract), version 1 (approved at STOP A, D-010)
 
 "Same data" means the value below after the named canonicalization rule, on both sides.
 
@@ -21,7 +21,7 @@
 | Report aggregates (totals, balances, counts) | computed from target | exact to the cent (`aggregate_rel_tol` 0) | amounts rendered as 2-decimal strings |
 
 Other contract items:
-- Connectivity policy: `online`. Resolved axes: source_access `live`, target_access `migration_cluster` (target BLOCKED until the principal is rescoped).
+- Connectivity policy: `online`. Resolved axes: source_access `live`, target_access `migration_cluster`.
 - Row-diff threshold: 200,000 (above the 100,000 default so every table, including the 150,000 invoice lines, is fully row-diffed; no sampling).
 - Sample size (only used above the threshold): 1,000.
 - Source query cap: 1 concurrent recon query against Oracle.

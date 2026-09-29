@@ -19,12 +19,14 @@
   },
   "target": {
     "access": "migration_cluster",
-    "reason": "privilege_excess",
-    "blocked": true,
-    "detail": "over-scoped principal: dbAdmin@ow_tp_mmp_live, readWrite@ow_tp_mmp_live_quarantine, dbAdmin@ow_tp_mmp_live_quarantine",
-    "evidence": []
+    "reason": "probe_ok",
+    "blocked": false,
+    "detail": "",
+    "evidence": [
+      "readWrite@ow_tp_mmp_live"
+    ]
   },
-  "blocked": true,
+  "blocked": false,
   "probe_tool": ".migration/tools/connectivity_probe_oracle.py (port of mongo-migration 0.3.2 connectivity_probe.py)",
-  "probed_at": "2026-09-29T16:47:03.758822+00:00"
+  "probed_at": "2026-09-29T17:21:52.273763+00:00"
 }

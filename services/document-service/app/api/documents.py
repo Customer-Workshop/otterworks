@@ -34,6 +34,7 @@ router = APIRouter()
 
 DEFAULT_SORT = "updated_at"
 DEFAULT_DIRECTION = "desc"
+JWT_ALGORITHMS = ["HS256", "HS384", "HS512"]
 
 
 async def _maybe_inject_latency() -> None:
@@ -49,26 +50,29 @@ def _get_jwt_secret() -> str:
 
 
 def _extract_user_id(request: Request) -> UUID | None:
-    """Extract user ID from the Authorization JWT."""
+    """Resolve the caller from the Authorization JWT.
+
+    Fall back to the gateway-forwarded X-User-ID when JWT verification fails.
+    """
     auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header[len("Bearer "):]
-        secret = _get_jwt_secret()
-        if secret:
-            try:
-                payload = jwt.decode(token, secret, algorithms=["HS256", "HS384"])
-                user_id_str = payload.get("user_id") or payload.get("sub")
-                if user_id_str:
-                    return UUID(str(user_id_str))
-            except (jwt.PyJWTError, ValueError):
-                pass
-        else:
-            forwarded_user_id = request.headers.get("X-User-ID")
-            if forwarded_user_id:
-                try:
-                    return UUID(str(forwarded_user_id))
-                except ValueError:
-                    pass
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[len("Bearer ") :]
+    secret = _get_jwt_secret()
+    if secret:
+        try:
+            payload = jwt.decode(token, secret, algorithms=JWT_ALGORITHMS)
+            user_id_str = payload.get("user_id") or payload.get("sub")
+            if user_id_str:
+                return UUID(str(user_id_str))
+        except (jwt.PyJWTError, ValueError):
+            pass
+    forwarded_user_id = request.headers.get("X-User-ID")
+    if forwarded_user_id:
+        try:
+            return UUID(forwarded_user_id)
+        except ValueError:
+            pass
 
     return None
 

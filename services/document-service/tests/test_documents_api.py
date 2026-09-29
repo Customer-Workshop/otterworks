@@ -279,3 +279,144 @@ async def test_create_document_no_auth_returns_401(client: AsyncClient):
         json={"title": "No Auth Doc"},
     )
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_hs512_jwt_authenticates_document_endpoints(client: AsyncClient):
+    user_id = uuid.uuid4()
+    token = jwt.encode({"sub": str(user_id)}, TEST_JWT_SECRET, algorithm="HS512")
+    headers = {"Authorization": f"Bearer {token}"}
+    create_resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "HS512 Document", "content": "Exportable content"},
+        headers=headers,
+    )
+    assert create_resp.status_code == 201
+    document = create_resp.json()
+    assert document["owner_id"] == str(user_id)
+    doc_id = document["id"]
+
+    get_resp = await client.get(f"/api/v1/documents/{doc_id}", headers=headers)
+    assert get_resp.status_code == 200
+
+    update_resp = await client.patch(
+        f"/api/v1/documents/{doc_id}",
+        json={"title": "Updated HS512 Document"},
+        headers=headers,
+    )
+    assert update_resp.status_code == 200
+
+    for export_format in ("markdown", "html", "pdf"):
+        export_resp = await client.get(
+            f"/api/v1/documents/{doc_id}/export",
+            params={"format": export_format},
+            headers=headers,
+        )
+        assert export_resp.status_code == 200
+
+    delete_resp = await client.delete(f"/api/v1/documents/{doc_id}", headers=headers)
+    assert delete_resp.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_unverifiable_jwt_uses_gateway_user_id(client: AsyncClient):
+    user_id = uuid.uuid4()
+    token = jwt.encode(
+        {"sub": str(user_id)},
+        "some-other-deployment-secret-000000",
+        algorithm="HS256",
+    )
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-User-ID": str(user_id),
+    }
+    create_resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Gateway Identity Document"},
+        headers=headers,
+    )
+    assert create_resp.status_code == 201
+    document = create_resp.json()
+    assert document["owner_id"] == str(user_id)
+
+    get_resp = await client.get(f"/api/v1/documents/{document['id']}", headers=headers)
+    assert get_resp.status_code == 200
+
+    export_resp = await client.get(
+        f"/api/v1/documents/{document['id']}/export",
+        params={"format": "markdown"},
+        headers=headers,
+    )
+    assert export_resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_unverifiable_jwt_without_gateway_identity_returns_401(
+    client: AsyncClient, owner_id: uuid.UUID
+):
+    token = jwt.encode(
+        {"sub": str(owner_id)},
+        "some-other-deployment-secret-000000",
+        algorithm="HS256",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    create_resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Unverified JWT Document"},
+        headers=headers,
+    )
+    assert create_resp.status_code == 401
+
+    existing_resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Existing Document", "owner_id": str(owner_id)},
+    )
+    export_resp = await client.get(
+        f"/api/v1/documents/{existing_resp.json()['id']}/export",
+        headers=headers,
+    )
+    assert export_resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_document_export_without_identity_returns_401(
+    client: AsyncClient, owner_id: uuid.UUID
+):
+    create_resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Existing Document", "owner_id": str(owner_id)},
+    )
+
+    export_resp = await client.get(f"/api/v1/documents/{create_resp.json()['id']}/export")
+    assert export_resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_document_owner_checks_with_jwt_and_gateway_identity(
+    client: AsyncClient, owner_id: uuid.UUID
+):
+    other_user_id = uuid.uuid4()
+    create_resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Owner Checked Document", "owner_id": str(owner_id)},
+    )
+    doc_id = create_resp.json()["id"]
+
+    valid_token = _make_jwt(str(other_user_id))
+    valid_headers = {"Authorization": f"Bearer {valid_token}"}
+    get_resp = await client.get(f"/api/v1/documents/{doc_id}", headers=valid_headers)
+    assert get_resp.status_code == 403
+    export_resp = await client.get(f"/api/v1/documents/{doc_id}/export", headers=valid_headers)
+    assert export_resp.status_code == 403
+
+    unverifiable_token = jwt.encode(
+        {"sub": str(other_user_id)},
+        "some-other-deployment-secret-000000",
+        algorithm="HS256",
+    )
+    gateway_headers = {
+        "Authorization": f"Bearer {unverifiable_token}",
+        "X-User-ID": str(other_user_id),
+    }
+    gateway_get_resp = await client.get(f"/api/v1/documents/{doc_id}", headers=gateway_headers)
+    assert gateway_get_resp.status_code == 403

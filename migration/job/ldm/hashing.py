@@ -94,7 +94,46 @@ def hash_expression(provider: str, hash_columns: Sequence[str], specs: list[Colu
         return tsql_hash_expression(hash_columns, specs)
     if provider == "postgresql":
         return pg_hash_expression(hash_columns, specs)
+    if provider == "snowflake":
+        return snowflake_hash_expression(hash_columns, specs)
     raise ValueError(f"no hash expression for target provider {provider!r}")
+
+
+def snowflake_hash_expression(hash_columns: Sequence[str], specs: list[ColumnSpec]) -> str:
+    """Snowflake expression producing the same BINARY(32) as `business_hash` for one STG row.
+
+    Snowflake CHAR(n) is VARCHAR(n) (no padding), so a CHAR key is RPADded to its declared width; NUMBER renders
+    with its full scale after the cast to NUMBER(38,8) (0.5 -> '0.50000000'), TIMESTAMP_NTZ(6) gets the six
+    <col>_NANOS_TAIL digits appended, and HEX_ENCODE yields upper-case hex. SHA2_BINARY hashes the UTF-8 bytes.
+    """
+    by_name = {s.name: s for s in specs}
+    parts: list[str] = []
+    for name in hash_columns:
+        spec = by_name[name]
+        col = f'"{name}"'
+        if spec.kind == "char":
+            if spec.is_key and spec.target_length and not spec.trim:
+                expr = f"COALESCE(RPAD({col}, {int(spec.target_length)}), '')"
+            elif spec.is_key:
+                expr = f"COALESCE({col}, '')"
+            else:
+                expr = f"COALESCE(RTRIM({col}, ' '), '')"
+        elif spec.kind == "int":
+            expr = f"COALESCE(TO_VARCHAR({col}), '')"
+        elif spec.kind == "decimal":
+            expr = f"COALESCE(TO_VARCHAR({col}::NUMBER(38,8)), '')"
+        elif spec.kind == "timestamp12":
+            expr = (
+                f"COALESCE(TO_VARCHAR({col}, 'YYYY-MM-DD-HH24.MI.SS.FF6') || "
+                f"LPAD(TO_VARCHAR(\"{name}_NANOS_TAIL\"), 6, '0'), '')"
+            )
+        elif spec.kind == "date8":
+            expr = f"COALESCE(TO_VARCHAR({col}, 'YYYYMMDD'), '')"
+        else:
+            expr = f"COALESCE(UPPER(HEX_ENCODE({col})), '')"
+        parts.append(expr)
+    joined = " || '|' || ".join(parts) if len(parts) > 1 else parts[0]
+    return f"SHA2_BINARY({joined}, 256)"
 
 
 def pg_hash_expression(hash_columns: Sequence[str], specs: list[ColumnSpec]) -> str:

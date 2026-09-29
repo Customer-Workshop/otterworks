@@ -87,7 +87,8 @@ class SourceConfig(_Strict):
 class TargetConnectionEnv(_Strict):
     """Names of the environment variables holding the target connection. Which ones are required depends on
     target.provider: postgresql reads host/port/database/user/password(/sslmode), azuresql reads server/database/
-    user/password/auth_mode/managed_identity_client_id."""
+    user/password/auth_mode/managed_identity_client_id. snowflake reads the postgresql set: the PostgreSQL
+    database stays the transactional control plane (mig.*) and target.archive names the Snowflake store."""
 
     database: str
     user: str
@@ -100,20 +101,48 @@ class TargetConnectionEnv(_Strict):
     managed_identity_client_id: str | None = None
 
 
+class ArchiveConnectionEnv(_Strict):
+    """Names of the environment variables holding the Snowflake connection: account identifier (ORG-ACCOUNT), the
+    service user, its programmatic access token, role, warehouse and the tenant database. `stage` optionally names
+    the variable holding the internal stage Parquet files are PUT to (default STG.LDM_STAGE)."""
+
+    account: str
+    user: str
+    token: str
+    role: str
+    warehouse: str
+    database: str
+    stage: str | None = None
+
+
+class ArchiveStoreConfig(_Strict):
+    """The bulk archive store of a split target: stg.*/arch.* plus mirrored mig.* verdicts live here, loaded from
+    Parquet with COPY INTO; the control plane (ledger, rejects, purge audit) stays in target.connection_env."""
+
+    provider: Literal["snowflake"]
+    connection_env: ArchiveConnectionEnv
+    ddl_dir: str
+
+
 class TargetConfig(_Strict):
-    provider: Literal["postgresql", "azuresql"]
+    provider: Literal["postgresql", "azuresql", "snowflake"]
     connection_env: TargetConnectionEnv
     ddl_dir: str
     typemap: str
+    archive: ArchiveStoreConfig | None = None
 
     def check(self) -> None:
         ce = self.connection_env
-        if self.provider == "postgresql" and not (ce.host and ce.port):
-            raise ConfigError("target.provider postgresql requires connection_env.host and connection_env.port")
+        if self.provider in ("postgresql", "snowflake") and not (ce.host and ce.port):
+            raise ConfigError(f"target.provider {self.provider} requires connection_env.host and connection_env.port")
         if self.provider == "azuresql" and not (ce.server and ce.auth_mode and ce.managed_identity_client_id):
             raise ConfigError(
                 "target.provider azuresql requires connection_env.server, auth_mode and managed_identity_client_id"
             )
+        if self.provider == "snowflake" and self.archive is None:
+            raise ConfigError("target.provider snowflake requires target.archive (the Snowflake store)")
+        if self.provider != "snowflake" and self.archive is not None:
+            raise ConfigError(f"target.archive is only valid with target.provider snowflake, not {self.provider}")
 
 
 class StagingConnectionEnv(_Strict):

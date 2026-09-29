@@ -20,6 +20,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--namespace", required=True, help="namespace token <run>-<before|after>")
     p.add_argument("--run-id", dest="run_id", help="run id (^[a-z0-9][a-z0-9-]{2,62}$); reuse to resume")
     p.add_argument("--apply-sql", dest="apply_sql", type=Path, action="append", default=[], help="init only")
+    p.add_argument(
+        "--apply-archive-sql",
+        dest="apply_archive_sql",
+        type=Path,
+        action="append",
+        default=[],
+        help="init only; runs against target.archive (split target)",
+    )
     return p
 
 
@@ -36,15 +44,15 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if not args.run_id:
                 raise ConfigError(f"{args.verb} requires --run-id")
-            if args.apply_sql:
-                raise ConfigError("--apply-sql is only valid with init")
+            if args.apply_sql or args.apply_archive_sql:
+                raise ConfigError("--apply-sql / --apply-archive-sql are only valid with init")
             validate_run_id(run_id)
         ctx = build_context(args.manifest, namespace, run_id, verb=args.verb)
     except LdmError as e:
         print(f"ERROR {type(e).__name__}: {e}", file=sys.stderr)
         emit_result(run_id, namespace, args.verb, e.exit_code, {})
         return e.exit_code
-    code, tables = execute(ctx, args.verb, args.apply_sql)
+    code, tables = execute(ctx, args.verb, args.apply_sql, args.apply_archive_sql)
     emit_result(run_id, namespace, args.verb, code, tables)
     return code
 

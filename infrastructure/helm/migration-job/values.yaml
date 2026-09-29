@@ -46,6 +46,15 @@ env:
   AZSQL_AUTH: sql
   AZ_STORAGE_ACCOUNT: ""
   AZ_STAGING_CONTAINER: ""
+  # Snowflake archive store (targetProvider=snowflake; manifest target.archive). PG_* above stays the
+  # control plane. Account identifier is ORG-ACCOUNT; the tenant database is OTTERWORKS_LDM_<TOKEN>
+  # and the job role LDM_JOB_<TOKEN> (migration/target/snowflake/bootstrap/tenant.sql).
+  SNOWFLAKE_ACCOUNT: ""
+  SNOWFLAKE_USER: ""
+  SNOWFLAKE_ROLE: ""
+  SNOWFLAKE_WAREHOUSE: LDM_WH
+  SNOWFLAKE_DATABASE: ""
+  SNOWFLAKE_STAGE: STG.LDM_STAGE
   # Source estate: only the family the tenant's manifest source.driver names is used at run time.
   DB2_HOST: db2-archive
   DB2_PORT: "50000"
@@ -62,6 +71,10 @@ env:
 # client label the source estate's NetworkPolicy admits (ldm/db2-client or ldm/oracle-client).
 sourceDriver: db2
 
+# postgresql | snowflake - the tenant manifest's target.provider. snowflake mounts secrets.snowflake
+# (required) next to secrets.postgres and needs env.SNOWFLAKE_DATABASE.
+targetProvider: postgresql
+
 secrets:
   # keys DB2_USER, DB2_PASSWORD (created by deploy-demo.sh for the db2-archive chart)
   db2: db2-archive-credentials
@@ -69,6 +82,8 @@ secrets:
   oracle: oracle-archive-credentials
   # keys PG_USER, PG_PASSWORD (created by deploy-demo.sh from the tenant database credentials)
   postgres: ldm-postgres
+  # key SNOWFLAKE_PAT (programmatic access token of env.SNOWFLAKE_USER); only with targetProvider=snowflake
+  snowflake: ldm-snowflake
   # keys AZSQL_USER, AZSQL_PASSWORD, AZ_STORAGE_KEY (created by ops from Key Vault); optional
   azure: ldm-azure
 

@@ -132,6 +132,28 @@ are configuration. The target provider is a driver (`job/ldm/drivers/postgresql.
 type map and DDL directory; a different pair (for example Oracle -> PostgreSQL) is a manifest,
 type map and driver change, not a rewrite of the stages.
 
+### Split target: PostgreSQL control plane + Snowflake archive store
+
+`target.provider: snowflake` (`manifests/s29-after.yaml`) keeps the tenant's PostgreSQL database as the
+transactional control plane - `mig.runs`, `run_ledger`, `key_ranges`, `rejects`, `purge_audit`,
+checkpoints, the run lock - and moves the bulk `STG`/`ARCH` rows to Snowflake database
+`OTTERWORKS_LDM_<TOKEN>` (`job/ldm/drivers/snowflake.py`, `target/snowflake/`). LOAD writes each batch
+as Parquet, `PUT`s it to the tenant's internal stage and `COPY INTO STG.<table>` with
+`ON_ERROR = ABORT_STATEMENT`; a failed batch is bisected row by row so every reject still lands in
+`mig.rejects` with the Snowflake error. VALIDATE hashes in the warehouse with expressions that mirror
+the source canonicalization (`hashing.py`), and the run/ledger/verdict rows are mirrored to `MIG.*` in
+Snowflake for the reporting views `MIG.V_RUN_SUMMARY`, `V_FAILURES`, `V_ARCHIVE_COUNTS`, `V_CLASS_TOTALS`.
+PURGE and audit-before-delete are unchanged: they read purge-safe keys from PostgreSQL.
+
+Account objects are created once from `target/snowflake/bootstrap/` (`bootstrap.py --account` as
+ACCOUNTADMIN: role `LDM_ADMIN`, warehouse `LDM_WH` XSMALL auto-suspend 60 s, resource monitor;
+`--tenant <token>` as `LDM_ADMIN`: database, role `LDM_JOB_<TOKEN>` with ownership of the database only,
+grant to the job user; `--teardown <token>` drops both). Credentials reach the job through the
+`ldm-snowflake` Secret (`SNOWFLAKE_PAT`, a programmatic access token) plus the non-secret
+`SNOWFLAKE_*` env in the migration-job chart (`targetProvider=snowflake`). PostgreSQL credentials are
+still required. Live tests: `job/tests/test_snowflake.py` (skipped without `LDM_TEST_SNOWFLAKE_*` +
+`SNOWFLAKE_PAT`).
+
 ## Map
 
 | Path | What |
@@ -142,5 +164,6 @@ type map and driver change, not a rewrite of the stages.
 | `job/` | `ldm` package, Dockerfile, type maps, tests |
 | `target/postgresql/` | PostgreSQL DDL (default target) |
 | `target/sql/` | Azure SQL DDL (optional target) |
+| `target/snowflake/` | Snowflake DDL + reporting views + account/tenant bootstrap (split target) |
 | `sessions/` | Devin session links shown in the report |
 | `../demos/app/complexity-manifest.json` | MIG-01..07 register |

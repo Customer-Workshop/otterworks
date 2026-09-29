@@ -69,6 +69,10 @@ spec:
             - secretRef:
                 name: {{ .Values.secrets.postgres }}
                 optional: true
+            {{- if eq (include "migration-job.targetProvider" .) "snowflake" }}
+            - secretRef:
+                name: {{ .Values.secrets.snowflake }}
+            {{- end }}
             - secretRef:
                 name: {{ .Values.secrets.azure }}
                 optional: true

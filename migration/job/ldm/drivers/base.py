@@ -6,7 +6,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from ..convert import Timestamp12, Value
 from ..typemap import ColumnSpec
@@ -310,3 +310,14 @@ class TargetDriver(Protocol):
     def failures(self, run_id: str, namespace: str) -> list[FailureRow]: ...
     def insert_run_sessions(self, run_id: str, namespace: str, sessions: Sequence[tuple[str, str]]) -> None: ...
     def delete_staging_run(self, run_id: str, namespace: str) -> None: ...
+
+
+@runtime_checkable
+class ArchiveStoreTarget(Protocol):
+    """A split target (manifest target.archive): stg.*/arch.* live in a second store with its own DDL directory,
+    tracked and applied by INIT next to the control plane's. `apply_ddl` and `apply_sql_in_namespace` of the
+    TargetDriver keep addressing the control plane."""
+
+    def applied_archive_ddl(self) -> dict[str, str]: ...
+    def apply_archive_ddl(self, sql_text: str, file_name: str, sha256_hex: str) -> None: ...
+    def apply_archive_sql_in_namespace(self, sql_text: str, namespace: str) -> None: ...

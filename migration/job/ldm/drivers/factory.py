@@ -27,7 +27,35 @@ class TargetSpec:
             from .azuresql import AzureSqlTarget
 
             return AzureSqlTarget(**self.kwargs)  # type: ignore[arg-type]
+        if self.provider == "snowflake":
+            from .postgresql import PostgresTarget
+            from .snowflake import SnowflakeArchive, SnowflakeTarget
+
+            control = self.kwargs["control"]
+            archive = self.kwargs["archive"]
+            assert isinstance(control, dict) and isinstance(archive, dict)
+            return SnowflakeTarget(PostgresTarget(**control), SnowflakeArchive(**archive))
         raise ConfigError(f"target.provider {self.provider!r} has no driver in this build")
+
+
+def _postgres_kwargs(loaded: LoadedManifest, env: Mapping[str, str], host_kind: str) -> dict[str, object]:
+    tgt = loaded.manifest.target
+    ce = tgt.connection_env
+    assert ce.host and ce.port
+    require_env(dict(env), [ce.host, ce.port, ce.database, ce.user, ce.password], f"target {tgt.provider}")
+    try:
+        port = int(env[ce.port])
+    except ValueError as e:
+        raise ConfigError(f"{ce.port}={env[ce.port]!r} is not a port number") from e
+    return {
+        "host": env[ce.host],
+        "port": port,
+        "database": env[ce.database],
+        "user": env[ce.user],
+        "password": env[ce.password],
+        "sslmode": (env.get(ce.sslmode) if ce.sslmode else None) or "prefer",
+        "ldm_host": host_kind,
+    }
 
 
 def target_spec(loaded: LoadedManifest, env: Mapping[str, str]) -> TargetSpec:
@@ -35,22 +63,27 @@ def target_spec(loaded: LoadedManifest, env: Mapping[str, str]) -> TargetSpec:
     ce = tgt.connection_env
     host_kind = env.get("LDM_HOST", "local")
     if tgt.provider == "postgresql":
-        assert ce.host and ce.port
-        require_env(dict(env), [ce.host, ce.port, ce.database, ce.user, ce.password], "target postgresql")
-        try:
-            port = int(env[ce.port])
-        except ValueError as e:
-            raise ConfigError(f"{ce.port}={env[ce.port]!r} is not a port number") from e
+        return TargetSpec("postgresql", _postgres_kwargs(loaded, env, host_kind))
+    if tgt.provider == "snowflake":
+        assert tgt.archive is not None
+        ae = tgt.archive.connection_env
+        require_env(
+            dict(env), [ae.account, ae.user, ae.token, ae.role, ae.warehouse, ae.database], "target snowflake archive"
+        )
+        stage = env.get(ae.stage) if ae.stage else None
         return TargetSpec(
-            "postgresql",
+            "snowflake",
             {
-                "host": env[ce.host],
-                "port": port,
-                "database": env[ce.database],
-                "user": env[ce.user],
-                "password": env[ce.password],
-                "sslmode": (env.get(ce.sslmode) if ce.sslmode else None) or "prefer",
-                "ldm_host": host_kind,
+                "control": _postgres_kwargs(loaded, env, host_kind),
+                "archive": {
+                    "account": env[ae.account],
+                    "user": env[ae.user],
+                    "token": env[ae.token],
+                    "role": env[ae.role],
+                    "warehouse": env[ae.warehouse],
+                    "database": env[ae.database],
+                    "stage": stage or "STG.LDM_STAGE",
+                },
             },
         )
     if tgt.provider == "azuresql":

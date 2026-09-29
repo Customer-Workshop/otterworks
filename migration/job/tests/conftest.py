@@ -221,6 +221,23 @@ AZURE_TARGET_OVERLAY = """target:
   typemap: migration/job/typemaps/db2-to-azuresql.yaml
 """
 
+# Split target: PostgreSQL keeps the base manifest's control-plane connection, Snowflake holds stg/arch.
+SNOWFLAKE_TARGET_OVERLAY = """target:
+  provider: snowflake
+  typemap: migration/job/typemaps/db2-to-snowflake.yaml
+  archive:
+    provider: snowflake
+    connection_env:
+      account: SNOWFLAKE_ACCOUNT
+      user: SNOWFLAKE_USER
+      token: SNOWFLAKE_PAT
+      role: SNOWFLAKE_ROLE
+      warehouse: SNOWFLAKE_WAREHOUSE
+      database: SNOWFLAKE_DATABASE
+      stage: SNOWFLAKE_STAGE
+    ddl_dir: migration/target/snowflake
+"""
+
 
 def make_manifest_tree(
     tmp_path: Path,
@@ -229,6 +246,7 @@ def make_manifest_tree(
     purge: bool = True,
     before: bool = False,
     azure_target: bool = False,
+    snowflake_target: bool = False,
     load_engine: str = "serial",
 ) -> Path:
     """Copy the repo manifest into <tmp>/<token>/migration with run_token=<token> and before/after overlays.
@@ -245,7 +263,9 @@ def make_manifest_tree(
     (d / "manifests" / f"{token}-after.yaml").write_text(
         f"namespace: {token}-after\nextends: ../manifest.yaml\nmigrate: true\n"
         f"azure: {'true' if azure_target else 'false'}\npurge: {'true' if purge else 'false'}\n"
-        f"execution:\n  load_engine: {load_engine}\n" + (AZURE_TARGET_OVERLAY if azure_target else ""),
+        f"execution:\n  load_engine: {load_engine}\n"
+        + (AZURE_TARGET_OVERLAY if azure_target else "")
+        + (SNOWFLAKE_TARGET_OVERLAY if snowflake_target else ""),
         encoding="utf-8",
     )
     (d / "manifests" / f"{token}-before.yaml").write_text(

@@ -34,7 +34,7 @@ WORKDIR /app
 COPY migration/job/pyproject.toml /app/migration/job/pyproject.toml
 COPY migration/job/ldm /app/migration/job/ldm
 RUN pip install --upgrade pip \
-    && pip install "/app/migration/job[db2,oracle,postgresql,s3,spark]" \
+    && pip install "/app/migration/job[db2,oracle,postgresql,s3,spark,snowflake]" \
     && if [ "$WITH_AZURE" = "1" ]; then pip install "/app/migration/job[azuresql]" && apt-get purge -y --auto-remove unixodbc-dev; fi \
     && apt-get purge -y --auto-remove g++ \
     && rm -rf /var/lib/apt/lists/*

@@ -14,7 +14,15 @@ from ldm.context import build_table_specs
 from ldm.convert import Timestamp12, convert_record, encode_record
 from ldm.copybook import parse_copybook
 from ldm.errors import ConfigError
-from ldm.hashing import business_hash, render, source_hash, target_hash, tsql_hash_expression
+from ldm.hashing import (
+    business_hash,
+    hash_expression,
+    render,
+    snowflake_hash_expression,
+    source_hash,
+    target_hash,
+    tsql_hash_expression,
+)
 
 from .conftest import MANIFEST, REPO_ROOT, cp037, docarch_row, make_manifest_tree
 
@@ -128,6 +136,67 @@ def test_azuresql_overlay_keeps_tsql_type_spelling(tmp_path: Path) -> None:
     doc = build_table_specs(loaded)["DOCARCH"].by_name
     assert doc["OWNER_NAME"].target_type == "NVARCHAR(40)"
     assert doc["UNIT_RATE"].target_type == "DECIMAL(18,8)" and doc["UNIT_RATE"].target_precision == 18
+
+
+def test_snowflake_overlay_is_a_split_target_with_snowflake_type_spelling(tmp_path: Path) -> None:
+    base = make_manifest_tree(tmp_path, "zz3", snowflake_target=True)
+    loaded = load_manifest(base, "zz3-after")
+    tgt = loaded.manifest.target
+    assert tgt.provider == "snowflake" and tgt.archive is not None and tgt.archive.provider == "snowflake"
+    # the control plane keeps the base manifest's PostgreSQL connection and DDL
+    assert (tgt.connection_env.host, tgt.connection_env.port) == ("PG_HOST", "PG_PORT")
+    assert tgt.ddl_dir == "migration/target/postgresql" and tgt.archive.ddl_dir == "migration/target/snowflake"
+    doc = build_table_specs(loaded)["DOCARCH"].by_name
+    assert doc["OWNER_NAME"].target_type == "VARCHAR(40)"
+    assert doc["ARCH_KEY"].target_type == "VARCHAR(16)" and doc["ARCH_KEY"].is_key
+    assert doc["UNIT_RATE"].target_type == "NUMBER(18,8)" and doc["UNIT_RATE"].kind == "decimal"
+    assert doc["STORAGE_CHARGE"].target_type == "NUMBER(31,8)" and doc["STORAGE_CHARGE"].target_precision == 31
+    assert doc["LAST_ACCESS_TS"].target_type == "TIMESTAMP_NTZ(6)" and doc["LAST_ACCESS_TS"].kind == "timestamp12"
+    assert doc["DISPOSITION_DT"].target_type == "DATE" and doc["DISPOSITION_DT"].kind == "date8"
+    assert doc["RETENTION_CLASS"].target_type == "CHAR(4)" and doc["RETENTION_CLASS"].value_map
+
+
+def test_snowflake_target_requires_archive_and_archive_requires_snowflake(tmp_path: Path) -> None:
+    base = make_manifest_tree(tmp_path, "zz4", snowflake_target=True)
+    overlay = base.parent / "manifests" / "zz4-after.yaml"
+    text = overlay.read_text(encoding="utf-8")
+    overlay.write_text(text[: text.index("  archive:")], encoding="utf-8")
+    with pytest.raises(ConfigError, match="requires target.archive"):
+        load_manifest(base, "zz4-after")
+    overlay.write_text(
+        text.replace("provider: snowflake\n  typemap", "provider: postgresql\n  typemap"), encoding="utf-8"
+    )
+    with pytest.raises(ConfigError, match="target.archive is only valid with target.provider snowflake"):
+        load_manifest(base, "zz4-after")
+
+
+def test_snowflake_target_spec_nests_control_plane_and_archive(tmp_path: Path) -> None:
+    from ldm.drivers.factory import target_spec
+
+    base = make_manifest_tree(tmp_path, "zz5", snowflake_target=True)
+    loaded = load_manifest(base, "zz5-after")
+    pg = {"PG_HOST": "h", "PG_PORT": "5432", "PG_DATABASE": "d", "PG_USER": "u", "PG_PASSWORD": "p"}
+    sf = {
+        "SNOWFLAKE_ACCOUNT": "ORG-ACCT",
+        "SNOWFLAKE_USER": "svc",
+        "SNOWFLAKE_PAT": "tok",
+        "SNOWFLAKE_ROLE": "LDM_JOB",
+        "SNOWFLAKE_WAREHOUSE": "LDM_WH",
+        "SNOWFLAKE_DATABASE": "OTTERWORKS_LDM_ZZ5",
+    }
+    with pytest.raises(ConfigError, match="target snowflake archive"):
+        target_spec(loaded, {**pg, "LDM_HOST": "local"})
+    with pytest.raises(ConfigError, match="target snowflake"):
+        target_spec(loaded, {**sf, "LDM_HOST": "local"})
+    spec = target_spec(loaded, {**pg, **sf, "LDM_HOST": "eks"})
+    assert spec.provider == "snowflake"
+    control, archive = spec.kwargs["control"], spec.kwargs["archive"]
+    assert isinstance(control, dict) and control["host"] == "h" and control["port"] == 5432
+    assert control["ldm_host"] == "eks"
+    assert isinstance(archive, dict) and archive["account"] == "ORG-ACCT" and archive["token"] == "tok"
+    assert archive["stage"] == "STG.LDM_STAGE"  # SNOWFLAKE_STAGE unset -> default internal stage
+    spec2 = target_spec(loaded, {**pg, **sf, "SNOWFLAKE_STAGE": "STG.OTHER"})
+    assert spec2.kwargs["archive"]["stage"] == "STG.OTHER"  # type: ignore[index]
 
 
 # --- copybooks ------------------------------------------------------------------------------------------------------
@@ -246,6 +315,42 @@ def test_tsql_hash_expression_shape(tmp_path: Path) -> None:
     assert "ISNULL([ARCH_KEY], N'')" in sql and "ISNULL(RTRIM([OWNER_NAME]), N'')" in sql
     assert "CAST([STORAGE_CHARGE] AS DECIMAL(38,8))" in sql
     assert "[LAST_ACCESS_TS_NANOS_TAIL]" in sql and sql.count("N'|'") == len(ts.config.hash_columns) - 1
+
+
+def test_snowflake_hash_expression_shape(tmp_path: Path) -> None:
+    base = make_manifest_tree(tmp_path, "zz6", snowflake_target=True)
+    ts = build_table_specs(load_manifest(base, "zz6-after"))["DOCARCH"]
+    sql = snowflake_hash_expression(ts.config.hash_columns, ts.columns)
+    assert sql == hash_expression("snowflake", ts.config.hash_columns, ts.columns)
+    assert sql.startswith("SHA2_BINARY(") and sql.endswith(", 256)")
+    # the trimmed VARCHAR key is hashed as stored, non-key CHAR is trimmed, value_map is a data-side substitution
+    # (applied on load), so the expression itself never rewrites values
+    assert sql.startswith("SHA2_BINARY(COALESCE(\"ARCH_KEY\", '') || '|' || ")
+    assert "COALESCE(RTRIM(\"OWNER_NAME\", ' '), '')" in sql and 'COALESCE(RTRIM("RETENTION_CLASS"' in sql
+    assert "COALESCE(TO_VARCHAR(\"VERSION_NO\"), '')" in sql
+    assert "COALESCE(TO_VARCHAR(\"STORAGE_CHARGE\"::NUMBER(38,8)), '')" in sql
+    assert "TO_VARCHAR(\"LAST_ACCESS_TS\", 'YYYY-MM-DD-HH24.MI.SS.FF6')" in sql
+    assert "LPAD(TO_VARCHAR(\"LAST_ACCESS_TS_NANOS_TAIL\"), 6, '0')" in sql
+    assert "TO_VARCHAR(\"DISPOSITION_DT\", 'YYYYMMDD')" in sql
+    assert sql.count("|| '|' ||") == len(ts.config.hash_columns) - 1
+    assert "CASE" not in sql
+
+
+def test_snowflake_hash_expression_repads_char_keys_and_matches_postgresql_shape(tmp_path: Path) -> None:
+    """RETNPLCY's POLICY_CODE is an untrimmed CHAR(4) key: Snowflake CHAR has VARCHAR semantics, so the hash re-pads
+    it to the declared width exactly as the PostgreSQL expression does for bpchar."""
+    from ldm.hashing import pg_hash_expression
+
+    base = make_manifest_tree(tmp_path, "zz7", snowflake_target=True)
+    ts = build_table_specs(load_manifest(base, "zz7-after"))["RETNPLCY"]
+    sql = snowflake_hash_expression(ts.config.hash_columns, ts.columns)
+    assert sql.startswith("SHA2_BINARY(COALESCE(RPAD(\"POLICY_CODE\", 4), '') || '|' || ")
+    assert (
+        snowflake_hash_expression(["POLICY_CODE"], ts.columns)
+        == "SHA2_BINARY(COALESCE(RPAD(\"POLICY_CODE\", 4), ''), 256)"
+    )
+    pg = pg_hash_expression(ts.config.hash_columns, ts.columns)
+    assert pg.count("|| '|' ||") == sql.count("|| '|' ||") == len(ts.config.hash_columns) - 1
 
 
 # --- CLI ------------------------------------------------------------------------------------------------------------

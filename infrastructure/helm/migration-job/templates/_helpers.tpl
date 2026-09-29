@@ -48,3 +48,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if not (has $d (list "db2" "oracle")) -}}{{- fail (printf "sourceDriver %q must be db2 or oracle" $d) -}}{{- end -}}
 {{- $d -}}
 {{- end -}}
+
+{{/* Validated manifest target.provider: postgresql | snowflake. snowflake is the split target: PostgreSQL stays the
+     control plane (PG_* + secrets.postgres) and the Snowflake store needs SNOWFLAKE_DATABASE + secrets.snowflake. */}}
+{{- define "migration-job.targetProvider" -}}
+{{- $p := .Values.targetProvider | default "postgresql" -}}
+{{- if not (has $p (list "postgresql" "snowflake")) -}}{{- fail (printf "targetProvider %q must be postgresql or snowflake" $p) -}}{{- end -}}
+{{- if and (eq $p "snowflake") (not .Values.env.SNOWFLAKE_DATABASE) -}}{{- fail "targetProvider snowflake requires env.SNOWFLAKE_DATABASE (the tenant database, OTTERWORKS_LDM_<TOKEN>)" -}}{{- end -}}
+{{- $p -}}
+{{- end -}}

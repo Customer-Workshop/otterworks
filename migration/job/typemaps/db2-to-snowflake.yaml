@@ -1,0 +1,67 @@
+# Db2 -> Snowflake type map (CONTRACTS.md §8). Selected by manifest target.typemap.
+# Same shape as db2-to-postgresql.yaml; the `kind` column drives conversion and hashing identically.
+# Snowflake has no padded CHAR (CHAR(n) is VARCHAR(n)): fixed-width values keep their trailing spaces as
+# loaded from Parquet, and the hash expression re-pads keys with RPAD exactly like the PostgreSQL one.
+schema_version: 1
+source: db2
+target: snowflake
+
+types:
+  - source: "CHAR({n})"
+    target: "CHAR({n})"
+    kind: char
+    note: "VARCHAR(n) semantics; padding preserved in the Parquet value and re-padded in the hash (RPAD)"
+  - source: "CHAR({n}) FOR BIT DATA"
+    target: "BINARY"
+    kind: binary
+    note: "override `encoding` (e.g. cp037) to decode to text"
+  - source: "VARCHAR({n})"
+    target: "VARCHAR({n})"
+    kind: char
+  - source: "SMALLINT"
+    target: "SMALLINT"
+    kind: int
+  - source: "INTEGER"
+    target: "INTEGER"
+    kind: int
+  - source: "BIGINT"
+    target: "BIGINT"
+    kind: int
+  - source: "DECIMAL({p},{s})"
+    target: "NUMBER({p},{s})"
+    kind: decimal
+    note: "p > 38 is a config error; override target_type NUMERIC(18,8) plants MIG-02"
+  - source: "TIMESTAMP(12)"
+    target: "TIMESTAMP_NTZ(6)"
+    kind: timestamp12
+    note: "Parquet carries microseconds, so digits 7-12 of the fraction go to <col>_NANOS_TAIL INTEGER"
+  - source: "DATE"
+    target: "DATE"
+    kind: date8
+
+copybook_inference:
+  - pic: '^X\((?P<n>32)\)$'
+    source: "TIMESTAMP(12)"
+  - pic: '^X\((?P<n>\d+)\)$'
+    source: "CHAR({n})"
+  - pic: '^X$'
+    source: "CHAR(1)"
+  - pic: '^S?9\((?P<n>\d+)\)\s+COMP(?:-5|UTATIONAL(?:-5)?)?$'
+    source_by_digits: {4: "SMALLINT", 9: "INTEGER", 18: "BIGINT"}
+  - pic: '^S?9\((?P<p>\d+)\)V9\((?P<s>\d+)\)\s+COMP-3$'
+    source: "DECIMAL({ps},{s})"
+  - pic: '^S?9\((?P<p>\d+)\)\s+COMP-3$'
+    source: "DECIMAL({p},0)"
+  - pic: '^S?9\((?P<p>\d+)\)V9\((?P<s>\d+)\)$'
+    source: "DECIMAL({ps},{s})"
+  - pic: '^S?9\((?P<p>\d+)\)$'
+    source: "DECIMAL({p},0)"
+
+# Overrides written in the SQL Server spelling (NVARCHAR, DECIMAL, DATETIME2, VARBINARY) are accepted so one
+# manifest drives every provider (CONTRACTS.md §4.3).
+overrides:
+  target_type: "replaces the mapped target type; VARCHAR/NUMBER/DATE change the kind accordingly"
+  trim: "right | none; right trims trailing spaces of a CHAR column (target side)"
+  encoding: "python codec used to decode the copybook bytes (FOR BIT DATA columns)"
+  format: "YYYYMMDD: CHAR(8) text stored as a DATE on the target"
+  value_map: "source value -> target value substitution applied before the business hash"

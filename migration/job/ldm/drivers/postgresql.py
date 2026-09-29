@@ -293,6 +293,10 @@ class PostgresTarget:
         v = self._scalar("SELECT status FROM mig.runs WHERE run_id = %s AND namespace = %s", (run_id, namespace))
         return str(v) if v is not None else None
 
+    def run_purge_enabled(self, run_id: str, namespace: str) -> bool | None:
+        v = self._scalar("SELECT purge_enabled FROM mig.runs WHERE run_id = %s AND namespace = %s", (run_id, namespace))
+        return bool(v) if v is not None else None
+
     def set_run_status(self, run_id: str, namespace: str, status: str, exit_code: int | None) -> None:
         closes = None if status == "RUNNING" else status == "CLOSED"
         finished = "NULL" if status == "RUNNING" else UTC_NOW
@@ -634,7 +638,10 @@ class PostgresTarget:
 
     # --- validation -------------------------------------------------------------------------------------------------
 
-    def write_validation(self, run_id: str, namespace: str, rows: Sequence[ValidationRow]) -> None:
+    def write_validation(
+        self, run_id: str, namespace: str, rows: Sequence[ValidationRow], *, update_staging_hash: bool = True
+    ) -> None:
+        """Upsert verdicts; `update_staging_hash` is off when stg.* lives in another store (split target)."""
         if not rows:
             return
         self._executemany(
@@ -658,11 +665,31 @@ class PostgresTarget:
                 for r in rows
             ],
         )
+        if not update_staging_hash:
+            return
         self._executemany(
             f"UPDATE stg.{_ident(rows[0].table_name)} SET row_hash = %s "
             "WHERE run_id = %s AND namespace = %s AND source_key = %s",
             [(r.source_hash, run_id, namespace, r.source_key) for r in rows if r.source_hash is not None],
         )
+
+    def validation_rows(self, run_id: str, namespace: str, table: str) -> list[ValidationRow]:
+        return [
+            ValidationRow(
+                table,
+                str(k),
+                str(status),
+                str(rule) if rule is not None else None,
+                bytes(sh) if sh is not None else None,  # type: ignore[call-overload]
+                bytes(th) if th is not None else None,  # type: ignore[call-overload]
+                bool(ps),
+            )
+            for k, sh, th, status, rule, ps in self._rows(
+                "SELECT source_key, source_hash, target_hash, status, rule_name, purge_safe FROM mig.validation "
+                "WHERE run_id = %s AND namespace = %s AND table_name = %s ORDER BY source_key",
+                (run_id, namespace, table),
+            )
+        ]
 
     def write_class_totals(self, run_id: str, namespace: str, rows: Sequence[ClassTotalRow]) -> None:
         for table in {r.table_name for r in rows}:

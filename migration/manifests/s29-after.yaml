@@ -1,0 +1,43 @@
+# AFTER deployment, Oracle source estate -> Snowflake archive store (split target). The source is the same
+# SEED-SPEC estate served by Oracle Database 23ai Free (oracle-archive chart, see o27-after.yaml); the target is
+# split: the tenant's PostgreSQL database stays the transactional control plane (mig.* ledger, key ranges,
+# rejects, purge audit, checkpoints - the base manifest's connection_env), while STG/ARCH rows and a mirror of
+# the run/ledger/verdicts land in Snowflake database OTTERWORKS_LDM_S29 (bootstrap/tenant.sql), loaded from
+# Parquet with COPY INTO and validated with in-warehouse hashes. Same selection, same MIG-01..07.
+namespace: s29-after
+run_token: s29
+extends: ../manifest.yaml
+migrate: true
+azure: false
+purge: true
+source:
+  driver: oracle
+  connection_env:
+    host: ORACLE_HOST
+    port: ORACLE_PORT
+    database: ORACLE_SERVICE                  # PDB service name (FREEPDB1)
+    user: ORACLE_USER
+    password: ORACLE_PASSWORD
+  unload_command: []
+target:
+  provider: snowflake
+  typemap: migration/job/typemaps/db2-to-snowflake.yaml
+  archive:
+    provider: snowflake
+    connection_env:
+      account: SNOWFLAKE_ACCOUNT              # ORG-ACCOUNT identifier
+      user: SNOWFLAKE_USER
+      token: SNOWFLAKE_PAT                    # programmatic access token (Secret ldm-snowflake)
+      role: SNOWFLAKE_ROLE                    # LDM_JOB_S29
+      warehouse: SNOWFLAKE_WAREHOUSE          # LDM_WH (XSMALL, auto-suspend 60s)
+      database: SNOWFLAKE_DATABASE            # OTTERWORKS_LDM_S29
+      stage: SNOWFLAKE_STAGE                  # internal stage the Parquet batches are PUT to
+    ddl_dir: migration/target/snowflake
+execution:
+  run_job_in_azure: false
+  load_engine: spark
+  spark:
+    master: "local[*]"
+    driver_memory: 1g
+    shuffle_partitions: 4
+    records_per_slice: 5000

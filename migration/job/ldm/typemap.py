@@ -34,7 +34,7 @@ class TypeMap:
     @property
     def char_type(self) -> str:
         """Fixed-width text type of the target (FOR BIT DATA columns decoded to text land here)."""
-        return "CHAR" if self.target == "postgresql" else "NCHAR"
+        return "NCHAR" if self.target == "azuresql" else "CHAR"
 
     def spell_target_type(self, parsed: ParsedType) -> str:
         """Render a manifest target_type override in this target's dialect.
@@ -47,6 +47,10 @@ class TypeMap:
         if self.target == "postgresql":
             base = _PG_SPELLING.get(base, base)
             if base == "BYTEA":
+                return base
+        elif self.target == "snowflake":
+            base = _SNOWFLAKE_SPELLING.get(base, base)
+            if base == "BINARY":
                 return base
         return f"{base}({','.join(parsed.args)})" if parsed.args else base
 
@@ -99,6 +103,21 @@ _PG_SPELLING = {
     "BINARY": "BYTEA",
 }
 
+_SNOWFLAKE_SPELLING = {
+    "NCHAR": "CHAR",
+    "NVARCHAR": "VARCHAR",
+    "DECIMAL": "NUMBER",
+    "NUMERIC": "NUMBER",
+    "INT": "INTEGER",
+    "TINYINT": "SMALLINT",
+    "DATETIME2": "TIMESTAMP_NTZ",
+    "TIMESTAMP": "TIMESTAMP_NTZ",
+    "VARBINARY": "BINARY",
+    "BYTEA": "BINARY",
+}
+
+TARGETS = ("azuresql", "postgresql", "snowflake")
+
 
 @dataclass(frozen=True)
 class ParsedType:
@@ -149,7 +168,7 @@ def load_typemap(path: Path) -> TypeMap:
         if "pic" not in rule or not ("source" in rule or "source_by_digits" in rule):
             raise ConfigError(f"type map {path}: bad copybook_inference rule {rule!r}")
     target = str(data.get("target") or "azuresql")
-    if target not in ("azuresql", "postgresql"):
+    if target not in TARGETS:
         raise ConfigError(f"type map {path}: unknown target {target!r}")
     return TypeMap(rules=tuple(rules), inference=inference, target=target)
 
@@ -186,13 +205,13 @@ def _apply_override(
     base = new.base
     if base in ("NCHAR", "NVARCHAR", "CHAR", "VARCHAR", "CHARACTER", "CHARACTER VARYING", "TEXT"):
         kind: Kind = "char"
-    elif base in ("DECIMAL", "NUMERIC"):
+    elif base in ("DECIMAL", "NUMERIC", "NUMBER"):
         kind = "decimal"
     elif base in ("SMALLINT", "INT", "INTEGER", "BIGINT", "TINYINT"):
         kind = "int"
     elif base == "DATE":
         kind = "date8"
-    elif base in ("DATETIME2", "TIMESTAMP"):
+    elif base in ("DATETIME2", "TIMESTAMP", "TIMESTAMP_NTZ"):
         kind = "timestamp12"
     elif base in ("VARBINARY", "BINARY", "BYTEA"):
         kind = "binary"

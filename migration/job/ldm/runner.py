@@ -204,7 +204,9 @@ def run_stage(ctx: RunContext, stage: str) -> dict[str, dict[str, int]]:
     return result
 
 
-def execute(ctx: RunContext, verb: str, apply_sql: list[Path] | None = None) -> tuple[int, dict[str, dict[str, int]]]:
+def execute(
+    ctx: RunContext, verb: str, apply_sql: list[Path] | None = None, apply_archive_sql: list[Path] | None = None
+) -> tuple[int, dict[str, dict[str, int]]]:
     """Run a verb; returns (exit_code, tables). Never raises for LdmError - the code carries it."""
     tables: dict[str, dict[str, int]] = {}
     try:
@@ -213,7 +215,7 @@ def execute(ctx: RunContext, verb: str, apply_sql: list[Path] | None = None) -> 
         ctx.target.connect()
         if verb == "init":
             ctx.log.stage = "INIT"
-            tables = init.run(ctx, apply_sql)
+            tables = init.run(ctx, apply_sql, apply_archive_sql)
             return EXIT_OK, tables
         prepare_run(ctx)
         stages = ALL_ORDER if verb == "all" else (verb,)

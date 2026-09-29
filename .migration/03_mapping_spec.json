@@ -1570,6 +1570,7 @@
           "shape": "array",
           "child_table": "ENTITY_ATTR_VALUE",
           "child_where": "entity_type = 'CUSTOMER'",
+          "target_where": "{}",
           "parent_key": [
             "ENTITY_ID"
           ],
@@ -1751,6 +1752,7 @@
           "shape": "array",
           "child_table": "INVOICE_LINE",
           "child_where": "EXISTS (SELECT 1 FROM ow_billing.invoice_header h WHERE h.invoice_id = invoice_line.invoice_id)",
+          "target_where": "{}",
           "parent_key": [
             "INVOICE_ID"
           ],
@@ -1948,6 +1950,7 @@
       "root_table": "INVOICE_LINE",
       "unit": "U2-invoices",
       "root_where": "NOT EXISTS (SELECT 1 FROM ow_billing.invoice_header h WHERE h.invoice_id = invoice_line.invoice_id)",
+      "target_where": "{}",
       "key": {
         "source": [
           "LINE_ID"

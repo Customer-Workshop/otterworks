@@ -1,0 +1,25 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "first sale on performance 1: best-available picks A01 R01 seats 1-2 and marks them SOLD",
+  "recordedAt": "2026-09-29T01:34:39.452076Z",
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 1,
+      "email": "fan00001@example.test",
+      "quantity": 2,
+      "cardLast4": "4242"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "orderRef": "BO-YNUY2QGKSP",
+      "status": "CONFIRMED",
+      "totalCents": 42836,
+      "tickets": 2,
+      "paymentOutcome": "APPROVED"
+    }
+  }
+}

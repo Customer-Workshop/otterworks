@@ -1,0 +1,15 @@
+{
+  "source": "https://tkt01-before.demo.otterworks.app (monolith before-state, live)",
+  "recordedAt": "2026-09-29T01:31:06.546486Z",
+  "request": {
+    "method": "POST",
+    "path": "/api/admin/expire-holds",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "released": 0
+    }
+  }
+}

@@ -1,0 +1,223 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql",
+  "note": "GET /api/performances/{id}/availability for every seeded performance before any sale",
+  "recordedAt": "2026-09-29T01:34:39.117172Z",
+  "performances": [
+    {
+      "performanceId": 1,
+      "status": 200,
+      "body": {
+        "available": 20000,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 2,
+      "status": 200,
+      "body": {
+        "available": 20000,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 3,
+      "status": 200,
+      "body": {
+        "available": 20000,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 4,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 5,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 6,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 7,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 8,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 9,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 10,
+      "status": 200,
+      "body": {
+        "available": 20000,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 11,
+      "status": 200,
+      "body": {
+        "available": 20000,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 12,
+      "status": 200,
+      "body": {
+        "available": 20000,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 13,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 14,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 15,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 16,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 17,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 18,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 19,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 20,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 21,
+      "status": 200,
+      "body": {
+        "available": 2400,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 22,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 23,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    },
+    {
+      "performanceId": 24,
+      "status": 200,
+      "body": {
+        "available": 1200,
+        "held": 0,
+        "sold": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+target
+k8s
+!docker
+*.md
+.git

@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ${TOKEN}-seats
+  labels:
+    app.kubernetes.io/name: seats
+    app.kubernetes.io/part-of: ticketing
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+spec:
+  selector:
+    matchLabels:
+      demo.otterworks.app/metrics: seats
+      demo.otterworks.app/run-token: ${TOKEN}
+  endpoints:
+    - port: http-metrics
+      path: /actuator/prometheus
+      interval: 15s
+      scrapeTimeout: 10s

@@ -1,0 +1,43 @@
+# Calls POST /api/holds/sweep once a minute (the HoldExpiryBean timer of the monolith).
+# Uses the already-mirrored postgres image (busybox wget) so no extra rate-limited image is needed.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ${TOKEN}-seats-sweep
+  labels:
+    app.kubernetes.io/name: seats-sweep
+    app.kubernetes.io/part-of: ticketing
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 50
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: seats-sweep
+        demo.otterworks.app/run-token: ${TOKEN}
+        demo.otterworks.app/side: after
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 55
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: seats-sweep
+            app.kubernetes.io/part-of: ticketing
+            demo.otterworks.app/run-token: ${TOKEN}
+            demo.otterworks.app/side: after
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: sweep
+              image: 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/postgres:16-alpine
+              command: ["wget", "-q", "-O", "-", "-T", "45", "--post-data=", "--header=Content-Type: application/json",
+                        "http://${TOKEN}-seats.${TOKEN}-after.svc.cluster.local/api/holds/sweep"]
+              resources:
+                requests: {cpu: 50m, memory: 32Mi}
+                limits: {cpu: 100m, memory: 64Mi}

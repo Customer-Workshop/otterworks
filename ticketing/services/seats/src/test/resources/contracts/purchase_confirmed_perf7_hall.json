@@ -1,0 +1,25 @@
+{
+  "source": "monolith image otterworks-demo/ticketing/monolith:42b55d2 run locally on the pristine db/seed.sql (HOLD_MINUTES=10, GATEWAY_DECLINE_PCT=0)",
+  "note": "hall venue (2400 seats): H1 R01 seats 1-4",
+  "recordedAt": "2026-09-29T01:34:40.143098Z",
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 7,
+      "email": "fan00005@example.test",
+      "quantity": 4,
+      "cardLast4": "4242"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "orderRef": "BO-CE5VG5N8J4",
+      "status": "CONFIRMED",
+      "totalCents": 85672,
+      "tickets": 4,
+      "paymentOutcome": "APPROVED"
+    }
+  }
+}

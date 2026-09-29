@@ -1,0 +1,16 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: ${TOKEN}-hold-expired
+  labels:
+    strimzi.io/cluster: ${TOKEN}-kafka
+    app.kubernetes.io/name: seats
+    app.kubernetes.io/part-of: ticketing
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+spec:
+  partitions: 6
+  replicas: 1
+  config:
+    retention.ms: "86400000"
+    cleanup.policy: delete

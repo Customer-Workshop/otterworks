@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ${TOKEN}-seats
+  labels:
+    app.kubernetes.io/name: seats
+    app.kubernetes.io/part-of: ticketing
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app.kubernetes.io/name, operator: In, values: [seats, seats-db, seats-sweep]}
+      - {key: demo.otterworks.app/run-token, operator: In, values: ["${TOKEN}"]}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ${TOKEN}-after}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kourier-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: knative-serving}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: keda}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}

@@ -1,0 +1,17 @@
+seats:
+  hold-minutes: 10
+  sweep-batch-size: 500
+  token: tkt01
+  kafka:
+    enabled: false
+    topic-hold-expired: tkt01-hold-expired
+  orders:
+    enabled: false
+    base-url: http://localhost:1
+    timeout-ms: 500
+spring:
+  kafka:
+    bootstrap-servers: localhost:1
+logging:
+  level:
+    org.flywaydb: WARN

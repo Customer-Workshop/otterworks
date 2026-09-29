@@ -1,0 +1,149 @@
+{
+  "checks": [
+    {
+      "actual": 18750,
+      "expected": 18750,
+      "id": "tier1.counts_through_mapping.invoices",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 149963,
+      "expected": 149963,
+      "id": "tier1.embedded_count.invoices.lines",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 18,
+      "expected": 18,
+      "id": "tier2.per_field_aggregates.invoices",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.invoices",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 37,
+      "expected": 37,
+      "id": "tier1.counts_through_mapping.quarantine_invoice_line",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 43,
+      "expected": 43,
+      "id": "tier2.per_field_aggregates.quarantine_invoice_line",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.quarantine_invoice_line",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    }
+  ],
+  "generated_at": "2026-09-29T19:15:14Z",
+  "idempotency_rerun": {
+    "evidence": "rerun bulk {\"invoices\": {\"deleted\": 0, \"matched\": 18750, \"modified\": 0, \"upserted\": 0}, \"quarantine_invoice_line\": {\"deleted\": 0, \"matched\": 37, \"modified\": 0, \"upserted\": 0}}; recon verdict PASS",
+    "performed": true,
+    "result": "pass"
+  },
+  "kind": "recon-report",
+  "namespace": "ow_tp_mmp_live",
+  "planted_anomaly_detections": {
+    "actual_set": [
+      "049e97508fd4c4c6",
+      "0e726520e5c96897",
+      "1c3ebf3561b99314",
+      "1eac91bddb32774a",
+      "233563e70166574b",
+      "24203b38fb579845",
+      "246ec1f30999da6a",
+      "266b1580bc6df2b4",
+      "3f3f7affe61914a5",
+      "428abf9c02bd07af",
+      "4c121c6408c1f64c",
+      "51ddcc7e3c3386bb",
+      "558caacb5af13fac",
+      "55b44e0b7ae3d064",
+      "5849e1b3f4a3e710",
+      "5a858cda1e460da3",
+      "5c4006458d686adc",
+      "5d06c5b0f39eb64e",
+      "67739ad22b0fcea5",
+      "80a9c5dbe6e8baa0",
+      "817604296e6eb771",
+      "8d4341f4cb1bfa24",
+      "90713e1003b6bf0e",
+      "9524ae8844974077",
+      "98d660b7218bc61f",
+      "9b688f91d7395cf3",
+      "9b9d0fe3bf65daa3",
+      "a91f46703bdd50ac",
+      "ae516d2f2f9ab514",
+      "b7e4d222ff748e06",
+      "b7fed990ae3972e2",
+      "c5f30691e8040406",
+      "c965eaa9bb8b8924",
+      "cb7a873646d18f07",
+      "db959778e8bbef52",
+      "e7a510af53bdd874",
+      "f1967d76be618420"
+    ],
+    "expected_set": [
+      "049e97508fd4c4c6",
+      "0e726520e5c96897",
+      "1c3ebf3561b99314",
+      "1eac91bddb32774a",
+      "233563e70166574b",
+      "24203b38fb579845",
+      "246ec1f30999da6a",
+      "266b1580bc6df2b4",
+      "3f3f7affe61914a5",
+      "428abf9c02bd07af",
+      "4c121c6408c1f64c",
+      "51ddcc7e3c3386bb",
+      "558caacb5af13fac",
+      "55b44e0b7ae3d064",
+      "5849e1b3f4a3e710",
+      "5a858cda1e460da3",
+      "5c4006458d686adc",
+      "5d06c5b0f39eb64e",
+      "67739ad22b0fcea5",
+      "80a9c5dbe6e8baa0",
+      "817604296e6eb771",
+      "8d4341f4cb1bfa24",
+      "90713e1003b6bf0e",
+      "9524ae8844974077",
+      "98d660b7218bc61f",
+      "9b688f91d7395cf3",
+      "9b9d0fe3bf65daa3",
+      "a91f46703bdd50ac",
+      "ae516d2f2f9ab514",
+      "b7e4d222ff748e06",
+      "b7fed990ae3972e2",
+      "c5f30691e8040406",
+      "c965eaa9bb8b8924",
+      "cb7a873646d18f07",
+      "db959778e8bbef52",
+      "e7a510af53bdd874",
+      "f1967d76be618420"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "run_mode": "live",
+  "unit": "U2-invoices",
+  "unverified_paths": [
+    "invoices.lines: extra-element check skipped (scoped embed, D-012)"
+  ],
+  "values_recomputed_from_target": true
+}

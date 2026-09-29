@@ -299,7 +299,21 @@ make demo-destroy NS=tkt01            # → ticketing/scripts/destroy.sh tkt01
 Deletes both namespaces and everything else labelled `demo.otterworks.app/run-token=tkt01` (cluster-scoped objects,
 ECR image tags prefixed `tkt01-`, the Route53 records external-dns created for the two hosts), then lists what is
 left and **exits non-zero if anything survives** — treat a non-zero exit as a bug to report, not something to clean
-by hand. `make demo-destroy NS=tkt01 DRY_RUN=1` prints the plan first. Its duration was not measured during this run.
+by hand. `make demo-destroy NS=tkt01 DRY_RUN=1` prints the plan first.
+
+Measured on throwaway tokens so `tkt01` stays up for the demo (transcripts in `ticketing/evidence/tkt01/lifecycle/`):
+
+| run | command | result |
+|---|---|---|
+| `tkt02` | `make ticketing-reset NS=tkt02` | both namespaces built and seeded in 440 s, certificate issued normally |
+| `tkt02` | `make demo-destroy NS=tkt02` | `PASS: nothing carrying tkt02 remains (263s)` |
+| `tkt03` | `make ticketing-reset NS=tkt03`, `smoke.sh tkt03` | 444 s; purchase CONFIRMED on both sides with the non-root security contexts |
+| `tkt03` | `make demo-destroy NS=tkt03` | `PASS: nothing carrying tkt03 remains (265s)` |
+| `tkt01` | `make demo-destroy NS=tkt01 DRY_RUN=1` | plan only; lists both namespaces and the `tkt01-*` image tags |
+
+Destroying `tkt01` also deletes the `tkt01-*` service image tags that `deploy/after/images.sh` pins, so a later
+`make ticketing-reset NS=tkt01` needs those images rebuilt first. To rehearse the teardown before an event, reset
+and destroy a scratch token (as above) instead of the demo token.
 
 Do not run it while the namespaces are still needed for a review; both were deliberately left running at the
 at-rest shape in §3 after verify attempt 2.

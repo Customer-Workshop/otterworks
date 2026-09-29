@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.otterworks.ticketing.seats.unit.EventPayloadShapeTest
--------------------------------------------------------------------------------
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.071 s -- in com.otterworks.ticketing.seats.unit.EventPayloadShapeTest

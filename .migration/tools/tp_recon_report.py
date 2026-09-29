@@ -136,7 +136,10 @@ def main():
                 child_src = source_counts.get(embed["child_table"].lower())
                 if child_src is not None:
                     child_src -= sum(
-                        source_counts.get(oc["root_table"].lower(), 0)
+                        (tier1 or {})
+                        .get("stats", {})
+                        .get("source_counts", {})
+                        .get(name, 0)
                         for name, oc in spec_by_coll.items()
                         if name != coll
                         and oc.get("root_table", "").lower()

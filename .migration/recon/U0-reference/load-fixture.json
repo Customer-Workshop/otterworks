@@ -1,0 +1,44 @@
+{
+  "bulk": {
+    "codes": {
+      "deleted": 0,
+      "matched": 32,
+      "modified": 0,
+      "upserted": 0
+    },
+    "plans": {
+      "deleted": 0,
+      "matched": 3,
+      "modified": 0,
+      "upserted": 0
+    },
+    "sequences": {
+      "deleted": 0,
+      "matched": 5,
+      "modified": 0,
+      "upserted": 0
+    },
+    "tenants": {
+      "deleted": 0,
+      "matched": 77,
+      "modified": 0,
+      "upserted": 0
+    }
+  },
+  "doc_counts": {
+    "codes": 32,
+    "plans": 3,
+    "sequences": 5,
+    "tenants": 77
+  },
+  "finished_utc": "2026-09-29T18:44:53Z",
+  "mode": "fixture",
+  "source_counts": {
+    "all_sequences": 5,
+    "codes": 32,
+    "plans": 3,
+    "tenants": 77
+  },
+  "started_utc": "2026-09-29T18:44:53Z",
+  "unit": "U0-reference"
+}

@@ -1,0 +1,87 @@
+{
+  "checks": [
+    {
+      "actual": 32,
+      "expected": 32,
+      "id": "tier1.counts_through_mapping.codes",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 6,
+      "expected": 6,
+      "id": "tier2.per_field_aggregates.codes",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.codes",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 77,
+      "expected": 77,
+      "id": "tier1.counts_through_mapping.tenants",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 6,
+      "expected": 6,
+      "id": "tier2.per_field_aggregates.tenants",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.tenants",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 3,
+      "expected": 3,
+      "id": "tier1.counts_through_mapping.plans",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 8,
+      "expected": 8,
+      "id": "tier2.per_field_aggregates.plans",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.plans",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    }
+  ],
+  "generated_at": "2026-09-29T18:44:59Z",
+  "idempotency_rerun": {
+    "evidence": "rerun bulk {\"codes\": {\"deleted\": 0, \"matched\": 32, \"modified\": 0, \"upserted\": 0}, \"plans\": {\"deleted\": 0, \"matched\": 3, \"modified\": 0, \"upserted\": 0}, \"sequences\": {\"deleted\": 0, \"matched\": 5, \"modified\": 0, \"upserted\": 0}, \"tenants\": {\"deleted\": 0, \"matched\": 77, \"modified\": 0, \"upserted\": 0}}; recon verdict PASS",
+    "performed": true,
+    "result": "pass"
+  },
+  "kind": "recon-report",
+  "namespace": "ow_tp_mmp_live",
+  "planted_anomaly_detections": {
+    "actual_set": [],
+    "expected_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "run_mode": "fixture",
+  "unit": "U0-reference",
+  "unverified_paths": [
+    "live recon not yet run"
+  ],
+  "values_recomputed_from_target": true
+}

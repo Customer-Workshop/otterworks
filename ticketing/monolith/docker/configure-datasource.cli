@@ -1,0 +1,10 @@
+embed-server --std-out=echo --server-config=standalone.xml
+module add --name=org.postgresql --resources=/opt/jboss/postgresql.jar --dependencies=javax.api,jakarta.transaction.api
+/subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql,driver-module-name=org.postgresql,driver-xa-datasource-class-name=org.postgresql.xa.PGXADataSource)
+data-source add --name=BoxOfficeDS --jndi-name=java:jboss/datasources/BoxOfficeDS --driver-name=postgresql --connection-url="jdbc:postgresql://${env.DB_HOST:localhost}:${env.DB_PORT:5432}/${env.DB_NAME:boxoffice}" --user-name="${env.DB_USER:boxoffice}" --password="${env.DB_PASSWORD:boxoffice}" --min-pool-size=5 --max-pool-size="${env.DB_POOL_MAX:20}" --blocking-timeout-wait-millis=10000 --check-valid-connection-sql="SELECT 1" --background-validation=true
+/subsystem=undertow/server=default-server/http-listener=default:write-attribute(name=max-post-size,value=1048576)
+/subsystem=io/worker=default:write-attribute(name=task-max-threads,value="${env.HTTP_MAX_THREADS:64}")
+/subsystem=ejb3/strict-max-bean-instance-pool=slsb-strict-max-pool:undefine-attribute(name=derive-size)
+/subsystem=ejb3/strict-max-bean-instance-pool=slsb-strict-max-pool:write-attribute(name=max-pool-size,value=64)
+/subsystem=logging/console-handler=CONSOLE:write-attribute(name=level,value=INFO)
+stop-embedded-server

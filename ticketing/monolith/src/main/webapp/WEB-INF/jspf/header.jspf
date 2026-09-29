@@ -1,0 +1,23 @@
+<%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
+<c:set var="ctx" value="${pageContext.request.contextPath}"/>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BoxOffice</title>
+  <link rel="stylesheet" href="${ctx}/static/boxoffice.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="${ctx}/app/home">BoxOffice</a>
+  <nav>
+    <a href="${ctx}/app/events">Events</a>
+    <a href="${ctx}/app/cart">Cart</a>
+    <a href="${ctx}/app/lookup">Find my order</a>
+    <a href="${ctx}/app/account">Account</a>
+    <a class="admin" href="${ctx}/app/admin">Back office</a>
+  </nav>
+</header>
+<main>

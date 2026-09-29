@@ -1,0 +1,152 @@
+# Before state: the BoxOffice monolith at ONE replica with a fixed CPU limit, plus its
+# single shared Postgres. Rendered by ticketing/scripts/deploy-before.sh.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${NS_BEFORE}
+  labels:
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: before
+    app.kubernetes.io/part-of: ticketing-demo
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ${TOKEN}-before-quota
+  namespace: ${NS_BEFORE}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+spec:
+  hard: {requests.cpu: "4", limits.cpu: "6", requests.memory: 8Gi, limits.memory: 12Gi, pods: "20", services.loadbalancers: "0", persistentvolumeclaims: "0"}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ${TOKEN}-before-limits
+  namespace: ${NS_BEFORE}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+spec:
+  limits:
+    - type: Container
+      default: {cpu: 500m, memory: 512Mi}
+      defaultRequest: {cpu: 100m, memory: 128Mi}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ${TOKEN}-before-isolate
+  namespace: ${NS_BEFORE}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {demo.otterworks.app/run-token: "${TOKEN}"}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${TOKEN}-db
+  namespace: ${NS_BEFORE}
+  labels: {app: ${TOKEN}-db, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: ${TOKEN}-db}}
+  template:
+    metadata:
+      labels: {app: ${TOKEN}-db, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+    spec:
+      containers:
+        - name: postgres
+          image: ${ECR_PREFIX}/postgres:16-alpine
+          env:
+            - {name: POSTGRES_DB, value: boxoffice}
+            - {name: POSTGRES_USER, value: boxoffice}
+            - {name: POSTGRES_PASSWORD, value: boxoffice}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          args: ["-c", "max_connections=200", "-c", "shared_buffers=256MB"]
+          ports: [{containerPort: 5432, name: pg}]
+          readinessProbe: {exec: {command: ["pg_isready", "-U", "boxoffice", "-d", "boxoffice"]}, periodSeconds: 5}
+          resources:
+            requests: {cpu: 500m, memory: 512Mi}
+            limits: {cpu: "1", memory: 1Gi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: init, mountPath: /docker-entrypoint-initdb.d}
+      volumes:
+        - {name: data, emptyDir: {}}
+        - {name: init, configMap: {name: ${TOKEN}-db-init}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-db
+  namespace: ${NS_BEFORE}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+spec:
+  type: ClusterIP
+  selector: {app: ${TOKEN}-db}
+  ports: [{name: pg, port: 5432, targetPort: 5432}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${TOKEN}-monolith
+  namespace: ${NS_BEFORE}
+  labels: {app: ${TOKEN}-monolith, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: ${TOKEN}-monolith}}
+  template:
+    metadata:
+      labels: {app: ${TOKEN}-monolith, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+    spec:
+      containers:
+        - name: wildfly
+          image: ${MONOLITH_IMAGE}
+          env:
+            - {name: DB_HOST, value: ${TOKEN}-db}
+            - {name: PRICING_PASSES, value: "${PRICING_PASSES}"}
+            - {name: HOLD_MINUTES, value: "${HOLD_MINUTES}"}
+            - {name: PAYMENT_TIMEOUT_MS, value: "${PAYMENT_TIMEOUT_MS}"}
+          ports: [{containerPort: 8080, name: http}]
+          startupProbe: {httpGet: {path: /api/health, port: 8080}, periodSeconds: 5, failureThreshold: 60}
+          readinessProbe: {httpGet: {path: /api/health, port: 8080}, periodSeconds: 10, timeoutSeconds: 5}
+          livenessProbe: {tcpSocket: {port: 8080}, periodSeconds: 20, failureThreshold: 6}
+          resources:
+            requests: {cpu: ${MONOLITH_CPU}, memory: ${MONOLITH_MEMORY}}
+            limits: {cpu: ${MONOLITH_CPU}, memory: ${MONOLITH_MEMORY}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-monolith
+  namespace: ${NS_BEFORE}
+  labels: {app: ${TOKEN}-monolith, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+spec:
+  type: ClusterIP
+  selector: {app: ${TOKEN}-monolith}
+  ports: [{name: http, port: 80, targetPort: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${TOKEN}-before
+  namespace: ${NS_BEFORE}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  tls: [{hosts: ["${HOST_BEFORE}"], secretName: ${TOKEN}-before-tls}]
+  rules:
+    - host: ${HOST_BEFORE}
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: ${TOKEN}-monolith, port: {number: 80}}}}

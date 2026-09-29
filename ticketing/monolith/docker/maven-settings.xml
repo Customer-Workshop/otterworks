@@ -1,0 +1,10 @@
+<settings>
+  <mirrors>
+    <!-- Google's public mirror of Maven Central; used when Central rate-limits the build host. -->
+    <mirror>
+      <id>central-mirror</id>
+      <mirrorOf>central</mirrorOf>
+      <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+    </mirror>
+  </mirrors>
+</settings>

@@ -1,0 +1,25 @@
+services:
+  db:
+    image: public.ecr.aws/docker/library/postgres:16-alpine
+    environment:
+      POSTGRES_DB: boxoffice
+      POSTGRES_USER: boxoffice
+      POSTGRES_PASSWORD: boxoffice
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    ports: ["5432:5432"]
+  app:
+    build: .
+    environment:
+      DB_HOST: db
+      PRICING_PASSES: ${PRICING_PASSES:-200}
+      HOLD_MINUTES: ${HOLD_MINUTES:-10}
+      PAYMENT_TIMEOUT_MS: ${PAYMENT_TIMEOUT_MS:-4000}
+    depends_on: [db]
+    ports: ["8080:8080"]
+    deploy:
+      resources:
+        limits:
+          cpus: "${MONOLITH_CPUS:-0.5}"
+          memory: 1g

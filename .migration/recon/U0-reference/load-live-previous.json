@@ -14,13 +14,13 @@
     },
     "sequences": {
       "deleted": 0,
-      "matched": 5,
+      "matched": 0,
       "modified": 0,
-      "upserted": 0
+      "upserted": 5
     },
     "tenants": {
       "deleted": 0,
-      "matched": 77,
+      "matched": 69,
       "modified": 0,
       "upserted": 0
     }
@@ -29,16 +29,16 @@
     "codes": 32,
     "plans": 3,
     "sequences": 5,
-    "tenants": 77
+    "tenants": 69
   },
-  "finished_utc": "2026-09-29T18:46:25Z",
-  "mode": "fixture",
+  "finished_utc": "2026-09-29T18:46:28Z",
+  "mode": "live",
   "source_counts": {
-    "all_sequences": 5,
     "codes": 32,
+    "dba_sequences": 5,
     "plans": 3,
-    "tenants": 77
+    "tenants": 69
   },
-  "started_utc": "2026-09-29T18:46:25Z",
+  "started_utc": "2026-09-29T18:46:26Z",
   "unit": "U0-reference"
 }

@@ -15,14 +15,14 @@
     "sequences": {
       "deleted": 0,
       "matched": 5,
-      "modified": 5,
+      "modified": 0,
       "upserted": 0
     },
     "tenants": {
       "deleted": 0,
-      "matched": 70,
-      "modified": 1,
-      "upserted": 7
+      "matched": 77,
+      "modified": 0,
+      "upserted": 0
     }
   },
   "doc_counts": {
@@ -31,7 +31,7 @@
     "sequences": 5,
     "tenants": 77
   },
-  "finished_utc": "2026-09-29T18:44:52Z",
+  "finished_utc": "2026-09-29T18:46:24Z",
   "mode": "fixture",
   "source_counts": {
     "all_sequences": 5,
@@ -39,6 +39,6 @@
     "plans": 3,
     "tenants": 77
   },
-  "started_utc": "2026-09-29T18:44:52Z",
+  "started_utc": "2026-09-29T18:46:24Z",
   "unit": "U0-reference"
 }

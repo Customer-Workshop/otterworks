@@ -1,0 +1,134 @@
+{
+  "unit": "U0-reference",
+  "mode": "live",
+  "target_class": "migration_cluster",
+  "mapping_version": "map-1",
+  "mapping_sha256": "e6fda96035536d1eb44f7ffc48f49a492a64fc65687f56ba8b2c38119220d08a",
+  "tolerance_version": "1",
+  "tolerance_sha256": "03b3c6cc0bc6ebf1e757a05c64cd071656258577b7df2e4d6d46784948ee2e1e",
+  "collections": [
+    "codes",
+    "tenants",
+    "plans"
+  ],
+  "seed": 0,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-29T18:46:43.639923+00:00",
+  "redacted": true,
+  "redaction_salted": false,
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 3,
+      "stats": {
+        "source_counts": {
+          "codes": 32,
+          "tenants": 69,
+          "plans": 3
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 6,
+      "stats": {
+        "deferred_to_tier3": [
+          "codes.code_type",
+          "codes.code_desc",
+          "tenants.name",
+          "tenants.tax_exempt_yn",
+          "plans.code",
+          "plans.monthly_fee",
+          "plans.overage_rate",
+          "plans.active_yn"
+        ],
+        "string_aggregates_deferred_to_tier3": [
+          {
+            "field": "codes.code_type",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "codes.code_desc",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "tenants.name",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "tenants.tax_exempt_yn",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "plans.code",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "plans.active_yn",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          }
+        ],
+        "fields_fully_deferred": 6
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 104,
+      "stats": {
+        "codes": {
+          "mode": "full_diff",
+          "population": 32,
+          "duplicate_source_key_count": 0
+        },
+        "tenants": {
+          "mode": "full_diff",
+          "population": 69,
+          "duplicate_source_key_count": 0
+        },
+        "plans": {
+          "mode": "full_diff",
+          "population": 3,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "error": null
+}

@@ -2,6 +2,8 @@
 import sys
 from pathlib import Path
 
+import oracledb
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import mongo_load
 
@@ -29,10 +31,19 @@ def load(cur, db, allowed):
     cur.execute("SELECT * FROM ow_billing.plans")
     finish("plans")
 
-    cur.execute(
-        "SELECT sequence_name, last_number, increment_by FROM all_sequences WHERE sequence_owner = 'OW_BILLING'"
-    )
+    try:
+        cur.execute(
+            "SELECT sequence_name, last_number, increment_by FROM dba_sequences WHERE sequence_owner = 'OW_BILLING'"
+        )
+        seq_view = "dba_sequences"
+    except oracledb.DatabaseError:
+        cur.execute(
+            "SELECT sequence_name, last_number, increment_by FROM all_sequences WHERE sequence_owner = 'OW_BILLING'"
+        )
+        seq_view = "all_sequences"
     sequences = mongo_load.fetch_dicts(cur)
+    if not sequences:
+        raise RuntimeError(f"{seq_view} returned no OW_BILLING sequences")
     seq_docs = [
         {
             "_id": str(r["SEQUENCE_NAME"]).lower(),
@@ -41,7 +52,7 @@ def load(cur, db, allowed):
         }
         for r in sequences
     ]
-    source_counts["all_sequences"] = len(sequences)
+    source_counts[seq_view] = len(sequences)
     bulk["sequences"] = mongo_load.write_collection(
         db, "sequences", seq_docs, [], allowed
     )

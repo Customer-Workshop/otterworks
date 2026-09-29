@@ -7,10 +7,13 @@
 #   scripts/deploy-demo.sh up <token> ...        (Makefile form, §12.1)
 #
 # <token> = <run>-<before|after>, e.g. d24-before. Always:
-#   1. demo-aws Terraform      - Db2 EBS volume, S3 bucket, ECR repo (tagged)
+#   1. demo-aws Terraform      - source-estate EBS volume, S3 bucket, ECR repo (tagged)
 #   2. deploy-tenant.sh        - the ordinary OtterWorks tenant (existing path)
-#   3. db2-archive chart       - Db2 StatefulSet + seed hook, DB <RUN>B|<RUN>A
-#   4. wiring                  - archive-store-credentials, ARCHIVE_STORE=db2
+#   3. source chart, by the overlay's source.driver (default db2):
+#        db2    - db2-archive chart: Db2 StatefulSet + seed hook, DB <RUN>B|<RUN>A
+#        oracle - oracle-archive chart: Oracle Free 23ai StatefulSet (ECR mirror of the
+#                 digest-pinned image) + seed hook over SQL*Net from the ldm job image
+#   4. wiring                  - archive-store-credentials, ARCHIVE_STORE=<driver>
 # When the token's overlay says migrate: true with azure: false (the default
 # d24-after: PostgreSQL + S3 + Spark local mode, nothing provisioned in Azure):
 #   5. wiring                  - the tenant's existing RDS database + the token's
@@ -66,6 +69,7 @@ validate_token "${TOKEN}"
 require_overlay "${TOKEN}"
 RUN="$(token_run "${TOKEN}")"; STATE="$(token_state "${TOKEN}")"
 NS="$(demo_namespace "${TOKEN}")"
+SOURCE_DRIVER="$(token_source_driver "${TOKEN}")"
 DB2_DB="$(db2_db_name "${TOKEN}")"
 EXPIRES="$(ttl_to_expires "${TTL}")"
 WANT_AZURE="$(token_wants_azure "${TOKEN}")"
@@ -75,7 +79,10 @@ BEFORE_HOST="$(demo_web_host "${RUN}-before")"
 
 require_bins aws kubectl helm terraform jq
 require_dir "${DEMO_AWS_TF_DIR}" "demo-aws Terraform root" ops
-require_chart "${DB2_CHART_DIR}" source
+case "${SOURCE_DRIVER}" in
+  db2)    require_chart "${DB2_CHART_DIR}" source ;;
+  oracle) require_chart "${ORACLE_CHART_DIR}" source; require_chart "${JOB_CHART_DIR}" job ;;  # seed hook runs the job image
+esac
 [ "${WANT_MIGRATE}" = "true" ] && require_chart "${JOB_CHART_DIR}" job
 if [ "${WANT_AZURE}" = "true" ]; then
   require_bins az
@@ -93,7 +100,7 @@ if [ "${DRY_RUN}" != "1" ]; then
 fi
 
 start_transcript "${TOKEN}" deploy
-dlog "token=${TOKEN} run=${RUN} state=${STATE} namespace=${NS} db2=${DB2_DB} expires=${EXPIRES} migrate=${WANT_MIGRATE} azure=${WANT_AZURE} dry_run=${DRY_RUN}"
+dlog "token=${TOKEN} run=${RUN} state=${STATE} namespace=${NS} source=${SOURCE_DRIVER} db2=${DB2_DB} expires=${EXPIRES} migrate=${WANT_MIGRATE} azure=${WANT_AZURE} dry_run=${DRY_RUN}"
 aws_account_id; ensure_kubeconfig
 DEMO_BRANCH="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "demo/${DEMO_NAME}")"
 dlog "tags: $(demo_tags_kv "${TOKEN}" "${EXPIRES}")"
@@ -156,7 +163,53 @@ run kubectl -n "${NS}" patch resourcequota tenant-quota --type merge -p \
 run aws s3api put-object --bucket "${DEMO_BUCKET}" --key "${TOKEN}/" --content-length 0
 stage_end 0
 
-# --- 3. Db2 archive store + seed ----------------------------------------------------------
+# --- 3. source archive store + seed ------------------------------------------------------------
+# The seed hook waits for the seed Job the chart's post-install hook created; the Job is
+# idempotent (tables already at their SEED-SPEC count are skipped) so `helm upgrade` is safe.
+wait_for_seed_job() {
+  local release="$1" what="$2" job
+  [ "${DRY_RUN}" = "1" ] && return 0
+  job="$(kubectl -n "${NS}" get jobs -l "app.kubernetes.io/instance=${release}" -o name 2>/dev/null | head -1 || true)"
+  [ -n "${job}" ] || die "chart has initJob.enabled=true but no Job labelled app.kubernetes.io/instance=${release} exists; ${what} is not seeded"
+  if ! kubectl -n "${NS}" wait --for=condition=complete "${job}" --timeout=90m; then
+    kubectl -n "${NS}" logs "${job}" --tail=40 2>/dev/null || true
+    die "seed job ${job} did not complete; ${what} is empty or partial - not continuing"
+  fi
+}
+SOURCE_ENV=""   # <DRIVER>_HOST/... lines the app + job read (CONTRACTS §9.2, §10.4)
+if [ "${SOURCE_DRIVER}" = "oracle" ]; then
+stage_begin "oracle seed"
+ensure_oracle_image
+# The seeder runs from the token's ldm job image (python-oracledb thin mode + migration/source/seed).
+ensure_ldm_job_image "${TOKEN}"
+ORACLE_JOB_IMAGE="$(ldm_job_image "${TOKEN}")"
+ORACLE_PASSWORD="$(secret_value "${NS}" "${ORACLE_CREDENTIALS_SECRET}" ORACLE_PASSWORD)"
+if [ -z "${ORACLE_PASSWORD}" ]; then
+  # Oracle passwords: start with a letter, no shell metacharacters (the image passes them through sqlplus).
+  ORACLE_PASSWORD="Ow$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | cut -c1-22)"
+  ORACLE_SYS_PASSWORD="Ow$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | cut -c1-22)"
+  printf 'ORACLE_USER=%s\nORACLE_PASSWORD=%s\nORACLE_SYS_PASSWORD=%s\n' LDMUSER "${ORACLE_PASSWORD}" "${ORACLE_SYS_PASSWORD}" \
+    | apply_secret_from_stdin "${NS}" "${ORACLE_CREDENTIALS_SECRET}" "${TOKEN}"
+  unset ORACLE_SYS_PASSWORD
+else
+  dlog "reusing existing ${ORACLE_CREDENTIALS_SECRET}"
+fi
+ORACLE_USER="$(secret_value "${NS}" "${ORACLE_CREDENTIALS_SECRET}" ORACLE_USER)"; ORACLE_USER="${ORACLE_USER:-LDMUSER}"
+ORACLE_ARGS=(--namespace "${NS}" --create-namespace=false
+  --set "namespaceToken=${TOKEN}" --set "credentialsSecret=${ORACLE_CREDENTIALS_SECRET}"
+  --set "pv.size=20Gi" --set "pv.volumeName=otterworks-ldm-${TOKEN}-oracle" --set "expires=${EXPIRES}"
+  --set "initJob.enabled=true" --set "initJob.image.repository=${ORACLE_JOB_IMAGE%:*}" --set "initJob.image.tag=${ORACLE_JOB_IMAGE##*:}")
+# The EBS volume comes from demo-aws Terraform (the token's one source-estate volume); static PV (§12.4).
+[ -n "${DB2_VOLUME_ID}" ] && ORACLE_ARGS+=(--set "pv.create=true" --set "pv.volumeId=${DB2_VOLUME_ID}" --set "pv.zone=${DB2_VOLUME_AZ}")
+# --wait covers the post-install seed hook too: 5.3M rows over SQL*Net from one pod take ~45 min at
+# scale 1.0 on the SPOT node group, so the budget matches initJob.activeDeadlineSeconds (90 min).
+# shellcheck disable=SC2086
+run helm upgrade --install "${ORACLE_RELEASE}" "${ORACLE_CHART_DIR}" "${ORACLE_ARGS[@]}" --wait --timeout 90m ${ORACLE_HELM_ARGS:-}
+wait_for_seed_job "${ORACLE_RELEASE}" "Oracle ${ORACLE_SERVICE}"
+SOURCE_ENV="$(printf 'ORACLE_HOST=%s.%s.svc.cluster.local\nORACLE_PORT=%s\nORACLE_SERVICE=%s\nORACLE_USER=%s\nORACLE_PASSWORD=%s\n' \
+  "${ORACLE_RELEASE}" "${NS}" "${ORACLE_PORT}" "${ORACLE_SERVICE}" "${ORACLE_USER}" "${ORACLE_PASSWORD}")"
+stage_end 0
+else
 stage_begin "db2 seed"
 DB2_PASSWORD="$(secret_value "${NS}" "${DB2_CREDENTIALS_SECRET}" DB2_PASSWORD)"
 if [ -z "${DB2_PASSWORD}" ]; then
@@ -178,14 +231,7 @@ if grep -qE '^initJob:' "${DB2_CHART_DIR}/values.yaml" 2>/dev/null; then CHART_H
 run helm upgrade --install "${DB2_RELEASE}" "${DB2_CHART_DIR}" "${DB2_ARGS[@]}" --wait --timeout 30m ${DB2_HELM_ARGS:-}
 SEED_SCRIPT="${REPO_ROOT}/migration/source/seed/load.sh"
 if [ "${CHART_HAS_SEED}" = "1" ]; then
-  if [ "${DRY_RUN}" != "1" ]; then
-    SEED_JOB="$(kubectl -n "${NS}" get jobs -l "app.kubernetes.io/instance=${DB2_RELEASE}" -o name 2>/dev/null | head -1 || true)"
-    [ -n "${SEED_JOB}" ] || die "chart has initJob.enabled=true but no Job labelled app.kubernetes.io/instance=${DB2_RELEASE} exists; Db2 is not seeded"
-    if ! kubectl -n "${NS}" wait --for=condition=complete "${SEED_JOB}" --timeout=90m; then
-      kubectl -n "${NS}" logs "${SEED_JOB}" --tail=40 2>/dev/null || true
-      die "seed job ${SEED_JOB} did not complete; Db2 ${DB2_DB} is empty or partial - not continuing"
-    fi
-  fi
+  wait_for_seed_job "${DB2_RELEASE}" "Db2 ${DB2_DB}"
 elif [ -x "${SEED_SCRIPT}" ]; then
   # Source-unit loader (migration/source/seed/load.sh); connection via env, never argv.
   if [ "${DRY_RUN}" = "1" ]; then dlog "[dry-run] ${SEED_SCRIPT#"${REPO_ROOT}"/} ${TOKEN}  (DB2_* from Secret ${DB2_CREDENTIALS_SECRET})"
@@ -198,15 +244,23 @@ elif [ "${DRY_RUN}" = "1" ]; then
 else
   die "neither a chart seed hook nor migration/source/seed/load.sh found (source unit); Db2 ${DB2_DB} would stay empty"
 fi
+SOURCE_ENV="$(printf 'DB2_HOST=%s.%s.svc.cluster.local\nDB2_PORT=50000\nDB2_DATABASE=%s\nDB2_USER=db2inst1\nDB2_PASSWORD=%s\n' \
+  "${DB2_RELEASE}" "${NS}" "${DB2_DB}" "${DB2_PASSWORD}")"
 stage_end 0
+fi
 
-# --- 4. wiring: archive-store-credentials (db2) --------------------------------------------
+# --- 4. wiring: archive-store-credentials (source) -----------------------------------------
+# ARCHIVE_STORE=db2: report-service/audit-service read the Db2 estate directly on a before tenant.
+# ArchiveStoreType knows off|db2|postgresql|azuresql only; an Oracle read path in those services is
+# a follow-up, so an oracle before-tenant gets ARCHIVE_STORE=off (archive endpoints report the
+# feature as disabled rather than a misconfigured store). The migration itself never uses them.
+APP_SOURCE_STORE="${SOURCE_DRIVER}"
+[ "${SOURCE_DRIVER}" = "oracle" ] && APP_SOURCE_STORE=off
 wiring_rc=0
-stage_begin "wiring (db2)"
+stage_begin "wiring (${SOURCE_DRIVER})"
 {
-  printf 'ARCHIVE_STORE=db2\nLDM_NAMESPACE=%s\nLDM_RUN_TOKEN=%s\n' "${TOKEN}" "${RUN}"
-  printf 'DB2_HOST=%s.%s.svc.cluster.local\nDB2_PORT=50000\nDB2_DATABASE=%s\nDB2_USER=db2inst1\nDB2_PASSWORD=%s\n' \
-    "${DB2_RELEASE}" "${NS}" "${DB2_DB}" "${DB2_PASSWORD}"
+  printf 'ARCHIVE_STORE=%s\nLDM_NAMESPACE=%s\nLDM_RUN_TOKEN=%s\n' "${APP_SOURCE_STORE}" "${TOKEN}" "${RUN}"
+  printf '%s\n' "${SOURCE_ENV}"
   printf 'LDM_S3_BUCKET=%s\nLDM_S3_PREFIX=%s/\n' "${DEMO_BUCKET}" "${TOKEN}"
 } | apply_secret_from_stdin "${NS}" "${ARCHIVE_STORE_SECRET}" "${TOKEN}"
 if [ "${WANT_AZURE}" != "true" ] && [ "${WANT_MIGRATE}" != "true" ]; then wire_archive_store "${NS}" || wiring_rc=$?; fi
@@ -230,8 +284,7 @@ if [ "${WANT_MIGRATE}" = "true" ] && [ "${WANT_AZURE}" != "true" ]; then
   JOB_IMAGE="$(ldm_job_image "${TOKEN}")"
   {
     printf 'ARCHIVE_STORE=postgresql\nLDM_NAMESPACE=%s\nLDM_RUN_TOKEN=%s\nLDM_HOST=eks\n' "${TOKEN}" "${RUN}"
-    printf 'DB2_HOST=%s.%s.svc.cluster.local\nDB2_PORT=50000\nDB2_DATABASE=%s\nDB2_USER=db2inst1\nDB2_PASSWORD=%s\n' \
-      "${DB2_RELEASE}" "${NS}" "${DB2_DB}" "${DB2_PASSWORD}"
+    printf '%s\n' "${SOURCE_ENV}"
     printf 'LDM_S3_BUCKET=%s\nLDM_S3_PREFIX=%s/\n' "${DEMO_BUCKET}" "${TOKEN}"
     printf 'PG_HOST=%s\nPG_PORT=%s\nPG_DATABASE=%s\nPG_USER=%s\nPG_PASSWORD=%s\nPG_SSLMODE=require\n' \
       "${RDS_HOST}" "${RDS_PORT}" "${PG_DATABASE}" "${DB_USER}" "${DB_PASSWORD}"
@@ -312,8 +365,7 @@ if [ "${WANT_AZURE}" = "true" ]; then
   fi
   {
     printf 'ARCHIVE_STORE=azuresql\nLDM_NAMESPACE=%s\nLDM_RUN_TOKEN=%s\nLDM_HOST=eks\n' "${TOKEN}" "${RUN}"
-    printf 'DB2_HOST=%s.%s.svc.cluster.local\nDB2_PORT=50000\nDB2_DATABASE=%s\nDB2_USER=db2inst1\nDB2_PASSWORD=%s\n' \
-      "${DB2_RELEASE}" "${NS}" "${DB2_DB}" "${DB2_PASSWORD}"
+    printf '%s\n' "${SOURCE_ENV}"
     printf 'LDM_S3_BUCKET=%s\nLDM_S3_PREFIX=%s/\n' "${DEMO_BUCKET}" "${TOKEN}"
     printf 'AZSQL_SERVER=%s\nAZSQL_DATABASE=%s\nAZSQL_USER=%s\nAZSQL_PASSWORD=%s\nAZSQL_AUTH=sql\n' \
       "${AZSQL_SERVER}" "${AZSQL_DATABASE}" "${AZSQL_USER}" "${AZSQL_PASSWORD}"
@@ -343,10 +395,14 @@ echo
 dlog "namespace   : ${NS}   (expires ${EXPIRES})"
 dlog "web         : https://${WEB_HOST}"
 dlog "api         : https://${API_HOST}"
-ARCHIVE_STORE_KIND=db2
+ARCHIVE_STORE_KIND="${APP_SOURCE_STORE}"
 [ "${WANT_MIGRATE}" = "true" ] && ARCHIVE_STORE_KIND=postgresql
 [ "${WANT_AZURE}" = "true" ] && ARCHIVE_STORE_KIND=azuresql
-dlog "db2         : ${DB2_RELEASE}.${NS}.svc.cluster.local:50000/${DB2_DB}  (ARCHIVE_STORE=${ARCHIVE_STORE_KIND})"
+if [ "${SOURCE_DRIVER}" = "oracle" ]; then
+  dlog "oracle      : ${ORACLE_RELEASE}.${NS}.svc.cluster.local:${ORACLE_PORT}/${ORACLE_SERVICE}  (ARCHIVE_STORE=${ARCHIVE_STORE_KIND})"
+else
+  dlog "db2         : ${DB2_RELEASE}.${NS}.svc.cluster.local:50000/${DB2_DB}  (ARCHIVE_STORE=${ARCHIVE_STORE_KIND})"
+fi
 [ "${ARCHIVE_STORE_KIND}" = "postgresql" ] && dlog "postgresql  : ${RDS_HOST:-?}:${RDS_PORT:-5432}/${PG_DATABASE:-?}  s3://${DEMO_BUCKET}/${TOKEN}/  (Spark local[*] in the Job)"
 [ "${WANT_AZURE}" = "true" ] && dlog "azure       : $(azure_rg "${TOKEN}") / ${AZSQL_SERVER:-?} / ${AZSQL_DATABASE:-?}   peer=https://${BEFORE_HOST}"
 [ "${WANT_AZURE}" = "true" ] && dlog "next        : make demo-migrate NS=${TOKEN} RUN_ID=$(default_run_id)"

@@ -1,0 +1,14 @@
+# DDL from migration/source/oracle/ddl (files/ddl is a symlink into the repo; `helm package` copies it).
+# Mounted at /container-entrypoint-initdb.d: the image runs *.sql as SYSDBA and *.sh as a process, in
+# name order, on the first start of the database only.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oracle-archive-ddl
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "oracle-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "oracle-archive.annotations" . | nindent 4 }}
+data:
+{{ (.Files.Glob "files/ddl/*.{sql,sh}").AsConfig | indent 2 }}

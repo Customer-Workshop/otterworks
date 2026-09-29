@@ -2,9 +2,9 @@
   "bulk": {
     "customers": {
       "deleted": 0,
-      "matched": 0,
+      "matched": 25001,
       "modified": 0,
-      "upserted": 25001
+      "upserted": 0
     }
   },
   "doc_counts": {
@@ -212,12 +212,12 @@
     "ffcd78265bb096b3",
     "ffe26cf55036c24f"
   ],
-  "finished_utc": "2026-09-29T18:06:00Z",
+  "finished_utc": "2026-09-29T18:11:05Z",
   "mode": "fixture",
   "source_counts": {
     "customer_master": 25001,
     "entity_attr_value": 8337
   },
-  "started_utc": "2026-09-29T18:05:57Z",
+  "started_utc": "2026-09-29T18:11:03Z",
   "unit": "U1-customers"
 }

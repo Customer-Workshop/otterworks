@@ -212,12 +212,12 @@
     "ffcd78265bb096b3",
     "ffe26cf55036c24f"
   ],
-  "finished_utc": "2026-09-29T18:06:04Z",
+  "finished_utc": "2026-09-29T18:11:08Z",
   "mode": "fixture",
   "source_counts": {
     "customer_master": 25001,
     "entity_attr_value": 8337
   },
-  "started_utc": "2026-09-29T18:06:01Z",
+  "started_utc": "2026-09-29T18:11:06Z",
   "unit": "U1-customers"
 }

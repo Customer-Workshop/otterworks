@@ -1,0 +1,1178 @@
+# Recon report: unit `U1-customers`
+
+- **Verdict: PASS** (values redacted)
+- Mode: `fixture` (fixture data: NOT a merge verdict, run live once before merging) | Target: `local` (local target: NOT a merge verdict)
+- Merge eligible: no (fixture/continuous evidence never merges)
+- Mapping version: `map-1` (sha256 `2a9bd0e29434`)
+- Tolerance version: `1` (sha256 `03b3c6cc0bc6`)
+- Collections: `customers`
+- Seed: `1`
+- Generated: 2026-09-29T18:11:29.653889+00:00
+- **WARNING: embed customers.attributes: scoped by a where-predicate; extra target elements not checked**
+- 154 fields: Tier 2 aggregates deferred to Tier 3 (rules change the value)
+- 121 string fields: min/max/distinct deferred to Tier 3
+
+| Tier | Name | Checks | Result |
+|---|---|---|---|
+| 1 | counts_through_mapping | 2 | PASS |
+| 2 | per_field_aggregates | 15 | PASS |
+| 3 | keyed_diffs | 33338 | PASS |
+
+## Tier 1 coverage
+```json
+{
+  "source_counts": {
+    "customers": 25001
+  }
+}
+```
+
+## Tier 2 coverage
+```json
+{
+  "deferred_to_tier3": [
+    "customers.cust_seq_no",
+    "customers.tenant_id",
+    "customers.cust_no",
+    "customers.cust_name",
+    "customers.cust_name_upper",
+    "customers.legal_name",
+    "customers.dba_name",
+    "customers.addr_line_1",
+    "customers.addr_line_2",
+    "customers.addr_line_3",
+    "customers.addr_line_4",
+    "customers.addr_line_5",
+    "customers.addr_line_6",
+    "customers.city",
+    "customers.state_cd",
+    "customers.zip",
+    "customers.zip4",
+    "customers.country_cd",
+    "customers.mail_addr_line_1",
+    "customers.mail_addr_line_2",
+    "customers.mail_addr_line_3",
+    "customers.mail_addr_line_4",
+    "customers.mail_addr_line_5",
+    "customers.mail_addr_line_6",
+    "customers.mail_city",
+    "customers.mail_state_cd",
+    "customers.mail_zip",
+    "customers.phone1",
+    "customers.phone2",
+    "customers.phone3",
+    "customers.phone4",
+    "customers.phone1_type_cd",
+    "customers.phone2_type_cd",
+    "customers.phone3_type_cd",
+    "customers.phone4_type_cd",
+    "customers.fax",
+    "customers.email_1",
+    "customers.email_2",
+    "customers.email_3",
+    "customers.signup_dt",
+    "customers.last_activity_dt",
+    "customers.last_invoice_dt",
+    "customers.last_payment_dt",
+    "customers.terminate_dt",
+    "customers.status_cd",
+    "customers.sub_status_cd",
+    "customers.cust_type_cd",
+    "customers.segment_cd",
+    "customers.region_cd",
+    "customers.territory_cd",
+    "customers.channel_cd",
+    "customers.rate_class_cd",
+    "customers.tax_exempt_yn",
+    "customers.credit_hold_yn",
+    "customers.dunning_exempt_yn",
+    "customers.vip_yn",
+    "customers.cur_bal_amt",
+    "customers.past_due_amt",
+    "customers.ytd_billed_amt",
+    "customers.ltd_billed_amt",
+    "customers.ytd_paid_amt",
+    "customers.credit_limit_amt",
+    "customers.related_acct_ids",
+    "customers.child_acct_ids",
+    "customers.promo_codes_csv",
+    "customers.contact_notes",
+    "customers.legacy_sys_key",
+    "customers.mainframe_acct_no",
+    "customers.conversion_batch_no",
+    "customers.flag_01",
+    "customers.flag_02",
+    "customers.flag_03",
+    "customers.flag_04",
+    "customers.flag_05",
+    "customers.flag_06",
+    "customers.flag_07",
+    "customers.flag_08",
+    "customers.flag_09",
+    "customers.flag_10",
+    "customers.flag_11",
+    "customers.flag_12",
+    "customers.flag_13",
+    "customers.flag_14",
+    "customers.flag_15",
+    "customers.flag_16",
+    "customers.flag_17",
+    "customers.flag_18",
+    "customers.flag_19",
+    "customers.flag_20",
+    "customers.udf_01",
+    "customers.udf_02",
+    "customers.udf_03",
+    "customers.udf_04",
+    "customers.udf_05",
+    "customers.udf_06",
+    "customers.udf_07",
+    "customers.udf_08",
+    "customers.udf_09",
+    "customers.udf_10",
+    "customers.udf_11",
+    "customers.udf_12",
+    "customers.udf_13",
+    "customers.udf_14",
+    "customers.udf_15",
+    "customers.udf_16",
+    "customers.udf_17",
+    "customers.udf_18",
+    "customers.udf_19",
+    "customers.udf_20",
+    "customers.udf_21",
+    "customers.udf_22",
+    "customers.udf_23",
+    "customers.udf_24",
+    "customers.udf_25",
+    "customers.udf_26",
+    "customers.udf_27",
+    "customers.udf_28",
+    "customers.udf_29",
+    "customers.udf_30",
+    "customers.udf_31",
+    "customers.udf_32",
+    "customers.udf_33",
+    "customers.udf_34",
+    "customers.udf_35",
+    "customers.udf_36",
+    "customers.udf_37",
+    "customers.udf_38",
+    "customers.udf_39",
+    "customers.udf_40",
+    "customers.udf_amt_01",
+    "customers.udf_amt_02",
+    "customers.udf_amt_03",
+    "customers.udf_amt_04",
+    "customers.udf_amt_05",
+    "customers.udf_amt_06",
+    "customers.udf_amt_07",
+    "customers.udf_amt_08",
+    "customers.udf_amt_09",
+    "customers.udf_amt_10",
+    "customers.udf_dt_01",
+    "customers.udf_dt_02",
+    "customers.udf_dt_03",
+    "customers.udf_dt_04",
+    "customers.udf_dt_05",
+    "customers.udf_dt_06",
+    "customers.udf_dt_07",
+    "customers.udf_dt_08",
+    "customers.udf_dt_09",
+    "customers.udf_dt_10",
+    "customers.created_by",
+    "customers.created_dt",
+    "customers.updated_by",
+    "customers.updated_dt",
+    "customers.row_version_no"
+  ],
+  "string_aggregates_deferred_to_tier3": [
+    {
+      "field": "customers.tenant_id",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.cust_no",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.cust_name",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.cust_name_upper",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.legal_name",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.dba_name",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.addr_line_1",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.addr_line_2",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.addr_line_3",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.addr_line_4",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.addr_line_5",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.addr_line_6",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.city",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.state_cd",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.zip",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.zip4",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.country_cd",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_addr_line_1",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_addr_line_2",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_addr_line_3",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_addr_line_4",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_addr_line_5",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_addr_line_6",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_city",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_state_cd",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mail_zip",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.phone1",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.phone2",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.phone3",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.phone4",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.fax",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.email_1",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.email_2",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.email_3",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.signup_dt",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.last_activity_dt",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.last_invoice_dt",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.last_payment_dt",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.terminate_dt",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.tax_exempt_yn",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.credit_hold_yn",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.dunning_exempt_yn",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.vip_yn",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.related_acct_ids",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.child_acct_ids",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.promo_codes_csv",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.contact_notes",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.legacy_sys_key",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.mainframe_acct_no",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_01",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_02",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_03",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_04",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_05",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_06",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_07",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_08",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_09",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_10",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_11",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_12",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_13",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_14",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_15",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_16",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_17",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_18",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_19",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.flag_20",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_01",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_02",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_03",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_04",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_05",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_06",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_07",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_08",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_09",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_10",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_11",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_12",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_13",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_14",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_15",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_16",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_17",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_18",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_19",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_20",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_21",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_22",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_23",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_24",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_25",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_26",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_27",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_28",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_29",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_30",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_31",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_32",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_33",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_34",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_35",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_36",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_37",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_38",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_39",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_40",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_01",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_02",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_03",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_04",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_05",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_06",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_07",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_08",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_09",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.udf_dt_10",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.created_by",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    },
+    {
+      "field": "customers.updated_by",
+      "stats": [
+        "min",
+        "max",
+        "distinct_count"
+      ]
+    }
+  ],
+  "fields_fully_deferred": 139
+}
+```
+
+## Tier 3 coverage
+```json
+{
+  "customers": {
+    "mode": "full_diff",
+    "population": 25001,
+    "duplicate_source_key_count": 0
+  },
+  "embed_extras_unchecked": [
+    "customers.attributes"
+  ],
+  "embeds_graded": {
+    "customers.attributes": 8337
+  }
+}
+```

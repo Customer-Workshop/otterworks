@@ -18,6 +18,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
+from backends import backend_name, get_backend
 from oracle_conn import oracle_connect as connect_oracle
 
 reports = Blueprint("reports", __name__)
@@ -32,6 +33,12 @@ SOURCE = {
     "engine": "oracle",
     "system": "OW_BILLING legacy estate (Oracle FREEPDB1)",
     "detail": "INVOICE_HEADER / INVOICE_LINE via CODES lookup (RPT-114)",
+}
+
+MONGO_SOURCE = {
+    "engine": "mongodb",
+    "system": "OW_BILLING on MongoDB Atlas (ow_tp_mmp_live)",
+    "detail": "invoices (embedded lines) via codes lookup (RPT-114)",
 }
 
 FINANCE_SOURCE = {
@@ -139,11 +146,33 @@ def oracle_query(sql, params):
         return cursor.fetchall()
 
 
+def _mongo():
+    return backend_name() == "mongo"
+
+
+def status_rows_for(batch_no):
+    if _mongo():
+        return get_backend().report_status_rows(batch_no)
+    return oracle_query(STATUS_SQL, {"batch_no": batch_no})
+
+
+def line_rows_for(batch_no):
+    if _mongo():
+        return get_backend().report_line_rows(batch_no)
+    return oracle_query(LINE_SQL, {"batch_no": batch_no})
+
+
+def balance_rows_for(batch_no):
+    if _mongo():
+        return [get_backend().report_balances(batch_no)]
+    return oracle_query(BALANCES_SQL, {"batch_no": batch_no})
+
+
 def report_meta(ns):
     return {
         "namespace": ns,
         "batch_no": ns_batch_no(ns),
-        "source": SOURCE,
+        "source": MONGO_SOURCE if _mongo() else SOURCE,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
@@ -161,8 +190,8 @@ def month_end():
     ns = request.args.get("ns", "demo")
     batch_no = ns_batch_no(ns)
     try:
-        status_rows = oracle_query(STATUS_SQL, {"batch_no": batch_no})
-        line_rows = oracle_query(LINE_SQL, {"batch_no": batch_no})
+        status_rows = status_rows_for(batch_no)
+        line_rows = line_rows_for(batch_no)
     except Exception:  # estate offline: fail closed, never fabricate numbers
         logger.exception("month-end report failed for ns=%s", ns)
         return jsonify(ESTATE_UNAVAILABLE), 503
@@ -185,7 +214,7 @@ def reconciliation():
     ns = request.args.get("ns", "demo")
     batch_no = ns_batch_no(ns)
     try:
-        balance_rows = oracle_query(BALANCES_SQL, {"batch_no": batch_no})
+        balance_rows = balance_rows_for(batch_no)
     except Exception:
         logger.exception("reconciliation report failed for ns=%s", ns)
         return jsonify(ESTATE_UNAVAILABLE), 503

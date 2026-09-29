@@ -2,14 +2,19 @@ import os
 
 
 def get_backend():
-    if os.getenv("BILLING_BACKEND", "postgres").lower() == "oracle":
+    selected = os.getenv("BILLING_BACKEND", "postgres").lower()
+    if selected == "oracle":
         from . import oracle
 
         return oracle
+    if selected == "mongo":
+        from . import mongo
+
+        return mongo
     from . import postgres
 
     return postgres
 
 
 def backend_name():
-    return "oracle" if get_backend().__name__.endswith(".oracle") else "postgres"
+    return {"oracle": "oracle", "mongo": "mongo"}.get(get_backend().NAME, "postgres")

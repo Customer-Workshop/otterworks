@@ -3,14 +3,35 @@
     {
       "actual": 25001,
       "expected": 25001,
-      "id": "counts.customers",
-      "result": "skipped",
+      "id": "tier1.counts_through_mapping.customers",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 8337,
+      "expected": 8337,
+      "id": "tier1.embedded_count.customers.attributes",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 396,
+      "expected": 396,
+      "id": "tier2.per_field_aggregates.customers",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.customers",
+      "result": "pass",
       "source_of_truth": "oracle OW_BILLING"
     }
   ],
-  "generated_at": "2026-09-29T18:07:15Z",
+  "generated_at": "2026-09-29T18:14:04Z",
   "idempotency_rerun": {
-    "evidence": "rerun bulk {\"customers\": {\"deleted\": 0, \"matched\": 25001, \"modified\": 0, \"upserted\": 0}}; recon verdict refused (spec child_where/target_where asymmetry)",
+    "evidence": "rerun bulk {\"customers\": {\"deleted\": 0, \"matched\": 25001, \"modified\": 0, \"upserted\": 0}}; recon verdict PASS",
     "performed": true,
     "result": "pass"
   },
@@ -427,8 +448,8 @@
   "run_mode": "fixture",
   "unit": "U1-customers",
   "unverified_paths": [
-    "live recon not yet run",
-    "recon harness refused: spec child_where/root_where has no target_where"
+    "customers.attributes: extra-element check skipped (scoped embed, D-012)",
+    "live recon not yet run"
   ],
   "values_recomputed_from_target": true
 }

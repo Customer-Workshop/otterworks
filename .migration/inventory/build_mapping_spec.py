@@ -12,6 +12,8 @@ CENSUS = HERE / "census.json"
 OUT = HERE.parent / "03_mapping_spec.json"
 
 VERSION = "map-1"
+SOURCE_SCHEMA = "OW_BILLING"
+
 LINE_HAS_HEADER = ("EXISTS (SELECT 1 FROM ow_billing.invoice_header h "
                    "WHERE h.invoice_id = invoice_line.invoice_id)")
 LINE_ORPHAN = ("NOT EXISTS (SELECT 1 FROM ow_billing.invoice_header h "
@@ -195,6 +197,10 @@ def main():
         "nulls": "NULL and '' are omitted from documents (tolerances v1: null == missing == '')",
         "text_columns": "VARCHAR2/CHAR values are stored verbatim (CHAR right-trimmed); text dates, Y/N flags and CSV lists are not re-typed",
     }
+    for c in coll:
+        c["root_table"] = f"{SOURCE_SCHEMA}.{c['root_table']}"
+        for e in c.get("embeds", []):
+            e["child_table"] = f"{SOURCE_SCHEMA}.{e['child_table']}"
     OUT.write_text(json.dumps(spec, indent=2) + "\n")
     print(f"{OUT}: {len(coll)} collections, "
           f"{sum(len(c['fields']) for c in coll)} root fields, "

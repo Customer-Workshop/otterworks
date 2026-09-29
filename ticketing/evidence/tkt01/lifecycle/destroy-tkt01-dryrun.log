@@ -1,0 +1,171 @@
+./ticketing/scripts/destroy.sh tkt01 --dry-run
+[ticketing 06:09:36] transcript: ticketing/.runs/tkt01/destroy-20260929T060936Z.log
+[ticketing 06:09:39] 1/4 namespaces labelled demo.otterworks.app/run-token=tkt01
+DRY-RUN: kubectl delete namespace/tkt01-after --wait=false
+DRY-RUN: kubectl delete namespace/tkt01-before --wait=false
+[ticketing 06:09:41]    tkt01-before contains:
+      configmap/kube-root-ca.crt
+      configmap/tkt01-db-init
+      limitrange/tkt01-before-limits
+      resourcequota/tkt01-before-quota
+      serviceaccount/default
+      service/tkt01-db
+      service/tkt01-monolith
+      order.acme.cert-manager.io/tkt01-before-tls-1-3137121624
+      deployment.apps/tkt01-db
+      deployment.apps/tkt01-monolith
+      certificaterequest.cert-manager.io/tkt01-before-tls-1
+      certificate.cert-manager.io/tkt01-before-tls
+      ingress.networking.k8s.io/tkt01-before
+      networkpolicy.networking.k8s.io/tkt01-before-isolate
+DRY-RUN: release_kafka_topics tkt01-before
+DRY-RUN: kubectl delete ns tkt01-before --wait=false
+[ticketing 06:09:48]    tkt01-after contains:
+      configmap/kube-root-ca.crt
+      configmap/tkt01-dashboard-onsale
+      configmap/tkt01-kafka-entity-topic-operator-config
+      configmap/tkt01-kafka-tkt01-broker-0
+      configmap/tkt01-onsale-script
+      configmap/tkt01-onsale-summary
+      limitrange/tkt01-after-limits
+      resourcequota/tkt01-after-quota
+      secret/tkt01-kafka-clients-ca
+      secret/tkt01-kafka-clients-ca-cert
+      secret/tkt01-kafka-cluster-ca
+      secret/tkt01-kafka-cluster-ca-cert
+      secret/tkt01-kafka-cluster-operator-certs
+      secret/tkt01-kafka-entity-topic-operator-certs
+      secret/tkt01-kafka-kafka-exporter-certs
+      secret/tkt01-kafka-tkt01-broker-0
+      secret/tkt01-kafka-trustbundle
+      secret/tkt01-orders-db
+      secret/tkt01-payments-db
+      secret/tkt01-seats-db
+      serviceaccount/default
+      serviceaccount/tkt01-kafka-entity-operator
+      serviceaccount/tkt01-kafka-kafka
+      serviceaccount/tkt01-kafka-kafka-exporter
+      service/tkt01-confirmations
+      service/tkt01-confirmations-00001
+      service/tkt01-confirmations-00001-private
+      service/tkt01-confirmations-consumer-metrics
+      service/tkt01-confirmations-db
+      service/tkt01-confirmations-kourier
+      service/tkt01-confirmations-metrics
+      service/tkt01-kafka-kafka-bootstrap
+      service/tkt01-kafka-kafka-brokers
+      service/tkt01-orders
+      service/tkt01-orders-00001
+      service/tkt01-orders-00001-private
+      service/tkt01-orders-db
+      service/tkt01-orders-kourier
+      service/tkt01-orders-outbox-relay
+      service/tkt01-payments
+      service/tkt01-payments-db
+      service/tkt01-payments-relay
+      service/tkt01-seats
+      service/tkt01-seats-00001
+      service/tkt01-seats-00001-private
+      service/tkt01-seats-db
+      service/tkt01-seats-kourier
+      service/tkt01-seats-metrics
+      order.acme.cert-manager.io/tkt01-after-tls-1-3044891887
+      deployment.apps/tkt01-confirmations-00001-deployment
+      deployment.apps/tkt01-confirmations-consumer
+      deployment.apps/tkt01-confirmations-db
+      deployment.apps/tkt01-kafka-entity-operator
+      deployment.apps/tkt01-kafka-kafka-exporter
+      deployment.apps/tkt01-orders-00001-deployment
+      deployment.apps/tkt01-orders-db
+      deployment.apps/tkt01-orders-outbox-relay
+      deployment.apps/tkt01-payments
+      deployment.apps/tkt01-payments-db
+      deployment.apps/tkt01-payments-relay
+      deployment.apps/tkt01-seats-00001-deployment
+      deployment.apps/tkt01-seats-db
+      horizontalpodautoscaler.autoscaling/keda-hpa-tkt01-confirmations-consumer
+      horizontalpodautoscaler.autoscaling/keda-hpa-tkt01-orders-outbox-relay
+      horizontalpodautoscaler.autoscaling/keda-hpa-tkt01-payments
+      horizontalpodautoscaler.autoscaling/keda-hpa-tkt01-payments-relay
+      metric.autoscaling.internal.knative.dev/tkt01-confirmations-00001
+      metric.autoscaling.internal.knative.dev/tkt01-orders-00001
+      metric.autoscaling.internal.knative.dev/tkt01-seats-00001
+      podautoscaler.autoscaling.internal.knative.dev/tkt01-confirmations-00001
+      podautoscaler.autoscaling.internal.knative.dev/tkt01-orders-00001
+      podautoscaler.autoscaling.internal.knative.dev/tkt01-seats-00001
+      cronjob.batch/tkt01-seats-sweep
+      job.batch/tkt01-onsale-20260929t053124
+      job.batch/tkt01-seats-sweep-29844369
+      image.caching.internal.knative.dev/tkt01-confirmations-00001-cache-confirmations
+      image.caching.internal.knative.dev/tkt01-orders-00001-cache-orders
+      image.caching.internal.knative.dev/tkt01-seats-00001-cache-seats
+      certificaterequest.cert-manager.io/tkt01-after-tls-1
+      certificate.cert-manager.io/tkt01-after-tls
+      strimzipodset.core.strimzi.io/tkt01-kafka-tkt01-broker
+      kafkanodepool.kafka.strimzi.io/tkt01-broker
+      kafka.kafka.strimzi.io/tkt01-kafka
+      kafkatopic.kafka.strimzi.io/tkt01-hold-expired
+      kafkatopic.kafka.strimzi.io/tkt01-order-confirmed
+      kafkatopic.kafka.strimzi.io/tkt01-order-placed
+      kafkatopic.kafka.strimzi.io/tkt01-payment-captured
+      kafkatopic.kafka.strimzi.io/tkt01-payment-failed
+      scaledobject.keda.sh/tkt01-confirmations-consumer
+      scaledobject.keda.sh/tkt01-orders-outbox-relay
+      scaledobject.keda.sh/tkt01-payments
+      scaledobject.keda.sh/tkt01-payments-relay
+      triggerauthentication.keda.sh/tkt01-orders-db-trigger-auth
+      triggerauthentication.keda.sh/tkt01-payments-db-trigger-auth
+      podmonitor.monitoring.coreos.com/tkt01-kafka-exporter
+      podmonitor.monitoring.coreos.com/tkt01-orders
+      servicemonitor.monitoring.coreos.com/tkt01-confirmations
+      servicemonitor.monitoring.coreos.com/tkt01-orders-outbox-relay
+      servicemonitor.monitoring.coreos.com/tkt01-payments
+      servicemonitor.monitoring.coreos.com/tkt01-payments-relay
+      servicemonitor.monitoring.coreos.com/tkt01-seats
+      ingress.networking.internal.knative.dev/tkt01-confirmations
+      ingress.networking.internal.knative.dev/tkt01-orders
+      ingress.networking.internal.knative.dev/tkt01-seats
+      serverlessservice.networking.internal.knative.dev/tkt01-confirmations-00001
+      serverlessservice.networking.internal.knative.dev/tkt01-orders-00001
+      serverlessservice.networking.internal.knative.dev/tkt01-seats-00001
+      ingress.networking.k8s.io/tkt01-after
+      ingress.networking.k8s.io/tkt01-after-payments
+      ingress.networking.k8s.io/tkt01-confirmations
+      ingress.networking.k8s.io/tkt01-seats
+      networkpolicy.networking.k8s.io/tkt01-after-isolate
+      networkpolicy.networking.k8s.io/tkt01-confirmations
+      networkpolicy.networking.k8s.io/tkt01-kafka-entity-operator
+      networkpolicy.networking.k8s.io/tkt01-kafka-kafka-exporter
+      networkpolicy.networking.k8s.io/tkt01-kafka-network-policy-kafka
+      networkpolicy.networking.k8s.io/tkt01-orders
+      networkpolicy.networking.k8s.io/tkt01-payments-isolate
+      networkpolicy.networking.k8s.io/tkt01-seats
+      poddisruptionbudget.policy/tkt01-kafka-entity-operator
+      poddisruptionbudget.policy/tkt01-kafka-kafka
+      poddisruptionbudget.policy/tkt01-kafka-kafka-exporter
+      rolebinding.rbac.authorization.k8s.io/tkt01-kafka-entity-topic-operator-role
+      rolebinding.rbac.authorization.k8s.io/tkt01-kafka-kafka-role
+      role.rbac.authorization.k8s.io/tkt01-kafka-entity-operator
+      role.rbac.authorization.k8s.io/tkt01-kafka-kafka
+      configuration.serving.knative.dev/tkt01-confirmations
+      configuration.serving.knative.dev/tkt01-orders
+      configuration.serving.knative.dev/tkt01-seats
+      revision.serving.knative.dev/tkt01-confirmations-00001
+      revision.serving.knative.dev/tkt01-orders-00001
+      revision.serving.knative.dev/tkt01-seats-00001
+      route.serving.knative.dev/tkt01-confirmations
+      route.serving.knative.dev/tkt01-orders
+      route.serving.knative.dev/tkt01-seats
+      service.serving.knative.dev/tkt01-confirmations
+      service.serving.knative.dev/tkt01-orders
+      service.serving.knative.dev/tkt01-seats
+DRY-RUN: release_kafka_topics tkt01-after
+DRY-RUN: kubectl delete ns tkt01-after --wait=false
+[ticketing 06:09:55] 2/4 labelled objects outside those namespaces
+[ticketing 06:11:41] 3/4 ECR image tags tkt01-*
+[ticketing 06:11:44]    otterworks-demo/ticketing/confirmations: tkt01-0da2c6d269ea,tkt01-6cdd871f8ea1,tkt01-71e0ff9415f0
+[ticketing 06:11:44]    otterworks-demo/ticketing/orders: tkt01-cf0e952b
+[ticketing 06:11:45]    otterworks-demo/ticketing/seats: tkt01-134dbe9c
+[ticketing 06:11:46]    otterworks-demo/ticketing/payments: tkt01-222164f1,tkt01-de919223,tkt01-f017d40c
+[ticketing 06:11:46] 4/4 waiting for namespaces to terminate and external-dns to drop the token's records
+[ticketing 06:11:46] dry run: skipping verification

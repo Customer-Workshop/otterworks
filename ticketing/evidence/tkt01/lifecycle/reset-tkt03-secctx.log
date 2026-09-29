@@ -1,0 +1,238 @@
+./ticketing/scripts/reset.sh tkt03
+[ticketing 06:23:28] transcript: ticketing/.runs/tkt03/reset-20260929T062328Z.log
+us-east-1a: 8 free /28 pod-IP block(s)  cni 10.0.1.0/24 free_ips=185 free_/28=8, node 10.0.100.0/24 free_ips=67 free_/28=0
+us-east-1b: 17 free /28 pod-IP block(s)  cni 10.0.2.0/24 free_ips=250 free_/28=13, node 10.0.101.0/24 free_ips=151 free_/28=4
+[ticketing 06:23:40] before: ns=tkt03-before image=monolith:c342ecec4714 cpu=500m pricing_passes=200
+namespace/tkt03-before unchanged
+resourcequota/tkt03-before-quota created
+limitrange/tkt03-before-limits created
+networkpolicy.networking.k8s.io/tkt03-before-isolate created
+deployment.apps/tkt03-db created
+service/tkt03-db created
+deployment.apps/tkt03-monolith created
+service/tkt03-monolith created
+ingress.networking.k8s.io/tkt03-before created
+Waiting for deployment "tkt03-db" rollout to finish: 0 of 1 updated replicas are available...
+deployment "tkt03-db" successfully rolled out
+Waiting for deployment "tkt03-monolith" rollout to finish: 0 of 1 updated replicas are available...
+deployment "tkt03-monolith" successfully rolled out
+[ticketing 06:24:16] before ready: https://tkt03-before.demo.otterworks.app/app/
+us-east-1a: 8 free /28 pod-IP block(s)  cni 10.0.1.0/24 free_ips=185 free_/28=8, node 10.0.100.0/24 free_ips=67 free_/28=0
+us-east-1b: 17 free /28 pod-IP block(s)  cni 10.0.2.0/24 free_ips=250 free_/28=13, node 10.0.101.0/24 free_ips=151 free_/28=4
+[ticketing 06:24:25] after: ns=tkt03-after host=tkt03-after.demo.otterworks.app
+[ticketing 06:24:26]    image orders:tkt01-cf0e952b@sha256:31a942439de0…
+[ticketing 06:24:26]    image seats:tkt01-134dbe9c@sha256:9fc351e47ed2…
+[ticketing 06:24:27]    image payments:tkt01-de919223@sha256:e9f7544a29fa…
+[ticketing 06:24:28]    image confirmations:tkt01-71e0ff9415f0@sha256:f088a7d1da11…
+[ticketing 06:24:28] 1/6 namespace, quota, limits, isolation
+namespace/tkt03-after created
+resourcequota/tkt03-after-quota created
+limitrange/tkt03-after-limits created
+networkpolicy.networking.k8s.io/tkt03-after-isolate created
+[ticketing 06:24:30] 2/6 Kafka tkt03-kafka (KRaft, 1 ephemeral node) and the four service databases
+kafkanodepool.kafka.strimzi.io/tkt03-broker created
+kafka.kafka.strimzi.io/tkt03-kafka created
+podmonitor.monitoring.coreos.com/tkt03-kafka-exporter created
+secret/tkt03-orders-db created
+deployment.apps/tkt03-orders-db created
+service/tkt03-orders-db created
+secret/tkt03-seats-db created
+deployment.apps/tkt03-seats-db created
+service/tkt03-seats-db created
+deployment.apps/tkt03-payments-db created
+service/tkt03-payments-db created
+deployment.apps/tkt03-confirmations-db created
+service/tkt03-confirmations-db created
+Waiting for deployment "tkt03-orders-db" rollout to finish: 0 of 1 updated replicas are available...
+deployment "tkt03-orders-db" successfully rolled out
+deployment "tkt03-seats-db" successfully rolled out
+Waiting for deployment "tkt03-payments-db" rollout to finish: 0 of 1 updated replicas are available...
+deployment "tkt03-payments-db" successfully rolled out
+Waiting for deployment "tkt03-confirmations-db" rollout to finish: 0 of 1 updated replicas are available...
+deployment "tkt03-confirmations-db" successfully rolled out
+kafka.kafka.strimzi.io/tkt03-kafka condition met
+[ticketing 06:26:02] 3/6 topics (6 partitions each)
+kafkatopic.kafka.strimzi.io/tkt03-order-placed created
+kafkatopic.kafka.strimzi.io/tkt03-hold-expired created
+kafkatopic.kafka.strimzi.io/tkt03-payment-captured created
+kafkatopic.kafka.strimzi.io/tkt03-payment-failed created
+kafkatopic.kafka.strimzi.io/tkt03-order-confirmed created
+kafkatopic.kafka.strimzi.io/tkt03-hold-expired condition met
+kafkatopic.kafka.strimzi.io/tkt03-order-confirmed condition met
+kafkatopic.kafka.strimzi.io/tkt03-order-placed condition met
+kafkatopic.kafka.strimzi.io/tkt03-payment-captured condition met
+kafkatopic.kafka.strimzi.io/tkt03-payment-failed condition met
+[ticketing 06:26:10] 4/6 services: Knative orders/seats/confirmations, payments + outbox relay + confirmations consumer (KEDA), monitors, policies
+service.serving.knative.dev/tkt03-orders created
+podmonitor.monitoring.coreos.com/tkt03-orders created
+servicemonitor.monitoring.coreos.com/tkt03-orders-outbox-relay created
+networkpolicy.networking.k8s.io/tkt03-orders created
+service.serving.knative.dev/tkt03-seats created
+service/tkt03-seats-metrics created
+cronjob.batch/tkt03-seats-sweep created
+servicemonitor.monitoring.coreos.com/tkt03-seats created
+networkpolicy.networking.k8s.io/tkt03-seats created
+service.serving.knative.dev/tkt03-confirmations created
+service/tkt03-confirmations-metrics created
+servicemonitor.monitoring.coreos.com/tkt03-confirmations created
+networkpolicy.networking.k8s.io/tkt03-confirmations created
+deployment.apps/tkt03-confirmations-consumer created
+service/tkt03-confirmations-consumer-metrics created
+deployment.apps/tkt03-payments created
+service/tkt03-payments created
+servicemonitor.monitoring.coreos.com/tkt03-payments created
+networkpolicy.networking.k8s.io/tkt03-payments-isolate created
+deployment.apps/tkt03-orders-outbox-relay created
+service/tkt03-orders-outbox-relay created
+triggerauthentication.keda.sh/tkt03-orders-db-trigger-auth created
+secret/tkt03-payments-db created
+deployment.apps/tkt03-payments-relay created
+service/tkt03-payments-relay created
+servicemonitor.monitoring.coreos.com/tkt03-payments-relay created
+triggerauthentication.keda.sh/tkt03-payments-db-trigger-auth created
+Waiting for deployment "tkt03-payments" rollout to finish: 0 of 1 updated replicas are available...
+deployment "tkt03-payments" successfully rolled out
+Waiting for deployment "tkt03-orders-outbox-relay" rollout to finish: 0 of 1 updated replicas are available...
+deployment "tkt03-orders-outbox-relay" successfully rolled out
+Waiting for deployment "tkt03-payments-relay" rollout to finish: 0 of 1 updated replicas are available...
+deployment "tkt03-payments-relay" successfully rolled out
+deployment "tkt03-confirmations-consumer" successfully rolled out
+scaledobject.keda.sh/tkt03-payments created
+scaledobject.keda.sh/tkt03-confirmations-consumer created
+scaledobject.keda.sh/tkt03-orders-outbox-relay created
+scaledobject.keda.sh/tkt03-payments-relay created
+service.serving.knative.dev/tkt03-confirmations condition met
+service.serving.knative.dev/tkt03-orders condition met
+service.serving.knative.dev/tkt03-seats condition met
+scaledobject.keda.sh/tkt03-confirmations-consumer condition met
+scaledobject.keda.sh/tkt03-orders-outbox-relay condition met
+scaledobject.keda.sh/tkt03-payments condition met
+scaledobject.keda.sh/tkt03-payments-relay condition met
+[ticketing 06:27:15] 5/6 public ingress https://tkt03-after.demo.otterworks.app and Grafana dashboard
+service/tkt03-orders-kourier created
+ingress.networking.k8s.io/tkt03-after created
+ingress.networking.k8s.io/tkt03-after-payments created
+service/tkt03-seats-kourier created
+ingress.networking.k8s.io/tkt03-seats created
+service/tkt03-confirmations-kourier created
+ingress.networking.k8s.io/tkt03-confirmations created
+[ticketing 06:27:23]    dashboard: https://grafana.otterworks.app/d/ticketing-onsale-tkt03
+[ticketing 06:27:23] 6/6 waiting for the certificate, DNS and the services to answer on https://tkt03-after.demo.otterworks.app
+certificate.cert-manager.io/tkt03-after-tls condition met
+[ticketing 06:29:06]    https://tkt03-after.demo.otterworks.app/api/stats -> 200 after 13s
+[ticketing 06:29:07]    https://tkt03-after.demo.otterworks.app/api/performances/1/availability -> 200 after 1s
+[ticketing 06:29:19]    https://tkt03-after.demo.otterworks.app/api/confirmations/none -> 404 after 12s
+[ticketing 06:29:19] after ready: https://tkt03-after.demo.otterworks.app/api/stats
+[ticketing 06:29:20] seed: before (tkt03-before) from monolith/db/{reset,schema,seed}.sql
+NOTICE:  drop cascades to 30 other objects
+DETAIL:  drop cascades to table promoters
+drop cascades to table venues
+drop cascades to table venue_sections
+drop cascades to table price_zones
+drop cascades to table seats
+drop cascades to table performers
+drop cascades to table events
+drop cascades to table event_performers
+drop cascades to table performances
+drop cascades to table performance_price_levels
+drop cascades to table seat_inventory
+drop cascades to table customers
+drop cascades to table customer_addresses
+drop cascades to table seat_holds
+drop cascades to table seat_hold_items
+drop cascades to table carts
+drop cascades to table cart_items
+drop cascades to table promo_codes
+drop cascades to table delivery_methods
+drop cascades to table orders
+drop cascades to table order_items
+drop cascades to table order_fees
+drop cascades to table payments
+drop cascades to table payment_attempts
+drop cascades to table refunds
+drop cascades to table tickets
+drop cascades to table confirmations
+drop cascades to table settlement_batches
+drop cascades to table settlement_lines
+drop cascades to table audit_log
+[ticketing 06:30:00] seed: after (tkt03-after) — reset service schemas, Flyway re-seeds on boot
+NOTICE:  drop cascades to 12 other objects
+DETAIL:  drop cascades to table flyway_schema_history
+drop cascades to table venues
+drop cascades to table price_zones
+drop cascades to table events
+drop cascades to table performances
+drop cascades to table performance_price_levels
+drop cascades to table promo_codes
+drop cascades to table delivery_methods
+drop cascades to table orders
+drop cascades to table order_items
+drop cascades to table order_fees
+drop cascades to table outbox
+NOTICE:  drop cascades to 11 other objects
+DETAIL:  drop cascades to table flyway_schema_history
+drop cascades to table venues
+drop cascades to table venue_sections
+drop cascades to table price_zones
+drop cascades to table seats
+drop cascades to table performances
+drop cascades to table seat_inventory
+drop cascades to table seat_holds
+drop cascades to table seat_hold_items
+drop cascades to table inbox
+drop cascades to table hold_expired_events
+NOTICE:  drop cascades to 4 other objects
+DETAIL:  drop cascades to table flyway_schema_history
+drop cascades to table payments
+drop cascades to table payment_attempts
+drop cascades to table outcome_deliveries
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to table flyway_schema_history
+drop cascades to table tickets
+drop cascades to table confirmations
+[ticketing 06:30:18]    https://tkt03-after.demo.otterworks.app/api/stats -> 200 after 8s
+[ticketing 06:30:26]    https://tkt03-after.demo.otterworks.app/api/performances/1/availability -> 200 after 8s
+[ticketing 06:30:38]    https://tkt03-after.demo.otterworks.app/api/confirmations/none -> 404 after 12s
+[ticketing 06:30:39]    https://tkt03-before.demo.otterworks.app/api/stats -> 200 after 1s
+[ticketing 06:30:39] seed check: seat availability before | after
+   performance 1   {"available":20000,"held":0,"sold":0} | {"available":20000,"held":0,"sold":0}
+   performance 7   {"available":2400,"held":0,"sold":0} | {"available":2400,"held":0,"sold":0}
+   performance 13  {"available":1200,"held":0,"sold":0} | {"available":1200,"held":0,"sold":0}
+   performance 24  {"available":1200,"held":0,"sold":0} | {"available":1200,"held":0,"sold":0}
+[ticketing 06:30:52] seed complete in 91s (before stats: {"ordersTotal":0,"ordersByStatus":{},"paymentsCaptured":0,"capturedCents":0,"ticketsIssued":0,"confirmationsQueued":0,"seatsSold":0,"seatsHeld":0})
+[ticketing 06:30:52] reset complete in 444s; replica counts at rest:
+== tkt03-before
+KIND         NAME             DESIRED   READY
+Deployment   tkt03-db         1         1
+Deployment   tkt03-monolith   1         1
+KSVC   READY   URL
+SCALEDOBJECT   TARGET   MIN   MAX   ACTIVE
+   running pods: 2
+== tkt03-after
+KIND         NAME                                   DESIRED   READY
+Deployment   tkt03-confirmations-00001-deployment   1         1
+Deployment   tkt03-confirmations-consumer           0         <none>
+Deployment   tkt03-confirmations-db                 1         1
+Deployment   tkt03-kafka-entity-operator            1         1
+Deployment   tkt03-kafka-kafka-exporter             1         1
+Deployment   tkt03-orders-00001-deployment          1         1
+Deployment   tkt03-orders-db                        1         1
+Deployment   tkt03-orders-outbox-relay              0         <none>
+Deployment   tkt03-payments                         0         <none>
+Deployment   tkt03-payments-db                      1         1
+Deployment   tkt03-payments-relay                   0         <none>
+Deployment   tkt03-seats-00001-deployment           1         1
+Deployment   tkt03-seats-db                         1         1
+KSVC                  READY   URL
+tkt03-confirmations   True    http://tkt03-confirmations.tkt03-after.svc.cluster.local
+tkt03-orders          True    http://tkt03-orders.tkt03-after.svc.cluster.local
+tkt03-seats           True    http://tkt03-seats.tkt03-after.svc.cluster.local
+SCALEDOBJECT                   TARGET                         MIN   MAX   ACTIVE
+tkt03-confirmations-consumer   tkt03-confirmations-consumer   0     6     False
+tkt03-orders-outbox-relay      tkt03-orders-outbox-relay      0     1     False
+tkt03-payments                 tkt03-payments                 0     6     False
+tkt03-payments-relay           tkt03-payments-relay           0     2     False
+   running pods: 10
+== pod IP capacity
+   us-east-1a: 8 free /28 pod-IP block(s)  cni 10.0.1.0/24 free_ips=185 free_/28=8, node 10.0.100.0/24 free_ips=67 free_/28=0
+   us-east-1b: 17 free /28 pod-IP block(s)  cni 10.0.2.0/24 free_ips=250 free_/28=13, node 10.0.101.0/24 free_ips=151 free_/28=4

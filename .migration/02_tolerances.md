@@ -16,7 +16,7 @@
 | `*_CSV` / `*_IDS` lists | array of string | exact, order kept | `csv_to_array` drop_empty; malformed (expected 31) quarantined, compared as a set |
 | ENTITY_ATTR_VALUE rows | `customers.attributes[]`, one entry per row, duplicates kept | multiset equal per customer (count and name/value pairs) | none |
 | INVOICE_LINE rows | embedded `invoices.lines[]`, ordered by line number | per invoice: line count, per-line values, sums exact | none |
-| Orphaned INVOICE_LINE rows | `quarantine_invoice_lines` | exactly 37, same keys as a set | none |
+| Orphaned INVOICE_LINE rows | `quarantine_invoice_line` | exactly 37, same keys as a set | none |
 | String comparisons | binary (no casefold) unless the census finds NLS case-insensitive logic | exact | `collation_casefold` off |
 | Report aggregates (totals, balances, counts) | computed from target | exact to the cent (`aggregate_rel_tol` 0) | amounts rendered as 2-decimal strings |
 

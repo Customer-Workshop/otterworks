@@ -1,0 +1,12 @@
+{
+  "ordersTotal": 962,
+  "ordersByStatus": {
+    "CONFIRMED": 962
+  },
+  "paymentsCaptured": 962,
+  "capturedCents": 42412690,
+  "ticketsIssued": 1924,
+  "confirmationsQueued": 962,
+  "seatsSold": 1924,
+  "seatsHeld": 0
+}

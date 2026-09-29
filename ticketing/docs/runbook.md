@@ -55,7 +55,7 @@ Then open, in separate browser tabs, in this order (it is the order you present 
    "Before — monolith" and "After — services". Confirm the row "Replicas per service (0 → 6)" shows everything at 0
    except seats at 1.
 4. The reconciliation report of the verified run: `ticketing/evidence/tkt01/verify-2/reconciliation.md`.
-5. The PR from `tkt/tkt01/integration` into `review-base-ticketing` and its Devin Review comment (§7).
+5. The PR from `tkt/tkt01/integration` into `review-base-ticketing`, its checks, and any Devin Review comment (§7).
 
 Also check `make ticketing-status NS=tkt01` prints "pod IP capacity" with a non-zero number of free /28 blocks in
 both AZs. Verify attempt 1 lost 10 minutes to nodes that could not assign pod IPs; the deploy scripts now refuse to
@@ -180,6 +180,16 @@ verified run: the consumer group was on one surviving member 8 s after the delet
 Why nothing is lost: payments commits its Kafka offset only after the DB transaction and the outbound publish, and
 the order reference is a unique key, so a replayed record is a no-op.
 
+Rehearsal note (presenter walk, 2026-09-29 07:00Z, evidence in `ticketing/evidence/tkt01/walk/`): payments reached
+6/6 at +45 s, then KEDA scaled it 6 → 1 at 07:01:53Z ("All metrics below target": six consumers had cleared the lag,
+and the ScaledObject's scale-down stabilization window is 30 s). The delete at 07:02:00Z therefore removed the only
+payments pod; lag rose, KEDA scaled 1 → 2 → 3 within 23 s, and the run still reconciled **1649 fired = 1649 accepted =
+1649 APPROVED = 1649 CONFIRMED**, outbox 0 (monolith 962 of 1530 accepted, p95 26 537 ms). Everything except seats was
+at 0 replicas 58 s after the spike. To show "six pods, delete one", run the `get pods` line first and delete only if
+it lists six; otherwise say what the panel shows — the autoscaler following lag in both directions — and delete
+anyway: the zero-loss point holds either way. Lengthening `scaleDown.stabilizationWindowSeconds` would hold six
+through the spike at the cost of a slower return to zero; that trade-off is left to the reviewers.
+
 ### 4.5 Drain and scale to zero (the 2 minutes after k6 finishes)
 
 Watch "Kafka consumer lag", "Outbox backlog" and "Replicas per service" together, or in a terminal:
@@ -219,8 +229,10 @@ rows, both consumer groups at lag 0; before side 857 = 857 = 857 = 857 with 663 
 ### 4.7 Close on the PR (tab 5)
 
 The single PR, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1738, from `tkt/tkt01/integration` into `review-base-ticketing`: the four services, the deploy and load
-scripts, the dashboard, the decomposition note, the two reconciliation reports and this runbook. Scroll to the
-Devin Review comment and read its findings as they stand — nothing was pushed to silence them. Do not merge.
+scripts, the dashboard, the decomposition note, the two reconciliation reports and this runbook. Show the checks: the
+security scan (`sast`) failed on the first push with 8 missing pod security contexts and passed after `e7daf00d`
+added them (re-verified on scratch token `tkt03`, then applied to `tkt01` by a reset). If a Devin Review comment is
+on the PR, read its findings as they stand; as of 2026-09-29 06:45Z none had been posted. Do not merge.
 
 ---
 

@@ -1,0 +1,16 @@
+{
+  "ordersTotal": 1649,
+  "ordersByStatus": {
+    "CONFIRMED": 1649
+  },
+  "ordersByPaymentOutcome": {
+    "APPROVED": 1649
+  },
+  "orderedCents": 67374722,
+  "confirmedCents": 67374722,
+  "seatsOrdered": 3298,
+  "ticketsStamped": 3298,
+  "outboxUnpublished": 0,
+  "outboxPublished": 1649,
+  "promoUses": 0
+}

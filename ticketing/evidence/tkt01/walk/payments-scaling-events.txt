@@ -1,0 +1,20 @@
+2026-09-29T07:00:57Z   ScalingReplicaSet            tkt01-payments                                          Scaled up replica set tkt01-payments-7765cc5b48 from 0 to 1
+2026-09-29T07:01:08Z   ScalingReplicaSet            tkt01-payments                                          Scaled up replica set tkt01-payments-7765cc5b48 from 1 to 6
+2026-09-29T07:01:08Z   SuccessfulRescale            keda-hpa-tkt01-payments                                 New size: 6; reason: external metric s0-kafka-tkt01-order-placed(&LabelSelector{MatchLabels:map[string]string{scaledobject.keda.sh/name: tkt01-payments,},MatchExpressions:[]LabelSelectorRequirement{},}) above target
+2026-09-29T07:01:53Z   SuccessfulDelete             tkt01-payments-7765cc5b48                               Deleted pod: tkt01-payments-7765cc5b48-fjz9w
+2026-09-29T07:01:53Z   ScalingReplicaSet            tkt01-payments                                          Scaled down replica set tkt01-payments-7765cc5b48 from 6 to 1
+2026-09-29T07:01:53Z   SuccessfulDelete             tkt01-payments-7765cc5b48                               Deleted pod: tkt01-payments-7765cc5b48-tvpcq
+2026-09-29T07:01:53Z   SuccessfulDelete             tkt01-payments-7765cc5b48                               Deleted pod: tkt01-payments-7765cc5b48-ggbjg
+2026-09-29T07:01:53Z   SuccessfulDelete             tkt01-payments-7765cc5b48                               Deleted pod: tkt01-payments-7765cc5b48-g5pns
+2026-09-29T07:01:53Z   SuccessfulDelete             tkt01-payments-7765cc5b48                               Deleted pod: tkt01-payments-7765cc5b48-cfr72
+2026-09-29T07:02:08Z   ScalingReplicaSet            tkt01-payments                                          Scaled up replica set tkt01-payments-7765cc5b48 from 1 to 2
+2026-09-29T07:02:08Z   SuccessfulRescale            keda-hpa-tkt01-payments                                 New size: 2; reason: external metric s0-kafka-tkt01-order-placed(&LabelSelector{MatchLabels:map[string]string{scaledobject.keda.sh/name: tkt01-payments,},MatchExpressions:[]LabelSelectorRequirement{},}) above target
+2026-09-29T07:02:23Z   SuccessfulRescale            keda-hpa-tkt01-payments                                 New size: 3; reason: external metric s0-kafka-tkt01-order-placed(&LabelSelector{MatchLabels:map[string]string{scaledobject.keda.sh/name: tkt01-payments,},MatchExpressions:[]LabelSelectorRequirement{},}) above target
+2026-09-29T07:02:23Z   ScalingReplicaSet            tkt01-payments                                          Scaled up replica set tkt01-payments-7765cc5b48 from 2 to 3
+2026-09-29T07:02:53Z   ScalingReplicaSet            tkt01-payments                                          Scaled down replica set tkt01-payments-7765cc5b48 from 3 to 1
+2026-09-29T07:02:53Z   SuccessfulDelete             tkt01-payments-7765cc5b48                               Deleted pod: tkt01-payments-7765cc5b48-5pdxb
+2026-09-29T07:02:53Z   SuccessfulRescale            keda-hpa-tkt01-payments                                 New size: 1; reason: All metrics below target
+2026-09-29T07:02:53Z   SuccessfulDelete             tkt01-payments-7765cc5b48                               Deleted pod: tkt01-payments-7765cc5b48-zpt7m
+2026-09-29T07:04:21Z   SuccessfulDelete             tkt01-payments-relay-84cf47f446                         Deleted pod: tkt01-payments-relay-84cf47f446-5q8p2
+2026-09-29T07:04:32Z   SuccessfulDelete             tkt01-payments-7765cc5b48                               (combined from similar events): Deleted pod: tkt01-payments-7765cc5b48-dlhh8
+2026-09-29T07:04:32Z   ScalingReplicaSet            tkt01-payments                                          Scaled down replica set tkt01-payments-7765cc5b48 from 1 to 0

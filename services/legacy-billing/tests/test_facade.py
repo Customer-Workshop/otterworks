@@ -7,7 +7,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 
-import backends
 import facade as facade_module
 from app import app
 
@@ -306,7 +305,7 @@ def test_plan_change_rejects_missing_field_before_oracle(monkeypatch):
     response = app.test_client().post(
         "/api/v1/billing/plan-change",
         headers={"X-User-ID": "tenant"},
-        json={"effective_on": (date.today() + timedelta(days=1)).isoformat()},
+        json={"effective_on": (date.today() + timedelta(days=1)).isoformat()},  # noqa: DTZ011
     )
     assert response.status_code == 400
     assert response.get_json()["error"] == "invalid plan change"
@@ -341,7 +340,7 @@ def test_plan_change_rejects_unknown_plan(monkeypatch):
     response = app.test_client().post(
         "/api/v1/billing/plan-change",
         headers={"X-User-ID": "tenant"},
-        json={"plan_id": "p1", "effective_on": (date.today() + timedelta(days=1)).isoformat()},
+        json={"plan_id": "p1", "effective_on": (date.today() + timedelta(days=1)).isoformat()},  # noqa: DTZ011
     )
     assert response.status_code == 400
     assert response.get_json()["error"] == "invalid plan change"

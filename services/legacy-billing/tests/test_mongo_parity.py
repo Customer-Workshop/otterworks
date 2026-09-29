@@ -113,9 +113,8 @@ def test_readonly_skips_provisioning_and_audit(backends_env, monkeypatch):
 
 
 def test_pymongo_errors_map_to_unavailable(backends_env, monkeypatch):
-    from pymongo.errors import ServerSelectionTimeoutError
-
     from backends import mongo
+    from pymongo.errors import ServerSelectionTimeoutError
 
     def down(*args, **kwargs):
         raise ServerSelectionTimeoutError("fixture down")

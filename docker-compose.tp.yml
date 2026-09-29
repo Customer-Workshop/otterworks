@@ -11,7 +11,10 @@ services:
     ports:
       - "127.0.0.1:8096:8096"
     environment:
-      BILLING_BACKEND: oracle
+      BILLING_BACKEND: ${BILLING_BACKEND:-oracle}
+      BILLING_MONGO_URI: ${BILLING_MONGO_URI:-}
+      BILLING_MONGO_DB: ${BILLING_MONGO_DB:-ow_tp_mmp_live}
+      BILLING_READONLY: ${BILLING_READONLY:-}
       ORACLE_HOST: ${ORACLE_HOST:-host.docker.internal}
       ORACLE_PORT: ${ORACLE_BILLING_DB_PORT:-52521}
       ORACLE_USER: ${ORACLE_USER:-ow_billing}

@@ -36,6 +36,38 @@ services:
       timeout: 5s
       retries: 5
 
+  mongo-billing-fixture:
+    image: mongo:8.0.32
+    container_name: otterworks-mongo-billing-fixture
+    profiles: ["mongo-fixture"]
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "127.0.0.1:57017:27017"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --eval "try { rs.status().ok } catch (e) {
+          rs.initiate({_id: 'rs0', members: [{_id: 0, host: '127.0.0.1:27017'}]}).ok }"
+          && mongosh --quiet --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  mongo-billing-fixture-seed:
+    image: python:3.12-slim
+    profiles: ["mongo-fixture"]
+    working_dir: /repo/services/legacy-billing/migration/U4-app-backend
+    command: ["sh", "-c", "pip install --quiet pymongo==4.18.2 && python seed.py load"]
+    environment:
+      OW_TP_MMP_FIXTURE_URI: mongodb://mongo-billing-fixture:27017/?directConnection=true
+    volumes:
+      - ./services/legacy-billing/migration/U4-app-backend:/repo/services/legacy-billing/migration/U4-app-backend:ro
+    depends_on:
+      mongo-billing-fixture:
+        condition: service_healthy
+
   usage-bridge:
     build:
       context: ./services/legacy-billing/bridge

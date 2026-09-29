@@ -1,0 +1,31 @@
+{
+  "wave": 1,
+  "decision": "D-011",
+  "execution": "single-session",
+  "width": 1,
+  "auto_merge": false,
+  "stop_mode": "hard",
+  "base_branch": "tp-run/mongodb-20260929T160602Z",
+  "mapping": ".migration/03_mapping_spec.json",
+  "tolerances": ".migration/02_tolerances.json",
+  "canonicalization": "profiles/oracle.md (mongo-migration plugin)",
+  "fixture_manifest": ".migration/fixtures/oracle-mmpfix.manifest.json",
+  "source": {"family": "oracle", "live_dsn_secret": "OW_TP_ORACLE_RO_DSN", "fixture_dsn_env": "OW_TP_ORACLE_FIXTURE_DSN", "source_concurrency": 1},
+  "target": {"db": "ow_tp_mmp_live", "live_uri_secret": "OW_TP_MMP_TARGET_URI", "fixture_uri_env": "OW_TP_MMP_FIXTURE_URI", "target_class": "migration_cluster"},
+  "live_window": "parent-owned: one live load + one live recon per data unit",
+  "batches": [
+    {"unit": "U1-customers", "branch": "migrate/billing/1-U1-customers",
+     "sources": ["CUSTOMER_MASTER", "ENTITY_ATTR_VALUE"],
+     "write_targets": ["ow_tp_mmp_live.customers"]},
+    {"unit": "U2-invoices", "branch": "migrate/billing/1-U2-invoices",
+     "sources": ["INVOICE_HEADER", "INVOICE_LINE"],
+     "write_targets": ["ow_tp_mmp_live.invoices", "ow_tp_mmp_live.quarantine_invoice_line"]},
+    {"unit": "U3-billing-core", "branch": "migrate/billing/1-U3-billing-core",
+     "sources": ["CODES", "TENANTS", "PLANS", "SUBSCRIPTIONS", "SUBSCRIPTIONS_HIST", "USAGE_EVENTS", "RATING_PERIODS", "RATING_RESULTS", "INVOICES", "INVOICE_LINES", "CREDIT_NOTES", "DUNNING_ATTEMPTS", "NOTIFICATIONS", "BILLING_AUDIT_LOG", "DBA_SEQUENCES"],
+     "write_targets": ["ow_tp_mmp_live.codes", "ow_tp_mmp_live.tenants", "ow_tp_mmp_live.plans", "ow_tp_mmp_live.subscriptions", "ow_tp_mmp_live.subscriptions_hist", "ow_tp_mmp_live.usage_events", "ow_tp_mmp_live.rating_periods", "ow_tp_mmp_live.rating_results", "ow_tp_mmp_live.billing_invoices", "ow_tp_mmp_live.credit_notes", "ow_tp_mmp_live.dunning_attempts", "ow_tp_mmp_live.notifications", "ow_tp_mmp_live.billing_audit_log", "ow_tp_mmp_live.sequences"]},
+    {"unit": "U4-app-backend", "branch": "migrate/billing/1-U4-app-backend",
+     "sources": [],
+     "write_targets": [],
+     "note": "code only: BILLING_BACKEND=mongo, pinned driver, Mongo fixture container, compose + CI, parity tests; no live target writes"}
+  ]
+}

@@ -1,0 +1,337 @@
+[
+  {
+    "name": "invoice_headers_by_status",
+    "mirrors": "reports.status_rows_for / backends.mongo.report_status_rows",
+    "collection": "invoices",
+    "source_sql": "SELECT h.batch_no AS batch_no, h.status_cd AS status_cd, COUNT(*) AS invoice_count, SUM(h.total_amt) AS header_total_amt FROM ow_billing.invoice_header h GROUP BY h.batch_no, h.status_cd",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "b": "$batch_no",
+            "s": "$status_cd"
+          },
+          "n": {
+            "$sum": 1
+          },
+          "t": {
+            "$sum": "$total_amt"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "BATCH_NO": {
+            "$ifNull": [
+              "$_id.b",
+              null
+            ]
+          },
+          "STATUS_CD": {
+            "$ifNull": [
+              "$_id.s",
+              null
+            ]
+          },
+          "INVOICE_COUNT": "$n",
+          "HEADER_TOTAL_AMT": "$t"
+        }
+      }
+    ],
+    "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "invoice_lines_by_type",
+    "mirrors": "reports.line_rows_for / backends.mongo.report_line_rows",
+    "collection": "invoices",
+    "source_sql": "SELECT h.batch_no AS batch_no, h.status_cd AS status_cd, l.line_type_cd AS line_type_cd, COUNT(*) AS line_count, SUM(l.amount) AS line_amount, SUM(l.tax_amt) AS line_tax, COUNT(DISTINCT h.invoice_id) AS invoices_touched FROM ow_billing.invoice_header h JOIN ow_billing.invoice_line l ON l.invoice_id = h.invoice_id GROUP BY h.batch_no, h.status_cd, l.line_type_cd",
+    "target_pipeline": [
+      {
+        "$unwind": "$lines"
+      },
+      {
+        "$group": {
+          "_id": {
+            "b": "$batch_no",
+            "s": "$status_cd",
+            "t": "$lines.line_type_cd"
+          },
+          "n": {
+            "$sum": 1
+          },
+          "a": {
+            "$sum": "$lines.amount"
+          },
+          "x": {
+            "$sum": "$lines.tax_amt"
+          },
+          "i": {
+            "$addToSet": "$_id"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "BATCH_NO": {
+            "$ifNull": [
+              "$_id.b",
+              null
+            ]
+          },
+          "STATUS_CD": {
+            "$ifNull": [
+              "$_id.s",
+              null
+            ]
+          },
+          "LINE_TYPE_CD": {
+            "$ifNull": [
+              "$_id.t",
+              null
+            ]
+          },
+          "LINE_COUNT": "$n",
+          "LINE_AMOUNT": "$a",
+          "LINE_TAX": "$x",
+          "INVOICES_TOUCHED": {
+            "$size": "$i"
+          }
+        }
+      }
+    ],
+    "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "invoice_multi_line_count",
+    "mirrors": "backends.mongo.invoice_lines (embedded lines, line_no order)",
+    "collection": "invoices",
+    "source_sql": "SELECT COUNT(*) AS multi_line_invoices FROM (SELECT l.invoice_id FROM ow_billing.invoice_line l JOIN ow_billing.invoice_header h ON h.invoice_id = l.invoice_id GROUP BY l.invoice_id HAVING COUNT(*) > 1)",
+    "target_pipeline": [
+      {
+        "$match": {
+          "lines.1": {
+            "$exists": true
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": null,
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "MULTI_LINE_INVOICES": "$n"
+        }
+      }
+    ],
+    "rules": []
+  },
+  {
+    "name": "billing_invoices_by_status",
+    "mirrors": "backends.mongo.tenant_invoices / issue_invoice",
+    "collection": "billing_invoices",
+    "source_sql": "SELECT i.tenant_id AS tenant_id, i.status_cd AS status_cd, COUNT(*) AS invoices, SUM(i.subtotal) AS subtotal, SUM(i.tax) AS tax, SUM(i.total) AS total FROM ow_billing.invoices i GROUP BY i.tenant_id, i.status_cd",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "t": "$tenant_id",
+            "s": "$status_cd"
+          },
+          "n": {
+            "$sum": 1
+          },
+          "sub": {
+            "$sum": "$subtotal"
+          },
+          "tax": {
+            "$sum": "$tax"
+          },
+          "tot": {
+            "$sum": "$total"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "TENANT_ID": {
+            "$ifNull": [
+              "$_id.t",
+              null
+            ]
+          },
+          "STATUS_CD": {
+            "$ifNull": [
+              "$_id.s",
+              null
+            ]
+          },
+          "INVOICES": "$n",
+          "SUBTOTAL": "$sub",
+          "TAX": "$tax",
+          "TOTAL": "$tot"
+        }
+      }
+    ],
+    "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "billing_invoice_lines",
+    "mirrors": "backends.mongo.invoice_lines for billing invoices",
+    "collection": "billing_invoices",
+    "source_sql": "SELECT l.invoice_id AS invoice_id, l.line_no AS line_no, l.line_type AS line_type, l.description AS description, l.amount AS amount FROM ow_billing.invoice_lines l JOIN ow_billing.invoices i ON i.id = l.invoice_id",
+    "target_pipeline": [
+      {
+        "$unwind": "$lines"
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "INVOICE_ID": "$_id",
+          "LINE_NO": {
+            "$ifNull": [
+              "$lines.line_no",
+              null
+            ]
+          },
+          "LINE_TYPE": {
+            "$ifNull": [
+              "$lines.line_type",
+              null
+            ]
+          },
+          "DESCRIPTION": {
+            "$ifNull": [
+              "$lines.description",
+              null
+            ]
+          },
+          "AMOUNT": {
+            "$ifNull": [
+              "$lines.amount",
+              null
+            ]
+          }
+        }
+      }
+    ],
+    "rules": [
+      "decimal_round",
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "subscriptions_rows",
+    "mirrors": "backends.mongo.entitlement / change_plan / suspend_overdue",
+    "collection": "subscriptions",
+    "source_sql": "SELECT s.id AS id, s.tenant_id AS tenant_id, s.plan_id AS plan_id, s.starts_on AS starts_on, s.ends_on AS ends_on, s.status_cd AS status_cd, s.suspended_on AS suspended_on FROM ow_billing.subscriptions s",
+    "target_pipeline": [
+      {
+        "$project": {
+          "_id": 0,
+          "ID": "$_id",
+          "TENANT_ID": {
+            "$ifNull": [
+              "$tenant_id",
+              null
+            ]
+          },
+          "PLAN_ID": {
+            "$ifNull": [
+              "$plan_id",
+              null
+            ]
+          },
+          "STARTS_ON": {
+            "$ifNull": [
+              "$starts_on",
+              null
+            ]
+          },
+          "ENDS_ON": {
+            "$ifNull": [
+              "$ends_on",
+              null
+            ]
+          },
+          "STATUS_CD": {
+            "$ifNull": [
+              "$status_cd",
+              null
+            ]
+          },
+          "SUSPENDED_ON": {
+            "$ifNull": [
+              "$suspended_on",
+              null
+            ]
+          }
+        }
+      }
+    ],
+    "rules": [
+      "datetime_utc_truncate_ms",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "admin_report_balances",
+    "mirrors": "reports.balance_rows_for / backends.mongo.report_balances",
+    "collection": "customers",
+    "source_sql": "SELECT c.conversion_batch_no AS conversion_batch_no, COUNT(*) AS customer_count, SUM(c.cur_bal_amt) AS current_balance_total, SUM(c.past_due_amt) AS past_due_total FROM ow_billing.customer_master c GROUP BY c.conversion_batch_no",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": "$conversion_batch_no",
+          "n": {
+            "$sum": 1
+          },
+          "cur": {
+            "$sum": "$cur_bal_amt"
+          },
+          "past": {
+            "$sum": "$past_due_amt"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "CONVERSION_BATCH_NO": {
+            "$ifNull": [
+              "$_id",
+              null
+            ]
+          },
+          "CUSTOMER_COUNT": "$n",
+          "CURRENT_BALANCE_TOTAL": "$cur",
+          "PAST_DUE_TOTAL": "$past"
+        }
+      }
+    ],
+    "rules": [
+      "decimal_round",
+      "null_missing_equiv"
+    ]
+  }
+]

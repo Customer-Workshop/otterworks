@@ -1,0 +1,343 @@
+[
+  {
+    "name": "plans_active_catalog",
+    "mirrors": "backends.mongo.list_plans (pkg_plans.fn_list_plans)",
+    "collection": "plans",
+    "source_sql": "SELECT p.id AS plan_id, p.code AS code, p.tier_cd AS tier_cd, p.monthly_fee AS monthly_fee, p.included_units AS included_units, p.overage_rate AS overage_rate FROM ow_billing.plans p WHERE p.active_yn = 'Y'",
+    "target_pipeline": [
+      {
+        "$match": {
+          "active_yn": "Y"
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "PLAN_ID": "$_id",
+          "CODE": {
+            "$ifNull": [
+              "$code",
+              null
+            ]
+          },
+          "TIER_CD": {
+            "$ifNull": [
+              "$tier_cd",
+              null
+            ]
+          },
+          "MONTHLY_FEE": {
+            "$ifNull": [
+              "$monthly_fee",
+              null
+            ]
+          },
+          "INCLUDED_UNITS": {
+            "$ifNull": [
+              "$included_units",
+              null
+            ]
+          },
+          "OVERAGE_RATE": {
+            "$ifNull": [
+              "$overage_rate",
+              null
+            ]
+          }
+        }
+      }
+    ],
+    "rules": [
+      "decimal_round",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "tenant_status_profile",
+    "mirrors": "backends.mongo.tenant_profile (facade /me, /customer)",
+    "collection": "tenants",
+    "source_sql": "SELECT t.id AS tenant_id, t.name AS name, ts.code_desc AS status, t.tax_exempt_yn AS tax_exempt FROM ow_billing.tenants t LEFT JOIN ow_billing.codes ts ON ts.code_type = 'TENANT_STATUS' AND ts.code_val = t.status_cd",
+    "target_pipeline": [
+      {
+        "$lookup": {
+          "from": "codes",
+          "let": {
+            "s": "$status_cd"
+          },
+          "as": "st",
+          "pipeline": [
+            {
+              "$match": {
+                "$expr": {
+                  "$and": [
+                    {
+                      "$eq": [
+                        "$code_type",
+                        "TENANT_STATUS"
+                      ]
+                    },
+                    {
+                      "$eq": [
+                        "$code_val",
+                        "$$s"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "TENANT_ID": "$_id",
+          "NAME": {
+            "$ifNull": [
+              "$name",
+              null
+            ]
+          },
+          "STATUS": {
+            "$ifNull": [
+              {
+                "$first": "$st.code_desc"
+              },
+              null
+            ]
+          },
+          "TAX_EXEMPT": {
+            "$ifNull": [
+              "$tax_exempt_yn",
+              null
+            ]
+          }
+        }
+      }
+    ],
+    "rules": [
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "code_catalog",
+    "mirrors": "backends.mongo._codes/_code_desc (every status/kind/tier label)",
+    "collection": "codes",
+    "source_sql": "SELECT c.code_type AS code_type, c.code_val AS code_val, c.code_desc AS code_desc FROM ow_billing.codes c",
+    "target_pipeline": [
+      {
+        "$project": {
+          "_id": 0,
+          "CODE_TYPE": {
+            "$ifNull": [
+              "$code_type",
+              null
+            ]
+          },
+          "CODE_VAL": {
+            "$ifNull": [
+              "$code_val",
+              null
+            ]
+          },
+          "CODE_DESC": {
+            "$ifNull": [
+              "$code_desc",
+              null
+            ]
+          }
+        }
+      }
+    ],
+    "rules": [
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "customer_first_by_tenant",
+    "mirrors": "backends.mongo.customer_balance / _first_customer (ORDER BY cust_seq_no FETCH FIRST 1)",
+    "collection": "customers",
+    "source_sql": "SELECT tenant_id, cust_no, cust_name, cur_bal_amt, past_due_amt, credit_hold_yn FROM (SELECT c.tenant_id, c.cust_no, c.cust_name, c.cur_bal_amt, c.past_due_amt, c.credit_hold_yn, ROW_NUMBER() OVER (PARTITION BY c.tenant_id ORDER BY c.cust_seq_no) AS rn FROM ow_billing.customer_master c WHERE c.tenant_id IS NOT NULL) WHERE rn = 1",
+    "target_pipeline": [
+      {
+        "$match": {
+          "tenant_id": {
+            "$nin": [
+              null,
+              ""
+            ]
+          }
+        }
+      },
+      {
+        "$project": {
+          "tenant_id": 1,
+          "cust_seq_no": 1,
+          "cust_no": 1,
+          "cust_name": 1,
+          "cur_bal_amt": 1,
+          "past_due_amt": 1,
+          "credit_hold_yn": 1
+        }
+      },
+      {
+        "$sort": {
+          "tenant_id": 1,
+          "cust_seq_no": 1
+        }
+      },
+      {
+        "$group": {
+          "_id": "$tenant_id",
+          "c": {
+            "$first": "$$ROOT"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "TENANT_ID": "$_id",
+          "CUST_NO": {
+            "$ifNull": [
+              "$c.cust_no",
+              null
+            ]
+          },
+          "CUST_NAME": {
+            "$ifNull": [
+              "$c.cust_name",
+              null
+            ]
+          },
+          "CUR_BAL_AMT": {
+            "$ifNull": [
+              "$c.cur_bal_amt",
+              null
+            ]
+          },
+          "PAST_DUE_AMT": {
+            "$ifNull": [
+              "$c.past_due_amt",
+              null
+            ]
+          },
+          "CREDIT_HOLD_YN": {
+            "$ifNull": [
+              "$c.credit_hold_yn",
+              null
+            ]
+          }
+        }
+      }
+    ],
+    "rules": [
+      "decimal_round",
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "customer_attribute_names",
+    "mirrors": "backends.mongo.customer_attributes (facade /customer attributes array)",
+    "collection": "customers",
+    "source_sql": "SELECT e.attr_name AS attr_name, COUNT(*) AS attr_rows, COUNT(DISTINCT e.entity_id) AS customers FROM ow_billing.entity_attr_value e JOIN ow_billing.customer_master c ON c.cust_id = e.entity_id WHERE e.entity_type = 'CUSTOMER' GROUP BY e.attr_name",
+    "target_pipeline": [
+      {
+        "$unwind": "$attributes"
+      },
+      {
+        "$group": {
+          "_id": "$attributes.attr_name",
+          "rows": {
+            "$sum": 1
+          },
+          "custs": {
+            "$addToSet": "$_id"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "ATTR_NAME": {
+            "$ifNull": [
+              "$_id",
+              null
+            ]
+          },
+          "ATTR_ROWS": "$rows",
+          "CUSTOMERS": {
+            "$size": "$custs"
+          }
+        }
+      }
+    ],
+    "rules": [
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "customer_duplicate_attributes",
+    "mirrors": "backends.mongo.customer_attributes duplicate EAV rows (Casey-style customer)",
+    "collection": "customers",
+    "source_sql": "SELECT e.entity_id AS cust_id, e.attr_name AS attr_name, COUNT(*) AS copies FROM ow_billing.entity_attr_value e JOIN ow_billing.customer_master c ON c.cust_id = e.entity_id WHERE e.entity_type = 'CUSTOMER' GROUP BY e.entity_id, e.attr_name HAVING COUNT(*) > 1",
+    "target_pipeline": [
+      {
+        "$match": {
+          "attributes.1": {
+            "$exists": true
+          }
+        }
+      },
+      {
+        "$unwind": "$attributes"
+      },
+      {
+        "$group": {
+          "_id": {
+            "c": "$_id",
+            "n": "$attributes.attr_name"
+          },
+          "copies": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$match": {
+          "copies": {
+            "$gt": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "CUST_ID": "$_id.c",
+          "ATTR_NAME": {
+            "$ifNull": [
+              "$_id.n",
+              null
+            ]
+          },
+          "COPIES": "$copies"
+        }
+      }
+    ],
+    "rules": [
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  }
+]

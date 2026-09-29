@@ -1,0 +1,127 @@
+{
+  "base_sha": "cb628c9fd29d7de1b5109828b5cea56baeeceace",
+  "base_branch": "review-base-ticketing",
+  "note": "ticketing/docs/decomposition.md",
+  "contexts": ["catalog", "inventory", "pricing", "customer", "sales", "payment", "fulfilment", "settlement", "reporting", "audit"],
+  "topic_naming": "<token>-<event-name>, 6 partitions, key = orderRef (holdRef only for holds that never reached an order)",
+  "services": [
+    {
+      "name": "orders",
+      "dir": "ticketing/services/orders",
+      "runtime": "Knative Service (request-driven, min-scale 0, max-scale 6) + KEDA-scaled outbox relay Deployment (postgresql scaler on unpublished outbox rows)",
+      "tables": ["orders", "order_items", "order_fees", "outbox"],
+      "reference_tables": ["performances", "events", "venues", "performance_price_levels", "promo_codes", "delivery_methods"],
+      "publishes": ["order-placed"],
+      "consumes": ["payment-failed", "order-confirmed", "hold-expired"],
+      "api": [
+        "POST /api/purchase — legacy purchase body {performanceId,email,quantity,section?,promoCode?,delivery?,cardLast4?,clientRef?}; calls seats POST /api/holds, prices the hold, writes order (PENDING_PAYMENT) + items + fees + outbox row in one transaction; 202 {orderRef,status:PENDING_PAYMENT,totalCents,tickets:0,paymentOutcome:PENDING}; 409 SOLD_OUT / 404 NOT_FOUND / 400 BAD_QUANTITY|BAD_REQUEST pass through from seats; same clientRef replays the same order",
+        "POST /api/orders — place from an existing hold {holdRef,email,promoCode?,delivery?,cardLast4?,clientRef?}; 410 HOLD_EXPIRED if seats says the hold is not active; otherwise as /api/purchase",
+        "GET /api/orders/{ref} — order (order_ref,status,subtotal_cents,fees_cents,total_cents,channel,email,event_title,starts_at,venue_name,created_at) + items[] (section,row_label,seat_number,zone,price_cents,ticket_code) + fees[] + paymentOutcome; 404 NOT_FOUND",
+        "POST /events/payment-failed — inbox: sets status PAYMENT_FAILED | PAYMENT_TIMEOUT | CANCELLED (outcome HOLD_EXPIRED) by orderRef; idempotent",
+        "POST /events/order-confirmed — inbox: sets status CONFIRMED and stamps ticket_code on order_items by orderRef; idempotent",
+        "POST /events/hold-expired — inbox: PENDING_PAYMENT orders on that hold become CANCELLED; idempotent",
+        "GET /stats — {ordersTotal, ordersByStatus{...}, outboxUnpublished, promoUses}",
+        "GET /actuator/health — readiness/liveness",
+        "GET /actuator/prometheus — Micrometer; includes orders_outbox_unpublished gauge"
+      ]
+    },
+    {
+      "name": "seats",
+      "dir": "ticketing/services/seats",
+      "runtime": "Knative Service (request-driven, min-scale 0, max-scale 6); a CronJob (every minute) calls POST /api/holds/sweep",
+      "tables": ["seat_inventory", "seat_holds", "seat_hold_items"],
+      "reference_tables": ["performances", "seats", "venue_sections", "price_zones"],
+      "publishes": ["hold-expired"],
+      "consumes": ["payment-failed", "order-confirmed"],
+      "api": [
+        "POST /api/holds — {performanceId,quantity,section?,customerEmail?}; best-available hold with FOR UPDATE SKIP LOCKED, marks rows HELD for HOLD_MINUTES; 201 {holdRef,performanceId,expiresAt,seats[{seatInventoryId,section,rowLabel,seatNumber,priceZoneId,zoneCode,zoneName}],zoneTally[{priceZoneId,notAvailable,total}]} (tally taken after the hold, inside the same transaction); 404 NOT_FOUND (performance), 400 BAD_QUANTITY (quantity < 1 or > max_per_order), 409 SOLD_OUT",
+        "GET /api/holds/{holdRef} — {holdRef,status,active,expiresAt,seats[]}; active = status ACTIVE and expires_at > now; 404",
+        "GET /api/performances/{id}/availability — {available,held,sold} (legacy path, unchanged shape)",
+        "POST /api/holds/sweep (alias POST /api/admin/expire-holds) — releases ACTIVE holds with expires_at < now (<=500 per call): seats back to AVAILABLE, hold EXPIRED, publishes hold-expired and delivers it to orders; {released:n}",
+        "POST /events/payment-failed — inbox: hold RELEASED, its HELD seats back to AVAILABLE, order_ref cleared; idempotent",
+        "POST /events/order-confirmed — inbox: hold CONVERTED, its seats SOLD with order_ref stamped; idempotent",
+        "GET /stats — {seatsAvailable, seatsHeld, seatsSold, holdsByStatus{ACTIVE,CONVERTED,EXPIRED,RELEASED}}",
+        "GET /actuator/health — readiness/liveness",
+        "GET /actuator/prometheus — Micrometer"
+      ]
+    },
+    {
+      "name": "payments",
+      "dir": "ticketing/services/payments",
+      "runtime": "Kafka consumer Deployment (group <token>-payments, manual offset commit after the DB transaction), KEDA ScaledObject kafka trigger min 0 / max 6, cooldown <= 60s",
+      "tables": ["payments", "payment_attempts"],
+      "reference_tables": [],
+      "publishes": ["payment-captured", "payment-failed"],
+      "consumes": ["order-placed"],
+      "api": [
+        "GET /api/payments/{orderRef} — {orderRef,status,amountCents,gatewayRef,cardLast4,attempts[{attemptNo,outcome,latencyMs}]}; 404",
+        "GET /stats — {paymentsCaptured, capturedCents, paymentsDeclined, paymentsTimeout, paymentsExpired, attempts, duplicatesSuppressed}",
+        "GET /actuator/health — readiness/liveness",
+        "GET /actuator/prometheus — Micrometer; includes gateway latency histogram and duplicates_suppressed counter"
+      ]
+    },
+    {
+      "name": "confirmations",
+      "dir": "ticketing/services/confirmations",
+      "runtime": "Knative Service (request-driven, min-scale 0, max-scale 6)",
+      "tables": ["tickets", "confirmations"],
+      "reference_tables": [],
+      "publishes": ["order-confirmed"],
+      "consumes": ["payment-captured"],
+      "api": [
+        "POST /events/payment-captured — inbox: issues one ticket per seat (ticket_code TK-…, barcode), writes the confirmation row (recipient, subject 'Your tickets for <title>', body as the monolith), publishes order-confirmed and delivers it to orders and seats; idempotent on orderRef (confirmations.order_ref UNIQUE): a replay returns the existing tickets and re-delivers",
+        "GET /api/confirmations/{orderRef} — {orderRef,ticketCount,tickets[{ticketCode,seatInventoryId,barcode,issuedAt}],confirmation{recipient,subject,body,sentAt}}; 404",
+        "GET /stats — {ticketsIssued, confirmationsQueued, confirmationsSent}",
+        "GET /actuator/health — readiness/liveness",
+        "GET /actuator/prometheus — Micrometer"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "order-placed",
+      "topic": "<token>-order-placed",
+      "producer": "orders (outbox relay)",
+      "consumers": ["payments"],
+      "key": "orderRef",
+      "delivery": "Kafka only — payments is a real consumer (KEDA lag trigger)",
+      "payload": ["orderRef", "clientRef", "customerEmail", "performanceId", "eventTitle", "venueName", "startsAt", "holdRef", "holdExpiresAt", "channel", "items[]{seatInventoryId,priceZoneId,zoneCode,zoneName,section,rowLabel,seatNumber,priceCents}", "fees[]{feeType,amountCents}", "subtotalCents", "feesCents", "totalCents", "currency", "cardLast4", "placedAt"]
+    },
+    {
+      "name": "payment-captured",
+      "topic": "<token>-payment-captured",
+      "producer": "payments",
+      "consumers": ["confirmations", "settlement (monolith, future adapter)"],
+      "key": "orderRef",
+      "delivery": "Kafka record, then payments POSTs the same payload to confirmations /events/payment-captured before committing its offset",
+      "payload": ["orderRef", "gatewayRef", "amountCents", "currency", "cardLast4", "attemptNo", "latencyMs", "capturedAt", "order{customerEmail,performanceId,eventTitle,venueName,startsAt,holdRef,totalCents,items[]{seatInventoryId,section,rowLabel,seatNumber,zoneCode}}"]
+    },
+    {
+      "name": "payment-failed",
+      "topic": "<token>-payment-failed",
+      "producer": "payments",
+      "consumers": ["orders", "seats", "reporting (monolith, future adapter)"],
+      "key": "orderRef",
+      "delivery": "Kafka record, then payments POSTs the same payload to orders and seats /events/payment-failed before committing its offset",
+      "payload": ["orderRef", "holdRef", "outcome (DECLINED | TIMEOUT | HOLD_EXPIRED)", "orderStatus (PAYMENT_FAILED | PAYMENT_TIMEOUT | CANCELLED)", "amountCents", "cardLast4", "attemptNo", "latencyMs", "gatewayRef (null on TIMEOUT / HOLD_EXPIRED)", "failedAt"]
+    },
+    {
+      "name": "order-confirmed",
+      "topic": "<token>-order-confirmed",
+      "producer": "confirmations",
+      "consumers": ["orders", "seats", "settlement and customer (monolith, future adapter)"],
+      "key": "orderRef",
+      "delivery": "Kafka record, then confirmations POSTs the same payload to orders and seats /events/order-confirmed within the inbox request",
+      "payload": ["orderRef", "holdRef", "performanceId", "ticketCount", "tickets[]{ticketCode,seatInventoryId,barcode}", "recipient", "confirmedAt"]
+    },
+    {
+      "name": "hold-expired",
+      "topic": "<token>-hold-expired",
+      "producer": "seats (sweep)",
+      "consumers": ["orders", "reporting (monolith, future adapter)"],
+      "key": "orderRef when a PENDING_PAYMENT order is attached, else holdRef",
+      "delivery": "Kafka record, then seats POSTs the same payload to orders /events/hold-expired within the sweep request",
+      "payload": ["holdRef", "performanceId", "orderRef (nullable)", "seatInventoryIds[]", "expiredAt"]
+    }
+  ]
+}

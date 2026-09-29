@@ -1,0 +1,7 @@
+com/boxoffice/confirmations/contract/ConfirmationsContractTest.class
+com/boxoffice/confirmations/contract/ContractFixture.class
+com/boxoffice/confirmations/contract/InboxStubConfig.class
+com/boxoffice/confirmations/domain/RefsTest.class
+com/boxoffice/confirmations/events/InboxDeliveryTest.class
+com/boxoffice/confirmations/domain/MonolithFormatsTest.class
+com/boxoffice/confirmations/domain/FulfilmentServiceTest.class

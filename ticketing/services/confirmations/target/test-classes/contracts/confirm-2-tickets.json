@@ -1,0 +1,126 @@
+{
+  "name": "confirm-2-tickets",
+  "recordedAt": "2026-09-29T01:22:50Z",
+  "source": {
+    "purchase": {
+      "method": "POST",
+      "url": "https://tkt01-before.demo.otterworks.app/api/purchase",
+      "body": {
+        "performanceId": 7,
+        "email": "fan10102@example.test",
+        "quantity": 2,
+        "cardLast4": "4242"
+      }
+    },
+    "orderView": {
+      "method": "GET",
+      "url": "https://tkt01-before.demo.otterworks.app/api/orders/BO-BZYMKYKBSS"
+    },
+    "seatInventoryIds": "ticketing/monolith/db/seed.sql applied to postgres:16-alpine; SELECT si.id ... WHERE performance_id/section/row/seat match the order view",
+    "confirmationRow": "not exposed by the monolith API; derived from ConfirmationBean.confirm (ticketing/monolith/src/main/java/com/boxoffice/fulfillment/ConfirmationBean.java L37-L41) using the recorded order fields; starts_at rendered as java.sql.Timestamp.toString, total as Money.format"
+  },
+  "monolith": {
+    "purchaseResponse": {
+      "orderRef": "BO-BZYMKYKBSS",
+      "status": "CONFIRMED",
+      "totalCents": 42836,
+      "tickets": 2,
+      "paymentOutcome": "APPROVED"
+    },
+    "orderView": {
+      "id": 5,
+      "order_ref": "BO-BZYMKYKBSS",
+      "customer_id": 5002,
+      "performance_id": 7,
+      "hold_id": 5,
+      "delivery_method_id": 1,
+      "promo_code_id": null,
+      "status": "CONFIRMED",
+      "subtotal_cents": 37800,
+      "fees_cents": 5036,
+      "total_cents": 42836,
+      "channel": "API",
+      "created_at": "2026-09-29 01:22:50.752976",
+      "updated_at": "2026-09-29 01:22:50.752976",
+      "email": "fan10102@example.test",
+      "event_title": "Hollow Pines Ensemble: Winter Songs",
+      "starts_at": "2026-10-20 20:00:00.0",
+      "venue_name": "Ossery Hall",
+      "items": [
+        {
+          "price_cents": 18900,
+          "section": "H1",
+          "row_label": "R01",
+          "seat_number": 1,
+          "zone": "Premium",
+          "ticket_code": "TK-J5V4PB4QGY"
+        },
+        {
+          "price_cents": 18900,
+          "section": "H1",
+          "row_label": "R01",
+          "seat_number": 2,
+          "zone": "Premium",
+          "ticket_code": "TK-4KDZLGYR5S"
+        }
+      ]
+    }
+  },
+  "paymentCaptured": {
+    "orderRef": "BO-BZYMKYKBSS",
+    "gatewayRef": "PAY-SYNTH00002AAA",
+    "amountCents": 42836,
+    "currency": "USD",
+    "cardLast4": "4242",
+    "attemptNo": 1,
+    "latencyMs": 80,
+    "capturedAt": "2026-09-29T01:22:50Z",
+    "order": {
+      "customerEmail": "fan10102@example.test",
+      "performanceId": 7,
+      "eventTitle": "Hollow Pines Ensemble: Winter Songs",
+      "venueName": "Ossery Hall",
+      "startsAt": "2026-10-20 20:00:00.0",
+      "holdRef": "HD-SEED000005",
+      "totalCents": 42836,
+      "items": [
+        {
+          "seatInventoryId": 120006,
+          "section": "H1",
+          "rowLabel": "R01",
+          "seatNumber": 1,
+          "zoneCode": "P1"
+        },
+        {
+          "seatInventoryId": 120015,
+          "section": "H1",
+          "rowLabel": "R01",
+          "seatNumber": 2,
+          "zoneCode": "P1"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "ticketCount": 2,
+    "ticketCodePattern": "^TK-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$",
+    "seatInventoryIds": [
+      120006,
+      120015
+    ],
+    "confirmation": {
+      "recipient": "fan10102@example.test",
+      "subject": "Your tickets for Hollow Pines Ensemble: Winter Songs",
+      "body": "Order BO-BZYMKYKBSS: 2 ticket(s) for Hollow Pines Ensemble: Winter Songs at Ossery Hall on 2026-10-20 20:00:00.0. Total $428.36.",
+      "status": "QUEUED",
+      "sentAt": null
+    },
+    "orderConfirmed": {
+      "orderRef": "BO-BZYMKYKBSS",
+      "holdRef": "HD-SEED000005",
+      "performanceId": 7,
+      "ticketCount": 2,
+      "recipient": "fan10102@example.test"
+    }
+  }
+}

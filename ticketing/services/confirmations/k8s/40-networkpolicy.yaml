@@ -1,0 +1,20 @@
+# Ingress to confirmations' pods (service and database): the namespace itself plus the platform namespaces.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ${TOKEN}-confirmations
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/component: confirmations}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: {matchLabels: {demo.otterworks.app/run-token: "${TOKEN}"}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kourier-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: knative-serving}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: keda}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}

@@ -1,0 +1,59 @@
+# Request-driven workload: one revision per image, scale 0..6 on requests per second.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ${TOKEN}-confirmations
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+  annotations:
+    # cluster-local only; reached through the shared ingress -> kourier-internal (see 50-ingress.yaml)
+    networking.knative.dev/visibility: cluster-local
+spec:
+  template:
+    metadata:
+      labels: {app: ${TOKEN}-confirmations, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+      annotations:
+        autoscaling.knative.dev/class: kpa.autoscaling.knative.dev
+        autoscaling.knative.dev/metric: rps
+        autoscaling.knative.dev/target: "40"
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "6"
+        autoscaling.knative.dev/scale-down-delay: "30s"
+        autoscaling.knative.dev/window: "30s"
+    spec:
+      containerConcurrency: 40
+      timeoutSeconds: 60
+      containers:
+        - name: confirmations
+          image: ${IMAGE}
+          ports: [{containerPort: 8080, name: http1}]
+          env:
+            - {name: TOKEN, value: "${TOKEN}"}
+            - {name: DB_HOST, value: ${TOKEN}-confirmations-db}
+            - {name: DB_PORT, value: "5432"}
+            - {name: DB_NAME, value: confirmations}
+            - {name: DB_USER, value: confirmations}
+            - {name: DB_PASSWORD, value: confirmations}
+            - {name: DB_POOL_SIZE, value: "8"}
+            - {name: KAFKA_ENABLED, value: "true"}
+            - {name: KAFKA_BOOTSTRAP, value: ${TOKEN}-kafka-kafka-bootstrap.${TOKEN}-after.svc:9092}
+            - {name: ORDERS_INBOX_URL, value: http://${TOKEN}-orders.${TOKEN}-after.svc.cluster.local/events/order-confirmed}
+            - {name: SEATS_INBOX_URL, value: http://${TOKEN}-seats.${TOKEN}-after.svc.cluster.local/events/order-confirmed}
+            - {name: DELIVERY_TIMEOUT_MS, value: "5000"}
+            - {name: PUBLISH_TIMEOUT_MS, value: "10000"}
+          startupProbe: {httpGet: {path: /actuator/health/readiness}, periodSeconds: 2, failureThreshold: 45}
+          readinessProbe: {httpGet: {path: /actuator/health/readiness}, periodSeconds: 5, timeoutSeconds: 3}
+          livenessProbe: {httpGet: {path: /actuator/health/liveness}, periodSeconds: 15, failureThreshold: 4}
+          resources:
+            requests: {cpu: 250m, memory: 384Mi}
+            limits: {cpu: "1", memory: 768Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {}}

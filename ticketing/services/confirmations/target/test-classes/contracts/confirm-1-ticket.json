@@ -1,0 +1,110 @@
+{
+  "name": "confirm-1-ticket",
+  "recordedAt": "2026-09-29T01:22:50Z",
+  "source": {
+    "purchase": {
+      "method": "POST",
+      "url": "https://tkt01-before.demo.otterworks.app/api/purchase",
+      "body": {
+        "performanceId": 3,
+        "email": "fan10101@example.test",
+        "quantity": 1,
+        "cardLast4": "4242"
+      }
+    },
+    "orderView": {
+      "method": "GET",
+      "url": "https://tkt01-before.demo.otterworks.app/api/orders/BO-CUS9XKUHWN"
+    },
+    "seatInventoryIds": "ticketing/monolith/db/seed.sql applied to postgres:16-alpine; SELECT si.id ... WHERE performance_id/section/row/seat match the order view",
+    "confirmationRow": "not exposed by the monolith API; derived from ConfirmationBean.confirm (ticketing/monolith/src/main/java/com/boxoffice/fulfillment/ConfirmationBean.java L37-L41) using the recorded order fields; starts_at rendered as java.sql.Timestamp.toString, total as Money.format"
+  },
+  "monolith": {
+    "purchaseResponse": {
+      "orderRef": "BO-CUS9XKUHWN",
+      "status": "CONFIRMED",
+      "totalCents": 21418,
+      "tickets": 1,
+      "paymentOutcome": "APPROVED"
+    },
+    "orderView": {
+      "id": 4,
+      "order_ref": "BO-CUS9XKUHWN",
+      "customer_id": 5001,
+      "performance_id": 3,
+      "hold_id": 4,
+      "delivery_method_id": 1,
+      "promo_code_id": null,
+      "status": "CONFIRMED",
+      "subtotal_cents": 18900,
+      "fees_cents": 2518,
+      "total_cents": 21418,
+      "channel": "API",
+      "created_at": "2026-09-29 01:22:50.019443",
+      "updated_at": "2026-09-29 01:22:50.019443",
+      "email": "fan10101@example.test",
+      "event_title": "Static Meridian: The Long Signal Tour",
+      "starts_at": "2026-10-08 20:00:00.0",
+      "venue_name": "Tallowmere Arena",
+      "items": [
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 1,
+          "zone": "Premium",
+          "ticket_code": "TK-TCLCK5GTXL"
+        }
+      ]
+    }
+  },
+  "paymentCaptured": {
+    "orderRef": "BO-CUS9XKUHWN",
+    "gatewayRef": "PAY-SYNTH00001AAA",
+    "amountCents": 21418,
+    "currency": "USD",
+    "cardLast4": "4242",
+    "attemptNo": 1,
+    "latencyMs": 80,
+    "capturedAt": "2026-09-29T01:22:50Z",
+    "order": {
+      "customerEmail": "fan10101@example.test",
+      "performanceId": 3,
+      "eventTitle": "Static Meridian: The Long Signal Tour",
+      "venueName": "Tallowmere Arena",
+      "startsAt": "2026-10-08 20:00:00.0",
+      "holdRef": "HD-SEED000004",
+      "totalCents": 21418,
+      "items": [
+        {
+          "seatInventoryId": 4,
+          "section": "A01",
+          "rowLabel": "R01",
+          "seatNumber": 1,
+          "zoneCode": "P1"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "ticketCount": 1,
+    "ticketCodePattern": "^TK-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$",
+    "seatInventoryIds": [
+      4
+    ],
+    "confirmation": {
+      "recipient": "fan10101@example.test",
+      "subject": "Your tickets for Static Meridian: The Long Signal Tour",
+      "body": "Order BO-CUS9XKUHWN: 1 ticket(s) for Static Meridian: The Long Signal Tour at Tallowmere Arena on 2026-10-08 20:00:00.0. Total $214.18.",
+      "status": "QUEUED",
+      "sentAt": null
+    },
+    "orderConfirmed": {
+      "orderRef": "BO-CUS9XKUHWN",
+      "holdRef": "HD-SEED000004",
+      "performanceId": 3,
+      "ticketCount": 1,
+      "recipient": "fan10101@example.test"
+    }
+  }
+}

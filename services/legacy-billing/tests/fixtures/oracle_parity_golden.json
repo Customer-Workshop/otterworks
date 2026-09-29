@@ -1,0 +1,1908 @@
+{
+ "read": {
+  "entitlement_before_start": {
+   "body": [],
+   "location": null,
+   "status": 200
+  },
+  "entitlement_suspended_t2": {
+   "body": [
+    {
+     "effective_on": "2026-02-15",
+     "included_units": "500",
+     "monthly_fee": "149",
+     "plan_code": "GROWTH",
+     "subscription_status": "suspended",
+     "tenant_id": "00000000-0000-0000-0000-000000000002",
+     "tier": "growth"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "entitlement_t1": {
+   "body": [
+    {
+     "effective_on": "2026-02-28",
+     "included_units": "100",
+     "monthly_fee": "49",
+     "plan_code": "STARTER",
+     "subscription_status": "active",
+     "tenant_id": "00000000-0000-0000-0000-000000000001",
+     "tier": "starter"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "entitlement_unknown": {
+   "body": [],
+   "location": null,
+   "status": 200
+  },
+  "facade_admin_dunning": {
+   "body": [
+    {
+     "attempt_no": "1",
+     "id": "80000000-0000-0000-0000-000000000001",
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16",
+     "status": "sent",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "facade_admin_overdue": {
+   "body": [
+    {
+     "amount": "161.29",
+     "days_overdue": "58",
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "tenant_id": "00000000-0000-0000-0000-000000000002",
+     "tenant_status": "suspended",
+     "total": "161.29"
+    },
+    {
+     "amount": "161.29",
+     "days_overdue": "46",
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "tenant_id": "00000000-0000-0000-0000-000000000005",
+     "tenant_status": "active",
+     "total": "161.29"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "facade_admin_overdue_forbidden": {
+   "body": {
+    "error": "forbidden"
+   },
+   "location": null,
+   "status": 403
+  },
+  "facade_customer_admin_dup_attrs": {
+   "body": {
+    "addr_line_1": "1 OtterWorks Way",
+    "addr_line_2": null,
+    "addr_line_3": null,
+    "addr_line_4": null,
+    "addr_line_5": null,
+    "addr_line_6": null,
+    "attributes": [
+     {
+      "attr_name": "TAX_REGION_OVERRIDE",
+      "attr_type": "STR",
+      "attr_value": "US-IL",
+      "created_dt": "20-FEB-26",
+      "eav_id": "99000000000001",
+      "entity_id": "40000000-0000-0000-0000-00000000a001",
+      "entity_type": "CUSTOMER"
+     },
+     {
+      "attr_name": "tax_region_override",
+      "attr_type": "STR",
+      "attr_value": "us-il",
+      "created_dt": "20-FEB-26",
+      "eav_id": "99000000000002",
+      "entity_id": "40000000-0000-0000-0000-00000000a001",
+      "entity_type": "CUSTOMER"
+     },
+     {
+      "attr_name": "PORTAL_THEME",
+      "attr_type": "STR",
+      "attr_value": "dark",
+      "created_dt": "20-FEB-26",
+      "eav_id": "99000000000003",
+      "entity_id": "40000000-0000-0000-0000-00000000a001",
+      "entity_type": "CUSTOMER"
+     },
+     {
+      "attr_name": "LEGACY_TIER",
+      "attr_type": "STR",
+      "attr_value": "priority",
+      "created_dt": "20-FEB-26",
+      "eav_id": "99000000000004",
+      "entity_id": "40000000-0000-0000-0000-00000000a001",
+      "entity_type": "CUSTOMER"
+     }
+    ],
+    "channel_cd": null,
+    "child_acct_ids": null,
+    "city": "Springfield",
+    "contact_notes": null,
+    "conversion_batch_no": null,
+    "country_cd": "US",
+    "created_by": "SEED",
+    "created_dt": "2026-01-01",
+    "credit_hold_yn": "N",
+    "credit_limit_amt": "5000",
+    "cur_bal_amt": "149",
+    "cust_id": "40000000-0000-0000-0000-00000000a001",
+    "cust_name": "OtterWorks Admin",
+    "cust_name_upper": "OTTERWORKS ADMIN",
+    "cust_no": "OW-ADMIN-0001",
+    "cust_seq_no": "100000",
+    "cust_type_cd": "1",
+    "dba_name": null,
+    "dunning_exempt_yn": "N",
+    "email_1": "admin@otterworks.dev",
+    "email_2": null,
+    "email_3": null,
+    "fax": null,
+    "flag_01": null,
+    "flag_02": null,
+    "flag_03": null,
+    "flag_04": null,
+    "flag_05": null,
+    "flag_06": null,
+    "flag_07": null,
+    "flag_08": null,
+    "flag_09": null,
+    "flag_10": null,
+    "flag_11": null,
+    "flag_12": null,
+    "flag_13": null,
+    "flag_14": null,
+    "flag_15": null,
+    "flag_16": null,
+    "flag_17": null,
+    "flag_18": null,
+    "flag_19": null,
+    "flag_20": null,
+    "last_activity_dt": "20-FEB-26",
+    "last_invoice_dt": null,
+    "last_payment_dt": null,
+    "legacy_sys_key": null,
+    "legal_name": "OtterWorks Admin",
+    "ltd_billed_amt": "149",
+    "mail_addr_line_1": null,
+    "mail_addr_line_2": null,
+    "mail_addr_line_3": null,
+    "mail_addr_line_4": null,
+    "mail_addr_line_5": null,
+    "mail_addr_line_6": null,
+    "mail_city": null,
+    "mail_state_cd": null,
+    "mail_zip": null,
+    "mainframe_acct_no": null,
+    "past_due_amt": "0",
+    "phone1": "217-555-0100",
+    "phone1_type_cd": "1",
+    "phone2": null,
+    "phone2_type_cd": null,
+    "phone3": null,
+    "phone3_type_cd": null,
+    "phone4": null,
+    "phone4_type_cd": null,
+    "promo_codes_csv": null,
+    "rate_class_cd": null,
+    "region_cd": "1",
+    "related_acct_ids": null,
+    "row_version_no": "1",
+    "segment_cd": "1",
+    "signup_dt": "01-JAN-26",
+    "state_cd": "IL",
+    "status_cd": "1",
+    "sub_status_cd": "1",
+    "tax_exempt_yn": "N",
+    "tenant_id": "a0000000-0000-0000-0000-000000000001",
+    "terminate_dt": null,
+    "territory_cd": null,
+    "udf_01": null,
+    "udf_02": null,
+    "udf_03": null,
+    "udf_04": null,
+    "udf_05": null,
+    "udf_06": null,
+    "udf_07": null,
+    "udf_08": null,
+    "udf_09": null,
+    "udf_10": null,
+    "udf_11": null,
+    "udf_12": null,
+    "udf_13": null,
+    "udf_14": null,
+    "udf_15": null,
+    "udf_16": null,
+    "udf_17": null,
+    "udf_18": null,
+    "udf_19": null,
+    "udf_20": null,
+    "udf_21": null,
+    "udf_22": null,
+    "udf_23": null,
+    "udf_24": null,
+    "udf_25": null,
+    "udf_26": null,
+    "udf_27": null,
+    "udf_28": null,
+    "udf_29": null,
+    "udf_30": null,
+    "udf_31": null,
+    "udf_32": null,
+    "udf_33": null,
+    "udf_34": null,
+    "udf_35": null,
+    "udf_36": null,
+    "udf_37": null,
+    "udf_38": null,
+    "udf_39": null,
+    "udf_40": null,
+    "udf_amt_01": null,
+    "udf_amt_02": null,
+    "udf_amt_03": null,
+    "udf_amt_04": null,
+    "udf_amt_05": null,
+    "udf_amt_06": null,
+    "udf_amt_07": null,
+    "udf_amt_08": null,
+    "udf_amt_09": null,
+    "udf_amt_10": null,
+    "udf_dt_01": null,
+    "udf_dt_02": null,
+    "udf_dt_03": null,
+    "udf_dt_04": null,
+    "udf_dt_05": null,
+    "udf_dt_06": null,
+    "udf_dt_07": null,
+    "udf_dt_08": null,
+    "udf_dt_09": null,
+    "udf_dt_10": null,
+    "updated_by": "SEED",
+    "updated_dt": "2026-02-20",
+    "vip_yn": "Y",
+    "ytd_billed_amt": "149",
+    "ytd_paid_amt": "149",
+    "zip": "62701",
+    "zip4": null
+   },
+   "location": null,
+   "status": 200
+  },
+  "facade_customer_casey": {
+   "body": {
+    "addr_line_1": "2411 Industrial Pkwy",
+    "addr_line_2": "Suite 279",
+    "addr_line_3": null,
+    "addr_line_4": null,
+    "addr_line_5": null,
+    "addr_line_6": null,
+    "attributes": [
+     {
+      "attr_name": "TAX_REGION_OVERRIDE",
+      "attr_type": "STR",
+      "attr_value": "see ticket 48213",
+      "created_dt": "27-OCT-23",
+      "eav_id": "5952",
+      "entity_id": "533b3aa7-6798-4944-af2b-c2d681ce2f1b",
+      "entity_type": "CUSTOMER"
+     }
+    ],
+    "channel_cd": null,
+    "child_acct_ids": null,
+    "city": "Clinton",
+    "contact_notes": null,
+    "conversion_batch_no": "86775546",
+    "country_cd": null,
+    "created_by": "CONVERSION",
+    "created_dt": "2020-10-10",
+    "credit_hold_yn": "N",
+    "credit_limit_amt": "1000",
+    "cur_bal_amt": "305153.17",
+    "cust_id": "533b3aa7-6798-4944-af2b-c2d681ce2f1b",
+    "cust_name": "Casey Rivera",
+    "cust_name_upper": "CASEY RIVERA",
+    "cust_no": "MMPFIX-00000003",
+    "cust_seq_no": "100004",
+    "cust_type_cd": "2",
+    "dba_name": null,
+    "dunning_exempt_yn": null,
+    "email_1": "user3@mmpfix.example.com",
+    "email_2": null,
+    "email_3": null,
+    "fax": null,
+    "flag_01": null,
+    "flag_02": null,
+    "flag_03": null,
+    "flag_04": null,
+    "flag_05": null,
+    "flag_06": null,
+    "flag_07": null,
+    "flag_08": null,
+    "flag_09": null,
+    "flag_10": null,
+    "flag_11": null,
+    "flag_12": null,
+    "flag_13": null,
+    "flag_14": null,
+    "flag_15": null,
+    "flag_16": null,
+    "flag_17": null,
+    "flag_18": null,
+    "flag_19": null,
+    "flag_20": null,
+    "last_activity_dt": "15-OCT-25",
+    "last_invoice_dt": null,
+    "last_payment_dt": null,
+    "legacy_sys_key": "SYS2-919818",
+    "legal_name": "Casey Rivera Co",
+    "ltd_billed_amt": null,
+    "mail_addr_line_1": null,
+    "mail_addr_line_2": null,
+    "mail_addr_line_3": null,
+    "mail_addr_line_4": null,
+    "mail_addr_line_5": null,
+    "mail_addr_line_6": null,
+    "mail_city": null,
+    "mail_state_cd": null,
+    "mail_zip": null,
+    "mainframe_acct_no": "871429564",
+    "past_due_amt": "92017.22",
+    "phone1": "939-555-3748",
+    "phone1_type_cd": "1",
+    "phone2": "615-555-9788",
+    "phone2_type_cd": "2",
+    "phone3": null,
+    "phone3_type_cd": null,
+    "phone4": null,
+    "phone4_type_cd": null,
+    "promo_codes_csv": "CONV2011",
+    "rate_class_cd": null,
+    "region_cd": "5",
+    "related_acct_ids": "35593",
+    "row_version_no": "1",
+    "segment_cd": "5",
+    "signup_dt": "16-NOV-17",
+    "state_cd": "IA",
+    "status_cd": "1",
+    "sub_status_cd": null,
+    "tax_exempt_yn": "N",
+    "tenant_id": "c1d4ed03-8e72-5b1d-7544-d92f58aa582f",
+    "terminate_dt": null,
+    "territory_cd": null,
+    "udf_01": null,
+    "udf_02": null,
+    "udf_03": null,
+    "udf_04": null,
+    "udf_05": null,
+    "udf_06": null,
+    "udf_07": null,
+    "udf_08": null,
+    "udf_09": null,
+    "udf_10": null,
+    "udf_11": null,
+    "udf_12": null,
+    "udf_13": null,
+    "udf_14": null,
+    "udf_15": null,
+    "udf_16": null,
+    "udf_17": null,
+    "udf_18": null,
+    "udf_19": null,
+    "udf_20": null,
+    "udf_21": null,
+    "udf_22": null,
+    "udf_23": null,
+    "udf_24": null,
+    "udf_25": null,
+    "udf_26": null,
+    "udf_27": null,
+    "udf_28": null,
+    "udf_29": null,
+    "udf_30": null,
+    "udf_31": null,
+    "udf_32": null,
+    "udf_33": null,
+    "udf_34": null,
+    "udf_35": null,
+    "udf_36": null,
+    "udf_37": null,
+    "udf_38": null,
+    "udf_39": null,
+    "udf_40": null,
+    "udf_amt_01": null,
+    "udf_amt_02": null,
+    "udf_amt_03": null,
+    "udf_amt_04": null,
+    "udf_amt_05": null,
+    "udf_amt_06": null,
+    "udf_amt_07": null,
+    "udf_amt_08": null,
+    "udf_amt_09": null,
+    "udf_amt_10": null,
+    "udf_dt_01": null,
+    "udf_dt_02": null,
+    "udf_dt_03": null,
+    "udf_dt_04": null,
+    "udf_dt_05": null,
+    "udf_dt_06": null,
+    "udf_dt_07": null,
+    "udf_dt_08": null,
+    "udf_dt_09": null,
+    "udf_dt_10": null,
+    "updated_by": "BATCH",
+    "updated_dt": "2026-08-01",
+    "vip_yn": "Y",
+    "ytd_billed_amt": "1478358.98",
+    "ytd_paid_amt": null,
+    "zip": "52732",
+    "zip4": null
+   },
+   "location": null,
+   "status": 200
+  },
+  "facade_customer_missing": {
+   "body": {
+    "error": "customer not found"
+   },
+   "location": null,
+   "status": 404
+  },
+  "facade_entitlement": {
+   "body": [
+    {
+     "effective_on": "2026-02-20",
+     "included_units": "500",
+     "monthly_fee": "149",
+     "plan_code": "GROWTH",
+     "subscription_status": "active",
+     "tenant_id": "00000000-0000-0000-0000-000000000005",
+     "tier": "growth"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "facade_invoice_lines_foreign": {
+   "body": {
+    "error": "invoice not found"
+   },
+   "location": null,
+   "status": 404
+  },
+  "facade_invoice_lines_owned": {
+   "body": [
+    {
+     "amount": "149",
+     "description": "GROWTH",
+     "line_no": "1",
+     "line_type": "plan"
+    },
+    {
+     "amount": "12.29",
+     "description": "usage overage",
+     "line_no": "2",
+     "line_type": "usage"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "facade_invoices_t2": {
+   "body": [
+    {
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "period_end": "2025-12-31",
+     "period_start": "2025-12-01",
+     "status": "overdue",
+     "subtotal": "149",
+     "tax": "12.29",
+     "total": "161.29"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "facade_me_admin": {
+   "body": {
+    "customer": {
+     "credit_hold_yn": "N",
+     "cur_bal_amt": "149",
+     "cust_name": "OtterWorks Admin",
+     "cust_no": "OW-ADMIN-0001",
+     "past_due_amt": "0"
+    },
+    "entitlement": [
+     {
+      "effective_on": "2026-02-15",
+      "included_units": "500",
+      "monthly_fee": "149",
+      "plan_code": "GROWTH",
+      "subscription_status": "active",
+      "tenant_id": "a0000000-0000-0000-0000-000000000001",
+      "tier": "growth"
+     }
+    ],
+    "name": "OtterWorks Admin",
+    "status": "active",
+    "tax_exempt": "N",
+    "tenant_id": "a0000000-0000-0000-0000-000000000001"
+   },
+   "location": null,
+   "status": 200
+  },
+  "facade_me_t2": {
+   "body": {
+    "customer": null,
+    "entitlement": [
+     {
+      "effective_on": "2026-02-15",
+      "included_units": "500",
+      "monthly_fee": "149",
+      "plan_code": "GROWTH",
+      "subscription_status": "suspended",
+      "tenant_id": "00000000-0000-0000-0000-000000000002",
+      "tier": "growth"
+     }
+    ],
+    "name": "Tenant Two",
+    "status": "suspended",
+    "tax_exempt": "N",
+    "tenant_id": "00000000-0000-0000-0000-000000000002"
+   },
+   "location": null,
+   "status": 200
+  },
+  "facade_plans": {
+   "body": [
+    {
+     "included_units": "100",
+     "monthly_fee": "49",
+     "overage_rate": "0.055",
+     "plan_code": "STARTER",
+     "plan_id": "10000000-0000-0000-0000-000000000001",
+     "tier": "starter"
+    },
+    {
+     "included_units": "500",
+     "monthly_fee": "149",
+     "overage_rate": "0.035",
+     "plan_code": "GROWTH",
+     "plan_id": "10000000-0000-0000-0000-000000000002",
+     "tier": "growth"
+    },
+    {
+     "included_units": "2000",
+     "monthly_fee": "499",
+     "overage_rate": "0.02",
+     "plan_code": "SCALE",
+     "plan_id": "10000000-0000-0000-0000-000000000003",
+     "tier": "scale"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "facade_usage_mmpfix": {
+   "body": {
+    "events": [
+     {
+      "id": "c4ccc453-eb79-72ea-2101-47764ff5c537",
+      "kind": "storage",
+      "occurred_at": "2026-02-27T10:00:00",
+      "units": "310"
+     },
+     {
+      "id": "3ad620fd-34e6-ced6-e082-edf89a57b6a6",
+      "kind": "api",
+      "occurred_at": "2026-02-27T10:00:00",
+      "units": "395"
+     },
+     {
+      "id": "ff104d4a-c923-6277-7067-f0248394b226",
+      "kind": "api",
+      "occurred_at": "2026-02-26T10:00:00",
+      "units": "657"
+     },
+     {
+      "id": "34f159c2-3314-dbcc-4c20-584e7b5ea294",
+      "kind": "api",
+      "occurred_at": "2026-02-24T10:00:00",
+      "units": "782"
+     },
+     {
+      "id": "9192f790-f5e2-ba67-cf29-e250f0cc59bf",
+      "kind": "api",
+      "occurred_at": "2026-02-23T10:00:00",
+      "units": "529"
+     },
+     {
+      "id": "97ff176c-7602-3eba-3814-342002a5dbbf",
+      "kind": "api",
+      "occurred_at": "2026-02-21T10:00:00",
+      "units": "585"
+     },
+     {
+      "id": "ecb32cde-91c1-6f61-74f9-2a951276dfde",
+      "kind": "api",
+      "occurred_at": "2026-02-20T10:00:00",
+      "units": "43"
+     },
+     {
+      "id": "5afd1622-df59-045b-ab25-11beca88c575",
+      "kind": "api",
+      "occurred_at": "2026-02-20T10:00:00",
+      "units": "50"
+     },
+     {
+      "id": "7903d72e-fd5d-d251-334f-e4e367dc6c98",
+      "kind": "api",
+      "occurred_at": "2026-02-17T10:00:00",
+      "units": "796"
+     },
+     {
+      "id": "6759f761-e51e-3fb3-ef9b-9f3946733641",
+      "kind": "api",
+      "occurred_at": "2026-02-17T10:00:00",
+      "units": "793"
+     },
+     {
+      "id": "de1b1e21-d27a-6ff5-4d98-3d23386d591a",
+      "kind": "api",
+      "occurred_at": "2026-02-16T10:00:00",
+      "units": "124"
+     },
+     {
+      "id": "81f43daf-f21f-4cf0-ceb5-b72967363e7a",
+      "kind": "compute",
+      "occurred_at": "2026-02-16T10:00:00",
+      "units": "738"
+     },
+     {
+      "id": "a0c4314b-583c-885f-7ecf-801ff5072263",
+      "kind": "api",
+      "occurred_at": "2026-02-14T10:00:00",
+      "units": "317"
+     },
+     {
+      "id": "159a1333-6ac5-206a-af82-b40e69da6fff",
+      "kind": "compute",
+      "occurred_at": "2026-02-11T10:00:00",
+      "units": "432"
+     },
+     {
+      "id": "92726ffb-d22b-4120-881e-866b8a769104",
+      "kind": "api",
+      "occurred_at": "2026-02-09T10:00:00",
+      "units": "354"
+     },
+     {
+      "id": "82f9d1d8-034b-2ce7-46fa-7e56fdeb60dc",
+      "kind": "api",
+      "occurred_at": "2026-02-09T10:00:00",
+      "units": "420"
+     },
+     {
+      "id": "9436ffd9-3fb6-2655-d12f-0a9f991fa22d",
+      "kind": "api",
+      "occurred_at": "2026-02-08T10:00:00",
+      "units": "55"
+     },
+     {
+      "id": "09a51c3f-04c6-0512-348d-eb30329d74c2",
+      "kind": "api",
+      "occurred_at": "2026-02-08T10:00:00",
+      "units": "206"
+     },
+     {
+      "id": "d3841754-c662-9146-4abb-060a5c6a8ac9",
+      "kind": "compute",
+      "occurred_at": "2026-02-05T10:00:00",
+      "units": "551"
+     },
+     {
+      "id": "a0d99325-7fa9-bec4-75d0-b19e17de336c",
+      "kind": "api",
+      "occurred_at": "2026-02-04T10:00:00",
+      "units": "755"
+     },
+     {
+      "id": "f9789dcd-53c5-ce62-a8f4-f9c949fd2fd5",
+      "kind": "compute",
+      "occurred_at": "2026-02-03T10:00:00",
+      "units": "548"
+     },
+     {
+      "id": "9d2c17b3-41bf-1297-9c6e-b17ef563652a",
+      "kind": "api",
+      "occurred_at": "2026-02-03T10:00:00",
+      "units": "166"
+     },
+     {
+      "id": "c9012135-82bc-962b-88fe-035ed3c3a4b0",
+      "kind": "api",
+      "occurred_at": "2026-02-02T10:00:00",
+      "units": "367"
+     },
+     {
+      "id": "857839d2-bfde-9c3e-3ff6-d3a0221162ce",
+      "kind": "compute",
+      "occurred_at": "2026-02-02T10:00:00",
+      "units": "168"
+     },
+     {
+      "id": "6f514022-48a5-c08d-646c-4bef17a5bac6",
+      "kind": "api",
+      "occurred_at": "2026-02-01T10:00:00",
+      "units": "544"
+     }
+    ],
+    "rating": [
+     {
+      "billable_units": "8685",
+      "first_tier_units": "101",
+      "overage_amount": "259.54",
+      "period_end": "2026-02-28",
+      "period_start": "2026-02-01",
+      "quota_units": "2000",
+      "rollover_units": "0",
+      "second_tier_units": "8584",
+      "tenant_id": "5cfa0a67-3708-c9e4-fe22-0f031d531c0d",
+      "used_units": "10685"
+     }
+    ],
+    "summary": [
+     {
+      "event_count": "19",
+      "kind": "api",
+      "units": "7938"
+     },
+     {
+      "event_count": "5",
+      "kind": "compute",
+      "units": "2437"
+     },
+     {
+      "event_count": "1",
+      "kind": "storage",
+      "units": "310"
+     }
+    ]
+   },
+   "location": null,
+   "status": 200
+  },
+  "facade_usage_t4": {
+   "body": {
+    "events": [
+     {
+      "id": "30000000-0000-0000-0000-000000000008",
+      "kind": "storage",
+      "occurred_at": "2026-02-06T10:00:00",
+      "units": "30"
+     },
+     {
+      "id": "30000000-0000-0000-0000-000000000005",
+      "kind": "api",
+      "occurred_at": "2026-02-05T10:00:00",
+      "units": "20"
+     }
+    ],
+    "rating": [
+     {
+      "billable_units": "0",
+      "first_tier_units": "0",
+      "overage_amount": "0",
+      "period_end": "2026-02-28",
+      "period_start": "2026-02-01",
+      "quota_units": "100",
+      "rollover_units": "0",
+      "second_tier_units": "0",
+      "tenant_id": "00000000-0000-0000-0000-000000000004",
+      "used_units": "50"
+     }
+    ],
+    "summary": [
+     {
+      "event_count": "1",
+      "kind": "api",
+      "units": "20"
+     },
+     {
+      "event_count": "1",
+      "kind": "storage",
+      "units": "30"
+     }
+    ]
+   },
+   "location": null,
+   "status": 200
+  },
+  "health": {
+   "body": {
+    "backend": "<backend>",
+    "service": "legacy-billing",
+    "status": "UP"
+   },
+   "location": null,
+   "status": 200
+  },
+  "index_page": {
+   "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <title>Legacy Billing</title>\n  </head>\n  <body>\n    <h1>Legacy Billing</h1>\n    <p>Plans</p>\n    <ul>\n      \n      <li>STARTER \u2014 49 / 100 units</li>\n      \n      <li>GROWTH \u2014 149 / 500 units</li>\n      \n      <li>SCALE \u2014 499 / 2000 units</li>\n      \n    </ul>\n  </body>\n</html>",
+   "location": null,
+   "status": 200
+  },
+  "invoice_lines_missing": {
+   "body": [],
+   "location": null,
+   "status": 200
+  },
+  "invoice_lines_multi": {
+   "body": [
+    {
+     "amount": "149",
+     "description": "GROWTH",
+     "line_no": "1",
+     "line_type": "plan"
+    },
+    {
+     "amount": "12.29",
+     "description": "usage overage",
+     "line_no": "2",
+     "line_type": "usage"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "invoice_preview_mmpfix": {
+   "body": [
+    {
+     "amount": "499",
+     "credit_applied": "0",
+     "description": "SCALE",
+     "line_no": "1",
+     "line_type": "plan",
+     "tax_amount": "0",
+     "total": "499"
+    },
+    {
+     "amount": "259.54",
+     "credit_applied": "0",
+     "description": "usage overage",
+     "line_no": "2",
+     "line_type": "usage",
+     "tax_amount": "0",
+     "total": "259.54"
+    },
+    {
+     "amount": "31.289775",
+     "credit_applied": "0",
+     "description": "regional tax",
+     "line_no": "3",
+     "line_type": "tax",
+     "tax_amount": "0",
+     "total": "31.289775"
+    },
+    {
+     "amount": "31.289775",
+     "credit_applied": "0",
+     "description": "local tax",
+     "line_no": "4",
+     "line_type": "tax",
+     "tax_amount": "0",
+     "total": "31.289775"
+    },
+    {
+     "amount": "0",
+     "credit_applied": "0",
+     "description": "credit notes",
+     "line_no": "5",
+     "line_type": "credit",
+     "tax_amount": "0",
+     "total": "0"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "invoice_preview_t4": {
+   "body": [
+    {
+     "amount": "49",
+     "credit_applied": "0",
+     "description": "STARTER",
+     "line_no": "1",
+     "line_type": "plan",
+     "tax_amount": "0",
+     "total": "49"
+    },
+    {
+     "amount": "0",
+     "credit_applied": "0",
+     "description": "usage overage",
+     "line_no": "2",
+     "line_type": "usage",
+     "tax_amount": "0",
+     "total": "0"
+    },
+    {
+     "amount": "2.02125",
+     "credit_applied": "0",
+     "description": "regional tax",
+     "line_no": "3",
+     "line_type": "tax",
+     "tax_amount": "0",
+     "total": "2.02125"
+    },
+    {
+     "amount": "2.02125",
+     "credit_applied": "0",
+     "description": "local tax",
+     "line_no": "4",
+     "line_type": "tax",
+     "tax_amount": "0",
+     "total": "2.02125"
+    },
+    {
+     "amount": "0",
+     "credit_applied": "53.04",
+     "description": "credit notes",
+     "line_no": "5",
+     "line_type": "credit",
+     "tax_amount": "0",
+     "total": "-53.04"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "invoice_preview_t9": {
+   "body": [
+    {
+     "amount": "49",
+     "credit_applied": "0",
+     "description": "STARTER",
+     "line_no": "1",
+     "line_type": "plan",
+     "tax_amount": "0",
+     "total": "49"
+    },
+    {
+     "amount": "0",
+     "credit_applied": "0",
+     "description": "usage overage",
+     "line_no": "2",
+     "line_type": "usage",
+     "tax_amount": "0",
+     "total": "0"
+    },
+    {
+     "amount": "2.02125",
+     "credit_applied": "0",
+     "description": "regional tax",
+     "line_no": "3",
+     "line_type": "tax",
+     "tax_amount": "0",
+     "total": "2.02125"
+    },
+    {
+     "amount": "2.02125",
+     "credit_applied": "0",
+     "description": "local tax",
+     "line_no": "4",
+     "line_type": "tax",
+     "tax_amount": "0",
+     "total": "2.02125"
+    },
+    {
+     "amount": "0",
+     "credit_applied": "53.04",
+     "description": "credit notes",
+     "line_no": "5",
+     "line_type": "credit",
+     "tax_amount": "0",
+     "total": "-53.04"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "overdue_feb": {
+   "body": [
+    {
+     "days_overdue": "27",
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "tenant_id": "00000000-0000-0000-0000-000000000002",
+     "tenant_status": "suspended",
+     "total": "161.29"
+    },
+    {
+     "days_overdue": "15",
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "tenant_id": "00000000-0000-0000-0000-000000000005",
+     "tenant_status": "active",
+     "total": "161.29"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "overdue_mar": {
+   "body": [
+    {
+     "days_overdue": "58",
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "tenant_id": "00000000-0000-0000-0000-000000000002",
+     "tenant_status": "suspended",
+     "total": "161.29"
+    },
+    {
+     "days_overdue": "46",
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "tenant_id": "00000000-0000-0000-0000-000000000005",
+     "tenant_status": "active",
+     "total": "161.29"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "plans": {
+   "body": [
+    {
+     "code": "STARTER",
+     "included_units": "100",
+     "monthly_fee": "49",
+     "overage_rate": "0.055",
+     "plan_id": "10000000-0000-0000-0000-000000000001",
+     "tier": "starter"
+    },
+    {
+     "code": "GROWTH",
+     "included_units": "500",
+     "monthly_fee": "149",
+     "overage_rate": "0.035",
+     "plan_id": "10000000-0000-0000-0000-000000000002",
+     "tier": "growth"
+    },
+    {
+     "code": "SCALE",
+     "included_units": "2000",
+     "monthly_fee": "499",
+     "overage_rate": "0.02",
+     "plan_id": "10000000-0000-0000-0000-000000000003",
+     "tier": "scale"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "rating_preview_mmpfix": {
+   "body": [
+    {
+     "billable_units": "8685",
+     "first_tier_units": "101",
+     "overage_amount": "259.54",
+     "period_end": "2026-02-28",
+     "period_start": "2026-02-01",
+     "quota_units": "2000",
+     "rollover_units": "0",
+     "second_tier_units": "8584",
+     "tenant_id": "5cfa0a67-3708-c9e4-fe22-0f031d531c0d",
+     "used_units": "10685"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "rating_preview_t4": {
+   "body": [
+    {
+     "billable_units": "0",
+     "first_tier_units": "0",
+     "overage_amount": "0",
+     "period_end": "2026-02-28",
+     "period_start": "2026-02-01",
+     "quota_units": "100",
+     "rollover_units": "0",
+     "second_tier_units": "0",
+     "tenant_id": "00000000-0000-0000-0000-000000000004",
+     "used_units": "50"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "report_month_end": {
+   "body": {
+    "batch_no": 86775546,
+    "by_status": [
+     {
+      "header_total_amt": "56283508.80",
+      "invoice_count": "5603",
+      "status": "issued"
+     },
+     {
+      "header_total_amt": "27551113.69",
+      "invoice_count": "2804",
+      "status": "overdue"
+     },
+     {
+      "header_total_amt": "104313230.44",
+      "invoice_count": "10343",
+      "status": "paid"
+     }
+    ],
+    "by_status_line_type": [
+     {
+      "invoices_touched": "4091",
+      "line_amount": "90158030.96",
+      "line_count": "7384",
+      "line_tax": "7438037.30",
+      "line_type": "ADJUSTMENT",
+      "status": "issued"
+     },
+     {
+      "invoices_touched": "5501",
+      "line_amount": "275999822.91",
+      "line_count": "22333",
+      "line_tax": "22769985.31",
+      "line_type": "CHARGE",
+      "status": "issued"
+     },
+     {
+      "invoices_touched": "4155",
+      "line_amount": "92766422.14",
+      "line_count": "7526",
+      "line_tax": "7653229.77",
+      "line_type": "CREDIT",
+      "status": "issued"
+     },
+     {
+      "invoices_touched": "4165",
+      "line_amount": "93158642.13",
+      "line_count": "7524",
+      "line_tax": "7685587.95",
+      "line_type": "MISC",
+      "status": "issued"
+     },
+     {
+      "invoices_touched": "2093",
+      "line_amount": "47611060.97",
+      "line_count": "3808",
+      "line_tax": "3927912.74",
+      "line_type": "ADJUSTMENT",
+      "status": "overdue"
+     },
+     {
+      "invoices_touched": "2745",
+      "line_amount": "138310689.86",
+      "line_count": "11042",
+      "line_tax": "11410632.24",
+      "line_type": "CHARGE",
+      "status": "overdue"
+     },
+     {
+      "invoices_touched": "2075",
+      "line_amount": "48674170.02",
+      "line_count": "3863",
+      "line_tax": "4015618.88",
+      "line_type": "CREDIT",
+      "status": "overdue"
+     },
+     {
+      "invoices_touched": "2065",
+      "line_amount": "46039311.88",
+      "line_count": "3678",
+      "line_tax": "3798243.69",
+      "line_type": "MISC",
+      "status": "overdue"
+     },
+     {
+      "invoices_touched": "7613",
+      "line_amount": "173523959.22",
+      "line_count": "13849",
+      "line_tax": "14315726.60",
+      "line_type": "ADJUSTMENT",
+      "status": "paid"
+     },
+     {
+      "invoices_touched": "10151",
+      "line_amount": "517569300.25",
+      "line_count": "41525",
+      "line_tax": "42699467.36",
+      "line_type": "CHARGE",
+      "status": "paid"
+     },
+     {
+      "invoices_touched": "7629",
+      "line_amount": "169828311.67",
+      "line_count": "13796",
+      "line_tax": "14010835.50",
+      "line_type": "CREDIT",
+      "status": "paid"
+     },
+     {
+      "invoices_touched": "7564",
+      "line_amount": "168305194.66",
+      "line_count": "13635",
+      "line_tax": "13885178.85",
+      "line_type": "MISC",
+      "status": "paid"
+     }
+    ],
+    "generated_at": "<stamp>",
+    "namespace": "mmpfix",
+    "report": "month-end-finance",
+    "source": "<engine source>"
+   },
+   "location": null,
+   "status": 200
+  },
+  "report_month_end_admin": {
+   "body": {
+    "batch_no": 86775546,
+    "by_status": [
+     {
+      "header_total_amt": "56283508.80",
+      "invoice_count": "5603",
+      "status": "issued"
+     },
+     {
+      "header_total_amt": "27551113.69",
+      "invoice_count": "2804",
+      "status": "overdue"
+     },
+     {
+      "header_total_amt": "104313230.44",
+      "invoice_count": "10343",
+      "status": "paid"
+     }
+    ],
+    "by_status_line_type": [
+     {
+      "invoices_touched": "4091",
+      "line_amount": "90158030.96",
+      "line_count": "7384",
+      "line_tax": "7438037.30",
+      "line_type": "ADJUSTMENT",
+      "status": "issued"
+     },
+     {
+      "invoices_touched": "5501",
+      "line_amount": "275999822.91",
+      "line_count": "22333",
+      "line_tax": "22769985.31",
+      "line_type": "CHARGE",
+      "status": "issued"
+     },
+     {
+      "invoices_touched": "4155",
+      "line_amount": "92766422.14",
+      "line_count": "7526",
+      "line_tax": "7653229.77",
+      "line_type": "CREDIT",
+      "status": "issued"
+     },
+     {
+      "invoices_touched": "4165",
+      "line_amount": "93158642.13",
+      "line_count": "7524",
+      "line_tax": "7685587.95",
+      "line_type": "MISC",
+      "status": "issued"
+     },
+     {
+      "invoices_touched": "2093",
+      "line_amount": "47611060.97",
+      "line_count": "3808",
+      "line_tax": "3927912.74",
+      "line_type": "ADJUSTMENT",
+      "status": "overdue"
+     },
+     {
+      "invoices_touched": "2745",
+      "line_amount": "138310689.86",
+      "line_count": "11042",
+      "line_tax": "11410632.24",
+      "line_type": "CHARGE",
+      "status": "overdue"
+     },
+     {
+      "invoices_touched": "2075",
+      "line_amount": "48674170.02",
+      "line_count": "3863",
+      "line_tax": "4015618.88",
+      "line_type": "CREDIT",
+      "status": "overdue"
+     },
+     {
+      "invoices_touched": "2065",
+      "line_amount": "46039311.88",
+      "line_count": "3678",
+      "line_tax": "3798243.69",
+      "line_type": "MISC",
+      "status": "overdue"
+     },
+     {
+      "invoices_touched": "7613",
+      "line_amount": "173523959.22",
+      "line_count": "13849",
+      "line_tax": "14315726.60",
+      "line_type": "ADJUSTMENT",
+      "status": "paid"
+     },
+     {
+      "invoices_touched": "10151",
+      "line_amount": "517569300.25",
+      "line_count": "41525",
+      "line_tax": "42699467.36",
+      "line_type": "CHARGE",
+      "status": "paid"
+     },
+     {
+      "invoices_touched": "7629",
+      "line_amount": "169828311.67",
+      "line_count": "13796",
+      "line_tax": "14010835.50",
+      "line_type": "CREDIT",
+      "status": "paid"
+     },
+     {
+      "invoices_touched": "7564",
+      "line_amount": "168305194.66",
+      "line_count": "13635",
+      "line_tax": "13885178.85",
+      "line_type": "MISC",
+      "status": "paid"
+     }
+    ],
+    "generated_at": "<stamp>",
+    "namespace": "mmpfix",
+    "report": "month-end-finance",
+    "source": "<engine source>"
+   },
+   "location": null,
+   "status": 200
+  },
+  "report_month_end_empty_ns": {
+   "body": {
+    "batch_no": 17603865,
+    "by_status": [],
+    "by_status_line_type": [],
+    "generated_at": "<stamp>",
+    "namespace": "nosuchns",
+    "report": "month-end-finance",
+    "source": "<engine source>"
+   },
+   "location": null,
+   "status": 200
+  },
+  "report_reconciliation": {
+   "body": {
+    "balances": {
+     "current_balance_total": "39022544.01",
+     "customer_count": "25000",
+     "past_due_total": "7656676.56"
+    },
+    "batch_no": 86775546,
+    "checks": [],
+    "generated_at": "<stamp>",
+    "namespace": "mmpfix",
+    "source": "<engine source>",
+    "status": "baseline"
+   },
+   "location": null,
+   "status": 200
+  },
+  "report_reconciliation_admin": {
+   "body": {
+    "balances": {
+     "current_balance_total": "39022544.01",
+     "customer_count": "25000",
+     "past_due_total": "7656676.56"
+    },
+    "batch_no": 86775546,
+    "checks": [],
+    "generated_at": "<stamp>",
+    "namespace": "mmpfix",
+    "source": "<engine source>",
+    "status": "baseline"
+   },
+   "location": null,
+   "status": 200
+  }
+ },
+ "recorded_utc": "2026-09-29T19:45:28Z",
+ "source": "synthetic Oracle fixture (.migration/fixtures/oracle-mmpfix.manifest.json), scratch copy",
+ "write": {
+  "dunning_after_schedule": {
+   "body": [
+    {
+     "attempt_no": "2",
+     "id": "bdeccf71-00a7-7207-c613-a30b243c2176",
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "scheduled_for": "2026-03-20",
+     "status": "scheduled",
+     "tenant_id": "00000000-0000-0000-0000-000000000002"
+    },
+    {
+     "attempt_no": "3",
+     "id": "70e0e4d2-99b7-47b3-9a09-37a6cc57dde0",
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-03-20",
+     "status": "scheduled",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    },
+    {
+     "attempt_no": "2",
+     "id": "6118c817-d22e-6eb3-832a-96f21a646a7a",
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-03-20",
+     "status": "scheduled",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    },
+    {
+     "attempt_no": "1",
+     "id": "35737ff3-1220-b903-45dc-e4051972899b",
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "scheduled_for": "2026-03-20",
+     "status": "scheduled",
+     "tenant_id": "00000000-0000-0000-0000-000000000002"
+    },
+    {
+     "attempt_no": "1",
+     "id": "80000000-0000-0000-0000-000000000001",
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16",
+     "status": "sent",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "entitlement_after_form_change": {
+   "body": [
+    {
+     "effective_on": "2099-01-01",
+     "included_units": "500",
+     "monthly_fee": "149",
+     "plan_code": "GROWTH",
+     "subscription_status": "active",
+     "tenant_id": "00000000-0000-0000-0000-000000000001",
+     "tier": "growth"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "entitlement_after_same_day": {
+   "body": [
+    {
+     "effective_on": "2099-01-01",
+     "included_units": "2000",
+     "monthly_fee": "499",
+     "plan_code": "SCALE",
+     "subscription_status": "active",
+     "tenant_id": "00000000-0000-0000-0000-000000000001",
+     "tier": "scale"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "facade_me_new_tenant": {
+   "body": {
+    "customer": null,
+    "entitlement": [
+     {
+      "effective_on": "2099-04-01",
+      "included_units": "500",
+      "monthly_fee": "149",
+      "plan_code": "GROWTH",
+      "subscription_status": "active",
+      "tenant_id": "b4000000-0000-0000-0000-00000000u4ab",
+      "tier": "growth"
+     }
+    ],
+    "name": "new.tenant@example.test",
+    "status": "active",
+    "tax_exempt": "N",
+    "tenant_id": "b4000000-0000-0000-0000-00000000u4ab"
+   },
+   "location": null,
+   "status": 200
+  },
+  "facade_plan_change": {
+   "body": {
+    "entitlement": [
+     {
+      "effective_on": "2099-03-01",
+      "included_units": "2000",
+      "monthly_fee": "499",
+      "plan_code": "SCALE",
+      "subscription_status": "active",
+      "tenant_id": "00000000-0000-0000-0000-000000000002",
+      "tier": "scale"
+     }
+    ],
+    "status": "changed"
+   },
+   "location": null,
+   "status": 200
+  },
+  "facade_plan_change_new_tenant": {
+   "body": {
+    "entitlement": [
+     {
+      "effective_on": "2099-04-01",
+      "included_units": "500",
+      "monthly_fee": "149",
+      "plan_code": "GROWTH",
+      "subscription_status": "active",
+      "tenant_id": "b4000000-0000-0000-0000-00000000u4ab",
+      "tier": "growth"
+     }
+    ],
+    "status": "changed"
+   },
+   "location": null,
+   "status": 200
+  },
+  "facade_plan_change_unknown_plan": {
+   "body": {
+    "detail": "plan_id is not a known billing plan",
+    "error": "invalid plan change"
+   },
+   "location": null,
+   "status": 400
+  },
+  "finalize_t4": {
+   "body": {
+    "status": "finalized"
+   },
+   "location": null,
+   "status": 200
+  },
+  "finalize_t4_again": {
+   "body": {
+    "status": "finalized"
+   },
+   "location": null,
+   "status": 200
+  },
+  "invoices_t3_after_issue": {
+   "body": [
+    {
+     "invoice_id": "a4ef6e84-14d9-3de7-292e-8276687bef7a",
+     "period_end": "2026-02-28",
+     "period_start": "2026-02-01",
+     "status": "issued",
+     "subtotal": "504.02",
+     "tax": "0",
+     "total": "479.02"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "invoices_t4_after_issue": {
+   "body": [
+    {
+     "invoice_id": "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+     "period_end": "2026-02-28",
+     "period_start": "2026-02-01",
+     "status": "issued",
+     "subtotal": "49",
+     "tax": "4.04",
+     "total": "46.08"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "invoices_t9_after_issue": {
+   "body": [
+    {
+     "invoice_id": "f947416b-6478-ac32-911a-12ca7f03a6fb",
+     "period_end": "2026-02-28",
+     "period_start": "2026-02-01",
+     "status": "issued",
+     "subtotal": "49",
+     "tax": "4.04",
+     "total": "0"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "issue_t3": {
+   "body": {
+    "status": "issued"
+   },
+   "location": null,
+   "status": 200
+  },
+  "issue_t4": {
+   "body": {
+    "status": "issued"
+   },
+   "location": null,
+   "status": 200
+  },
+  "issue_t4_again": {
+   "body": {
+    "status": "issued"
+   },
+   "location": null,
+   "status": 200
+  },
+  "issue_t9": {
+   "body": {
+    "status": "issued"
+   },
+   "location": null,
+   "status": 200
+  },
+  "me_t5_after_suspend": {
+   "body": {
+    "customer": null,
+    "entitlement": [
+     {
+      "effective_on": "2026-04-30",
+      "included_units": "500",
+      "monthly_fee": "149",
+      "plan_code": "GROWTH",
+      "subscription_status": "suspended",
+      "tenant_id": "00000000-0000-0000-0000-000000000005",
+      "tier": "growth"
+     }
+    ],
+    "name": "Tenant Five",
+    "status": "suspended",
+    "tax_exempt": "N",
+    "tenant_id": "00000000-0000-0000-0000-000000000005"
+   },
+   "location": null,
+   "status": 200
+  },
+  "overdue_after_suspend": {
+   "body": [
+    {
+     "days_overdue": "88",
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "tenant_id": "00000000-0000-0000-0000-000000000002",
+     "tenant_status": "suspended",
+     "total": "161.29"
+    },
+    {
+     "days_overdue": "76",
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "tenant_id": "00000000-0000-0000-0000-000000000005",
+     "tenant_status": "suspended",
+     "total": "161.29"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "plan_change_form": {
+   "body": "<!doctype html>\n<html lang=en>\n<title>Redirecting...</title>\n<h1>Redirecting...</h1>\n<p>You should be redirected automatically to the target URL: <a href=\"/plans/00000000-0000-0000-0000-000000000001/entitlement?on=2099-01-01\">/plans/00000000-0000-0000-0000-000000000001/entitlement?on=2099-01-01</a>. If not, click the link.\n",
+   "location": "/plans/00000000-0000-0000-0000-000000000001/entitlement?on=2099-01-01",
+   "status": 302
+  },
+  "plan_change_same_day": {
+   "body": "<!doctype html>\n<html lang=en>\n<title>Redirecting...</title>\n<h1>Redirecting...</h1>\n<p>You should be redirected automatically to the target URL: <a href=\"/plans/00000000-0000-0000-0000-000000000001/entitlement?on=2099-01-01\">/plans/00000000-0000-0000-0000-000000000001/entitlement?on=2099-01-01</a>. If not, click the link.\n",
+   "location": "/plans/00000000-0000-0000-0000-000000000001/entitlement?on=2099-01-01",
+   "status": 302
+  },
+  "preview_t4_after_credit": {
+   "body": [
+    {
+     "amount": "49",
+     "credit_applied": "0",
+     "description": "STARTER",
+     "line_no": "1",
+     "line_type": "plan",
+     "tax_amount": "0",
+     "total": "49"
+    },
+    {
+     "amount": "0",
+     "credit_applied": "0",
+     "description": "usage overage",
+     "line_no": "2",
+     "line_type": "usage",
+     "tax_amount": "0",
+     "total": "0"
+    },
+    {
+     "amount": "2.02125",
+     "credit_applied": "0",
+     "description": "regional tax",
+     "line_no": "3",
+     "line_type": "tax",
+     "tax_amount": "0",
+     "total": "2.02125"
+    },
+    {
+     "amount": "2.02125",
+     "credit_applied": "0",
+     "description": "local tax",
+     "line_no": "4",
+     "line_type": "tax",
+     "tax_amount": "0",
+     "total": "2.02125"
+    },
+    {
+     "amount": "0",
+     "credit_applied": "0",
+     "description": "credit notes",
+     "line_no": "5",
+     "line_type": "credit",
+     "tax_amount": "0",
+     "total": "0"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "rating_after_event": {
+   "body": [
+    {
+     "billable_units": "200",
+     "first_tier_units": "101",
+     "overage_amount": "13.72",
+     "period_end": "2026-02-28",
+     "period_start": "2026-02-01",
+     "quota_units": "100",
+     "rollover_units": "0",
+     "second_tier_units": "99",
+     "tenant_id": "00000000-0000-0000-0000-000000000004",
+     "used_units": "300"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "rating_after_finalize": {
+   "body": [
+    {
+     "billable_units": "0",
+     "first_tier_units": "0",
+     "overage_amount": "0",
+     "period_end": "2026-02-28",
+     "period_start": "2026-02-01",
+     "quota_units": "100",
+     "rollover_units": "0",
+     "second_tier_units": "0",
+     "tenant_id": "00000000-0000-0000-0000-000000000004",
+     "used_units": "50"
+    }
+   ],
+   "location": null,
+   "status": 200
+  },
+  "schedule_dunning": {
+   "body": {
+    "status": "scheduled"
+   },
+   "location": null,
+   "status": 200
+  },
+  "schedule_dunning_again": {
+   "body": {
+    "status": "scheduled"
+   },
+   "location": null,
+   "status": 200
+  },
+  "suspend_overdue": {
+   "body": {
+    "status": "suspended"
+   },
+   "location": null,
+   "status": 200
+  },
+  "suspend_overdue_again": {
+   "body": {
+    "status": "suspended"
+   },
+   "location": null,
+   "status": 200
+  },
+  "usage_after_event": {
+   "body": {
+    "events": [
+     {
+      "id": "9a000000-0000-4000-8000-000000000001",
+      "kind": "compute",
+      "occurred_at": "2026-02-14T09:30:59",
+      "units": "250"
+     },
+     {
+      "id": "30000000-0000-0000-0000-000000000008",
+      "kind": "storage",
+      "occurred_at": "2026-02-06T10:00:00",
+      "units": "30"
+     },
+     {
+      "id": "30000000-0000-0000-0000-000000000005",
+      "kind": "api",
+      "occurred_at": "2026-02-05T10:00:00",
+      "units": "20"
+     }
+    ],
+    "rating": [
+     {
+      "billable_units": "200",
+      "first_tier_units": "101",
+      "overage_amount": "13.72",
+      "period_end": "2026-02-28",
+      "period_start": "2026-02-01",
+      "quota_units": "100",
+      "rollover_units": "0",
+      "second_tier_units": "99",
+      "tenant_id": "00000000-0000-0000-0000-000000000004",
+      "used_units": "300"
+     }
+    ],
+    "summary": [
+     {
+      "event_count": "1",
+      "kind": "api",
+      "units": "20"
+     },
+     {
+      "event_count": "1",
+      "kind": "compute",
+      "units": "250"
+     },
+     {
+      "event_count": "1",
+      "kind": "storage",
+      "units": "30"
+     }
+    ]
+   },
+   "location": null,
+   "status": 200
+  },
+  "usage_event_duplicate": {
+   "body": {
+    "status": "duplicate"
+   },
+   "location": null,
+   "status": 200
+  },
+  "usage_event_new_tenant": {
+   "body": {
+    "status": "recorded"
+   },
+   "location": null,
+   "status": 201
+  },
+  "usage_event_record": {
+   "body": {
+    "status": "recorded"
+   },
+   "location": null,
+   "status": 201
+  }
+ }
+}

@@ -16,6 +16,7 @@ import oracledb
 from bson import Decimal128
 from bson.int64 import Int64
 from pymongo import MongoClient, ReplaceOne
+from recon.adapters import parse_oracle_secret
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = REPO_ROOT / ".migration" / "03_mapping_spec.json"
@@ -178,9 +179,9 @@ def build_root_docs(coll, rows, embeds=None):
             grouped.setdefault(tuple(child[k] for k in embed["parent_key"]), []).append(
                 child
             )
-        parent_keys = set(embed["parent_ref"])
+        parent_refs = embed["parent_ref"]
         for doc, row in zip(docs, rows):
-            ref = tuple(row[k] for k in parent_keys)
+            ref = tuple(row[k] for k in parent_refs)
             elements = []
             for child in sorted(
                 grouped.get(ref, []),
@@ -196,7 +197,7 @@ def build_root_docs(coll, rows, embeds=None):
                 elements.append(element)
             doc[array_path] = elements
         orphaned = set(grouped) - {
-            tuple(row[k] for k in parent_keys) for row in rows
+            tuple(row[k] for k in parent_refs) for row in rows
         }
         if orphaned:
             raise ValueError(
@@ -242,7 +243,6 @@ def write_collection(db, coll_name, docs, indexes, allowed_targets):
         coll.create_index(
             list(index["keys"].items()),
             unique=index.get("unique", False),
-            background=True,
         )
     return {
         "upserted": upserted,
@@ -258,8 +258,6 @@ def fetch_dicts(cursor):
 
 
 def connect_source(env_name):
-    from recon.adapters import parse_oracle_secret
-
     oracledb.defaults.fetch_decimals = True
     user, password, dsn = parse_oracle_secret(os.environ[env_name])
     return oracledb.connect(user=user, password=password, dsn=dsn)

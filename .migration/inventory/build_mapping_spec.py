@@ -111,7 +111,7 @@ def main():
         "fields": fields(cols["CUSTOMER_MASTER"], {"CUST_ID"}),
         "embeds": [{
             "array_path": "attributes", "shape": "array", "child_table": "ENTITY_ATTR_VALUE",
-            "child_where": "entity_type = 'CUSTOMER'",
+            "child_where": "entity_type = 'CUSTOMER'", "target_where": "{}",
             "parent_key": ["ENTITY_ID"], "parent_ref": ["CUST_ID"],
             "key": {"source": ["EAV_ID"], "target": "eav_id"},
             "fields": fields(cols["ENTITY_ATTR_VALUE"], {"EAV_ID", "ENTITY_TYPE", "ENTITY_ID"}),
@@ -131,7 +131,7 @@ def main():
         "fields": fields(cols["INVOICE_HEADER"], {"INVOICE_ID"}),
         "embeds": [{
             "array_path": "lines", "shape": "array", "child_table": "INVOICE_LINE",
-            "child_where": LINE_HAS_HEADER,
+            "child_where": LINE_HAS_HEADER, "target_where": "{}",
             "parent_key": ["INVOICE_ID"], "parent_ref": ["INVOICE_ID"],
             "key": {"source": ["LINE_ID"], "target": "line_id"},
             "fields": fields(cols["INVOICE_LINE"], {"LINE_ID"} | LINE_PARENT_COLUMNS),
@@ -145,7 +145,7 @@ def main():
     })
     coll.append({
         "collection": "quarantine_invoice_line", "root_table": "INVOICE_LINE", "unit": "U2-invoices",
-        "root_where": LINE_ORPHAN,
+        "root_where": LINE_ORPHAN, "target_where": "{}",
         "key": {"source": ["LINE_ID"], "target": "_id"},
         "fields": fields(cols["INVOICE_LINE"], {"LINE_ID"}),
         "quarantine": {"reason": "orphan_invoice_id", "expected_rows": 37,

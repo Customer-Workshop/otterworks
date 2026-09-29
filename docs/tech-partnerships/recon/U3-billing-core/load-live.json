@@ -1,0 +1,93 @@
+{
+  "bulk": {
+    "billing_audit_log": {
+      "deleted": 0,
+      "matched": 0,
+      "modified": 0,
+      "upserted": 0
+    },
+    "billing_invoices": {
+      "deleted": 0,
+      "matched": 3,
+      "modified": 0,
+      "upserted": 0
+    },
+    "credit_notes": {
+      "deleted": 0,
+      "matched": 5,
+      "modified": 0,
+      "upserted": 0
+    },
+    "dunning_attempts": {
+      "deleted": 0,
+      "matched": 1,
+      "modified": 0,
+      "upserted": 0
+    },
+    "notifications": {
+      "deleted": 0,
+      "matched": 1,
+      "modified": 0,
+      "upserted": 0
+    },
+    "rating_periods": {
+      "deleted": 0,
+      "matched": 3,
+      "modified": 0,
+      "upserted": 0
+    },
+    "rating_results": {
+      "deleted": 0,
+      "matched": 3,
+      "modified": 0,
+      "upserted": 0
+    },
+    "subscriptions": {
+      "deleted": 0,
+      "matched": 69,
+      "modified": 0,
+      "upserted": 0
+    },
+    "subscriptions_hist": {
+      "deleted": 0,
+      "matched": 0,
+      "modified": 0,
+      "upserted": 0
+    },
+    "usage_events": {
+      "deleted": 0,
+      "matched": 814,
+      "modified": 0,
+      "upserted": 0
+    }
+  },
+  "doc_counts": {
+    "billing_audit_log": 0,
+    "billing_invoices": 3,
+    "credit_notes": 5,
+    "dunning_attempts": 1,
+    "notifications": 1,
+    "rating_periods": 3,
+    "rating_results": 3,
+    "subscriptions": 69,
+    "subscriptions_hist": 0,
+    "usage_events": 814
+  },
+  "finished_utc": "2026-09-29T19:05:29Z",
+  "mode": "live",
+  "source_counts": {
+    "billing_audit_log": 0,
+    "credit_notes": 5,
+    "dunning_attempts": 1,
+    "invoice_lines": 2,
+    "invoices": 3,
+    "notifications": 1,
+    "rating_periods": 3,
+    "rating_results": 3,
+    "subscriptions": 69,
+    "subscriptions_hist": 0,
+    "usage_events": 814
+  },
+  "started_utc": "2026-09-29T19:05:20Z",
+  "unit": "U3-billing-core"
+}

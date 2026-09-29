@@ -1,0 +1,239 @@
+{
+  "checks": [
+    {
+      "actual": 3,
+      "expected": 3,
+      "id": "tier1.counts_through_mapping.billing_invoices",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 2,
+      "expected": 2,
+      "id": "tier1.embedded_count.billing_invoices.lines",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 10,
+      "expected": 10,
+      "id": "tier2.per_field_aggregates.billing_invoices",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.billing_invoices",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 69,
+      "expected": 69,
+      "id": "tier1.counts_through_mapping.subscriptions",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 9,
+      "expected": 9,
+      "id": "tier2.per_field_aggregates.subscriptions",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.subscriptions",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier1.counts_through_mapping.subscriptions_hist",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 19,
+      "expected": 19,
+      "id": "tier2.per_field_aggregates.subscriptions_hist",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.subscriptions_hist",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 814,
+      "expected": 814,
+      "id": "tier1.counts_through_mapping.usage_events",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 4,
+      "expected": 4,
+      "id": "tier2.per_field_aggregates.usage_events",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.usage_events",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 3,
+      "expected": 3,
+      "id": "tier1.counts_through_mapping.rating_periods",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 5,
+      "expected": 5,
+      "id": "tier2.per_field_aggregates.rating_periods",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.rating_periods",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 3,
+      "expected": 3,
+      "id": "tier1.counts_through_mapping.rating_results",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 8,
+      "expected": 8,
+      "id": "tier2.per_field_aggregates.rating_results",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.rating_results",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 5,
+      "expected": 5,
+      "id": "tier1.counts_through_mapping.credit_notes",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 6,
+      "expected": 6,
+      "id": "tier2.per_field_aggregates.credit_notes",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.credit_notes",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 1,
+      "expected": 1,
+      "id": "tier1.counts_through_mapping.dunning_attempts",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 7,
+      "expected": 7,
+      "id": "tier2.per_field_aggregates.dunning_attempts",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.dunning_attempts",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 1,
+      "expected": 1,
+      "id": "tier1.counts_through_mapping.notifications",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 4,
+      "expected": 4,
+      "id": "tier2.per_field_aggregates.notifications",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.notifications",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier1.counts_through_mapping.billing_audit_log",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 7,
+      "expected": 7,
+      "id": "tier2.per_field_aggregates.billing_audit_log",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "tier3.keyed_diffs.billing_audit_log",
+      "result": "pass",
+      "source_of_truth": "oracle OW_BILLING"
+    }
+  ],
+  "generated_at": "2026-09-29T19:06:06Z",
+  "idempotency_rerun": {
+    "evidence": "rerun bulk {\"billing_audit_log\": {\"deleted\": 0, \"matched\": 0, \"modified\": 0, \"upserted\": 0}, \"billing_invoices\": {\"deleted\": 0, \"matched\": 3, \"modified\": 0, \"upserted\": 0}, \"credit_notes\": {\"deleted\": 0, \"matched\": 5, \"modified\": 0, \"upserted\": 0}, \"dunning_attempts\": {\"deleted\": 0, \"matched\": 1, \"modified\": 0, \"upserted\": 0}, \"notifications\": {\"deleted\": 0, \"matched\": 1, \"modified\": 0, \"upserted\": 0}, \"rating_periods\": {\"deleted\": 0, \"matched\": 3, \"modified\": 0, \"upserted\": 0}, \"rating_results\": {\"deleted\": 0, \"matched\": 3, \"modified\": 0, \"upserted\": 0}, \"subscriptions\": {\"deleted\": 0, \"matched\": 69, \"modified\": 0, \"upserted\": 0}, \"subscriptions_hist\": {\"deleted\": 0, \"matched\": 0, \"modified\": 0, \"upserted\": 0}, \"usage_events\": {\"deleted\": 0, \"matched\": 814, \"modified\": 0, \"upserted\": 0}}; recon verdict PASS",
+    "performed": true,
+    "result": "pass"
+  },
+  "kind": "recon-report",
+  "namespace": "ow_tp_mmp_live",
+  "planted_anomaly_detections": {
+    "actual_set": [],
+    "expected_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "run_mode": "live",
+  "unit": "U3-billing-core",
+  "unverified_paths": [],
+  "values_recomputed_from_target": true
+}

@@ -113,8 +113,7 @@ def main():
         "fields": fields(cols["CUSTOMER_MASTER"], {"CUST_ID"}),
         "embeds": [{
             "array_path": "attributes", "shape": "array", "child_table": "ENTITY_ATTR_VALUE",
-            "child_where": "entity_type = 'CUSTOMER'", "target_where": "{}",
-            "parent_key": ["ENTITY_ID"], "parent_ref": ["CUST_ID"],
+                        "parent_key": ["ENTITY_ID"], "parent_ref": ["CUST_ID"],
             "key": {"source": ["EAV_ID"], "target": "eav_id"},
             "fields": fields(cols["ENTITY_ATTR_VALUE"], {"EAV_ID", "ENTITY_TYPE", "ENTITY_ID"}),
             "order_by": ["eav_id"], "cardinality": "1:N bounded", "max_observed": 5,

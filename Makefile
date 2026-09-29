@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record demo-up demo-migrate demo-destroy demo-verify-clean demo-reaper incident-up incident-down incident-arm incident-disarm incident-status incident-verify incident-load incident-seed incident-simulate incident-fingerprint incident-record incident-reset-fixture incident-chart-sync incident-chart-check arm disarm
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record demo-up demo-migrate demo-destroy demo-verify-clean demo-reaper ticketing-reset ticketing-status ticketing-before incident-up incident-down incident-arm incident-disarm incident-status incident-verify incident-load incident-seed incident-simulate incident-fingerprint incident-record incident-reset-fixture incident-chart-sync incident-chart-check arm disarm
 
 SHELL := /bin/bash
 
@@ -451,12 +451,24 @@ demo-migrate: ## Run the staged migration Jobs for NS=<token> RUN_ID=<id>; strea
 	@bash -c 'set -euo pipefail; source scripts/lib/demo-common.sh; start_transcript "$(NS)" "migrate-$(RUN_ID)"; demo_migrate "$(NS)" "$(RUN_ID)"'
 
 demo-destroy: ## Destroy everything for NS=<token> (Azure + Helm + tenant + S3 + demo-aws) and verify nothing tagged remains
-	$(call demo_require_ns,demo-destroy)
-	./scripts/demo-destroy.sh $(NS) $(if $(filter 1,$(DRY_RUN)),--dry-run,)
+	$(if $(filter tkt%,$(NS)),@test -n "$(NS)",$(call demo_require_ns,demo-destroy))
+	$(if $(filter tkt%,$(NS)),./ticketing/scripts/destroy.sh $(NS),./scripts/demo-destroy.sh $(NS)) $(if $(filter 1,$(DRY_RUN)),--dry-run,)
 
 demo-verify-clean: ## Exit 0 iff no AWS/Azure resource tagged namespace=NS and no otterworks-NS namespace remain
 	$(call demo_require_ns,demo-verify-clean)
 	./scripts/demo-destroy.sh verify $(NS)
+
+ticketing-reset: ## Ticketing demo: rebuild both namespaces for NS=<tkt token> and re-seed (one command)
+	@echo "$(NS)" | grep -Eq '^tkt[a-z0-9]{1,12}$$' || (echo "NS='$(NS)' must be a ticketing run token matching ^tkt[a-z0-9]{1,12}$$" >&2; exit 2)
+	./ticketing/scripts/reset.sh $(NS)
+
+ticketing-status: ## Ticketing demo: replica counts at rest for NS=<tkt token>
+	@echo "$(NS)" | grep -Eq '^tkt[a-z0-9]{1,12}$$' || (echo "NS='$(NS)' must be a ticketing run token matching ^tkt[a-z0-9]{1,12}$$" >&2; exit 2)
+	./ticketing/scripts/status.sh $(NS)
+
+ticketing-before: ## Ticketing demo: deploy only the before namespace (monolith, 1 replica) for NS=<tkt token>
+	@echo "$(NS)" | grep -Eq '^tkt[a-z0-9]{1,12}$$' || (echo "NS='$(NS)' must be a ticketing run token matching ^tkt[a-z0-9]{1,12}$$" >&2; exit 2)
+	./ticketing/scripts/deploy-before.sh $(NS)
 
 demo-reaper: ## Report (default) or destroy (APPLY=1) expired demo namespaces across AWS, Azure and the cluster
 	./scripts/demo-reaper.sh $(if $(filter 1,$(APPLY)),--apply,--dry-run)

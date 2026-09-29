@@ -1,0 +1,14 @@
+{
+  "token": "tkt01",
+  "repo": "Cognition-Partner-Workshops/otterworks",
+  "base_branch": "review-base-ticketing",
+  "max_fix_rounds": 2,
+  "shape": {
+    "monolith_cpu": "500m",
+    "service_rate_multiplier": 10,
+    "service_p95_ms": 1000,
+    "max_replicas": 6,
+    "scale_to_zero_seconds": 120,
+    "onsale_peak_orders_per_minute": 600
+  }
+}

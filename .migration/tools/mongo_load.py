@@ -20,7 +20,8 @@ from recon.adapters import parse_oracle_secret
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = REPO_ROOT / ".migration" / "03_mapping_spec.json"
-WAVE_PATH = REPO_ROOT / ".migration" / "waves" / "wave-1.json"
+WAVES_DIR = REPO_ROOT / ".migration" / "waves"
+WAVE_FILE_RE = re.compile(r"^wave-\d+\.json$")
 TARGET_DB = "ow_tp_mmp_live"
 
 _MODE_ENVS = {
@@ -35,10 +36,6 @@ def load_spec():
     return json.loads(SPEC_PATH.read_text())
 
 
-def load_wave():
-    return json.loads(WAVE_PATH.read_text())
-
-
 def coll_spec(spec, name):
     for coll in spec["collections"]:
         if coll["collection"] == name:
@@ -47,10 +44,21 @@ def coll_spec(spec, name):
 
 
 def unit_write_targets(unit_id):
-    for batch in load_wave()["batches"]:
-        if batch["unit"] == unit_id:
-            return set(batch["write_targets"])
-    raise KeyError(f"unit {unit_id} not in wave plan")
+    """The unit's write_targets from whichever wave-plan batch claims it."""
+    matches = []
+    for wave_file in sorted(WAVES_DIR.iterdir()):
+        if not WAVE_FILE_RE.match(wave_file.name):
+            continue
+        for batch in json.loads(wave_file.read_text()).get("batches", []):
+            if unit_id in batch.get("units", []):
+                matches.append((wave_file.name, batch))
+    if len(matches) != 1:
+        found = [f"{name}:{batch['id']}" for name, batch in matches]
+        raise KeyError(
+            f"unit {unit_id} claimed by {len(matches)} wave-plan batches"
+            + (f" ({', '.join(found)})" if found else "; expected exactly 1")
+        )
+    return set(matches[0][1]["write_targets"])
 
 
 def convert(value, field):
@@ -221,7 +229,7 @@ def write_collection(db, coll_name, docs, indexes, allowed_targets):
         raise ValueError(f"refusing target db {db.name!r}; only {TARGET_DB} allowed")
     if f"{TARGET_DB}.{coll_name}" not in allowed_targets:
         raise ValueError(
-            f"{TARGET_DB}.{coll_name} not in the unit's wave-1 write_targets"
+            f"{TARGET_DB}.{coll_name} not in the unit's wave-plan write_targets"
         )
     coll = db[coll_name]
     upserted = modified = matched = 0
@@ -274,9 +282,18 @@ def resolve_mode(mode):
 
 
 def run_unit(unit_id, load_fn):
-    """Shared CLI: --mode fixture|live. load_fn(cursor, db) -> stats dict."""
+    """Shared CLI: --mode fixture|live [--evidence-dir dir].
+
+    load_fn(cursor, db, allowed) -> stats dict. Load records land in
+    evidence_dir (relative to REPO_ROOT, default .migration/recon/<unit>);
+    fan-out children that may not write under .migration/ pass their own.
+    """
     parser = argparse.ArgumentParser(prog=f"{unit_id} load")
     parser.add_argument("--mode", required=True, choices=sorted(_MODE_ENVS))
+    parser.add_argument(
+        "--evidence-dir",
+        default=str(Path(".migration") / "recon" / unit_id),
+    )
     args = parser.parse_args()
     source_env, target_env = resolve_mode(args.mode)
     started = datetime.now(timezone.utc)
@@ -296,7 +313,7 @@ def run_unit(unit_id, load_fn):
         "finished_utc": finished.isoformat(timespec="seconds").replace("+00:00", "Z"),
         **stats,
     }
-    out_dir = REPO_ROOT / ".migration" / "recon" / unit_id
+    out_dir = REPO_ROOT / args.evidence_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"load-{args.mode}.json"
     if out.exists():

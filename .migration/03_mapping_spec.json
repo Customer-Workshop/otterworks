@@ -1569,8 +1569,6 @@
           "array_path": "attributes",
           "shape": "array",
           "child_table": "OW_BILLING.ENTITY_ATTR_VALUE",
-          "child_where": "entity_type = 'CUSTOMER'",
-          "target_where": "{}",
           "parent_key": [
             "ENTITY_ID"
           ],

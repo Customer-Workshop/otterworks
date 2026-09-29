@@ -28,6 +28,10 @@ _MODE_ENVS = {
 }
 
 
+def _bare(table):
+    return table.split(".")[-1].lower()
+
+
 def _target_counts(db, collections):
     return {name: db[name].count_documents({}) for name in collections}
 
@@ -76,7 +80,7 @@ def main():
     )
     source_counts = first.get("source_counts", {})
     target_counts = _target_counts(db, collections)
-    coll_by_root = {c["root_table"].lower(): c["collection"] for c in
+    coll_by_root = {_bare(c["root_table"]): c["collection"] for c in
                     json.loads((REPO_ROOT / ".migration" / "03_mapping_spec.json").read_text())["collections"]}
 
     spec_by_coll = {
@@ -133,7 +137,7 @@ def main():
             )
             for embed in spec_by_coll.get(coll, {}).get("embeds", []):
                 path = f"{coll}.{embed['array_path']}"
-                child_src = source_counts.get(embed["child_table"].lower())
+                child_src = source_counts.get(_bare(embed["child_table"]))
                 if child_src is not None:
                     child_src -= sum(
                         (tier1 or {})
@@ -142,8 +146,8 @@ def main():
                         .get(name, 0)
                         for name, oc in spec_by_coll.items()
                         if name != coll
-                        and oc.get("root_table", "").lower()
-                        == embed["child_table"].lower()
+                        and _bare(oc.get("root_table", ""))
+                        == _bare(embed["child_table"])
                     )
                 actual_embeds = embeds_graded.get(path)
                 if actual_embeds is None or child_src is None:

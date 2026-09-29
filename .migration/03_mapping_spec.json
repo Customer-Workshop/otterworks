@@ -5,7 +5,7 @@
   "collections": [
     {
       "collection": "customers",
-      "root_table": "CUSTOMER_MASTER",
+      "root_table": "OW_BILLING.CUSTOMER_MASTER",
       "unit": "U1-customers",
       "key": {
         "source": [
@@ -1568,7 +1568,7 @@
         {
           "array_path": "attributes",
           "shape": "array",
-          "child_table": "ENTITY_ATTR_VALUE",
+          "child_table": "OW_BILLING.ENTITY_ATTR_VALUE",
           "child_where": "entity_type = 'CUSTOMER'",
           "target_where": "{}",
           "parent_key": [
@@ -1658,7 +1658,7 @@
     },
     {
       "collection": "invoices",
-      "root_table": "INVOICE_HEADER",
+      "root_table": "OW_BILLING.INVOICE_HEADER",
       "unit": "U2-invoices",
       "key": {
         "source": [
@@ -1750,7 +1750,7 @@
         {
           "array_path": "lines",
           "shape": "array",
-          "child_table": "INVOICE_LINE",
+          "child_table": "OW_BILLING.INVOICE_LINE",
           "child_where": "EXISTS (SELECT 1 FROM ow_billing.invoice_header h WHERE h.invoice_id = invoice_line.invoice_id)",
           "target_where": "{}",
           "parent_key": [
@@ -1947,7 +1947,7 @@
     },
     {
       "collection": "quarantine_invoice_line",
-      "root_table": "INVOICE_LINE",
+      "root_table": "OW_BILLING.INVOICE_LINE",
       "unit": "U2-invoices",
       "root_where": "NOT EXISTS (SELECT 1 FROM ow_billing.invoice_header h WHERE h.invoice_id = invoice_line.invoice_id)",
       "target_where": "{}",
@@ -2166,7 +2166,7 @@
     },
     {
       "collection": "billing_invoices",
-      "root_table": "INVOICES",
+      "root_table": "OW_BILLING.INVOICES",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2241,7 +2241,7 @@
         {
           "array_path": "lines",
           "shape": "array",
-          "child_table": "INVOICE_LINES",
+          "child_table": "OW_BILLING.INVOICE_LINES",
           "parent_key": [
             "INVOICE_ID"
           ],
@@ -2316,7 +2316,7 @@
     },
     {
       "collection": "codes",
-      "root_table": "CODES",
+      "root_table": "OW_BILLING.CODES",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2369,7 +2369,7 @@
     },
     {
       "collection": "tenants",
-      "root_table": "TENANTS",
+      "root_table": "OW_BILLING.TENANTS",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2417,7 +2417,7 @@
     },
     {
       "collection": "plans",
-      "root_table": "PLANS",
+      "root_table": "OW_BILLING.PLANS",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2490,7 +2490,7 @@
     },
     {
       "collection": "subscriptions",
-      "root_table": "SUBSCRIPTIONS",
+      "root_table": "OW_BILLING.SUBSCRIPTIONS",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2566,7 +2566,7 @@
     },
     {
       "collection": "subscriptions_hist",
-      "root_table": "SUBSCRIPTIONS_HIST",
+      "root_table": "OW_BILLING.SUBSCRIPTIONS_HIST",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2677,7 +2677,7 @@
     },
     {
       "collection": "usage_events",
-      "root_table": "USAGE_EVENTS",
+      "root_table": "OW_BILLING.USAGE_EVENTS",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2731,7 +2731,7 @@
     },
     {
       "collection": "rating_periods",
-      "root_table": "RATING_PERIODS",
+      "root_table": "OW_BILLING.RATING_PERIODS",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2781,7 +2781,7 @@
     },
     {
       "collection": "rating_results",
-      "root_table": "RATING_RESULTS",
+      "root_table": "OW_BILLING.RATING_RESULTS",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2867,7 +2867,7 @@
     },
     {
       "collection": "credit_notes",
-      "root_table": "CREDIT_NOTES",
+      "root_table": "OW_BILLING.CREDIT_NOTES",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2925,7 +2925,7 @@
     },
     {
       "collection": "dunning_attempts",
-      "root_table": "DUNNING_ATTEMPTS",
+      "root_table": "OW_BILLING.DUNNING_ATTEMPTS",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -2989,7 +2989,7 @@
     },
     {
       "collection": "notifications",
-      "root_table": "NOTIFICATIONS",
+      "root_table": "OW_BILLING.NOTIFICATIONS",
       "unit": "U3-billing-core",
       "key": {
         "source": [
@@ -3038,7 +3038,7 @@
     },
     {
       "collection": "billing_audit_log",
-      "root_table": "BILLING_AUDIT_LOG",
+      "root_table": "OW_BILLING.BILLING_AUDIT_LOG",
       "unit": "U3-billing-core",
       "key": {
         "source": [

@@ -69,6 +69,39 @@ public class ArchiveStoreRegistryTest {
     }
 
     @Test
+    public void completePostgresSettingsBuildTheStoreAndLedgerWithoutConnecting() {
+        ArchiveProperties props = new ArchiveProperties();
+        props.setStore("postgresql");
+        props.setNamespace("x1-after");
+        props.getPg().setHost("otterworks-dev.cluster.us-east-1.rds.amazonaws.com");
+        props.getPg().setDatabase("otterworks_x1");
+        props.getPg().setUser("reader");
+        props.getPg().setPassword("secret");
+        props.getPg().setSslmode("require");
+        ArchiveStoreRegistry registry = new ArchiveStoreRegistry(props);
+        assertEquals(ArchiveStoreType.POSTGRESQL, registry.type());
+        assertTrue(registry.isConfigured());
+        assertEquals("postgresql", registry.store().storeName());
+        assertTrue(registry.migrationJdbc() != null);
+        assertTrue(ArchiveStoreType.POSTGRESQL.hasMigrationLedger());
+        assertFalse(ArchiveStoreType.DB2.hasMigrationLedger());
+        assertEquals("jdbc:postgresql://otterworks-dev.cluster.us-east-1.rds.amazonaws.com:5432/otterworks_x1"
+                + "?sslmode=require", props.getPg().jdbcUrl());
+    }
+
+    @Test
+    public void postgresWithoutConnectionVarsIsUnavailable() {
+        ArchiveProperties props = new ArchiveProperties();
+        props.setStore("postgres");
+        props.getPg().setHost("pg.example");
+        ArchiveStoreRegistry registry = new ArchiveStoreRegistry(props);
+        assertEquals(ArchiveStoreType.POSTGRESQL, registry.type());
+        assertFalse(registry.isConfigured());
+        assertTrue(registry.configurationError().contains("PG_"));
+        assertNull(registry.migrationJdbc());
+    }
+
+    @Test
     public void completeDb2SettingsBuildTheStore() {
         ArchiveProperties props = new ArchiveProperties();
         props.setStore("db2");

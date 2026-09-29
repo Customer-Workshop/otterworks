@@ -24,7 +24,7 @@ import java.util.Optional;
 
 /**
  * Reconciliation report endpoints (CONTRACTS §10.1), served under both {@code /api/reports} and
- * {@code /api/v1/reports}. Only meaningful when {@code ARCHIVE_STORE=azuresql}; on the BEFORE
+ * {@code /api/v1/reports}. Only meaningful when {@code ARCHIVE_STORE=postgresql} (or azuresql); on the BEFORE
  * deployment they answer 404 {@code {"error":"no migration in this namespace"}}.
  */
 @RestController

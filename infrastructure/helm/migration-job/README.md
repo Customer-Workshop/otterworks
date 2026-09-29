@@ -17,18 +17,28 @@ kubectl -n otterworks-d24-after wait --for=condition=complete job/ldm-extract-r2
 The image defaults to the token's own ECR repository,
 `<image.registry>/<image.repositoryPrefix>/<namespaceToken>/ldm-job`; set `image.repository` to
 override it entirely. Source (Db2) credentials are only read for `extract`, `purge` and `all`; `load`,
-`validate` and `reconcile` can run where Db2 is unreachable (e.g. Container Apps) with only the Azure
-settings present.
+`validate` and `reconcile` only need the target (PostgreSQL) and staging (S3) settings.
+
+The default target is the tenant's existing PostgreSQL database (`env.PG_HOST/PG_PORT/PG_DATABASE/
+PG_SSLMODE`, credentials from Secret `ldm-postgres`) and the default staging is the shared demo S3
+bucket under the `<token>/<runId>/` prefix (`env.S3_STAGING_BUCKET`, `env.AWS_REGION`), reached
+through the Job's ServiceAccount annotated with `serviceAccount.roleArn` (IRSA, S3 prefix only).
+LOAD runs PySpark in `local[*]` inside the single Job container (`SPARK_LOCAL_DIRS=/work/staging/spark`);
+the chart creates **only** a `batch/v1 Job` plus its ConfigMap, ServiceAccount and NetworkPolicy - no
+Spark operator, cluster, Service or LoadBalancer. `resources` are sized for local Spark
+(500m/1.5Gi requests, 2 CPU/2.5Gi limits) inside the namespace quota.
 
 `/work/staging` is an `emptyDir`: it does not survive from one Job to the next. Run the stages as
-separate Jobs only when `env.AZ_STORAGE_ACCOUNT` / `env.AZ_STAGING_CONTAINER` are set (extract uploads
-every range to the staging container and load downloads it back); otherwise use `stage=all` so extract
+separate Jobs only when `env.S3_STAGING_BUCKET` (or, Azure path, `env.AZ_STORAGE_ACCOUNT` /
+`env.AZ_STAGING_CONTAINER`) is set (extract uploads every range to staging and load downloads it back); otherwise use `stage=all` so extract
 and load share one pod.
 
 Unloading defaults to the manifest `source.unload_command` (the UNLOAD01 wrapper baked into the image).
 Set `env.LDM_UNLOAD_MODE=builtin` to use `ldm`'s own fixed-width writer instead.
 
-Credentials come from Secrets `db2-archive-credentials` (`DB2_USER`, `DB2_PASSWORD`) and `ldm-azure`
-(`AZSQL_USER`, `AZSQL_PASSWORD`, `AZ_STORAGE_KEY`); the chart never carries secret values. Every object
+Credentials come from Secrets `db2-archive-credentials` (`DB2_USER`, `DB2_PASSWORD`), `ldm-postgres`
+(`PG_USER`, `PG_PASSWORD`) and, only for the optional Azure path, `ldm-azure` (`AZSQL_USER`,
+`AZSQL_PASSWORD`, `AZ_STORAGE_KEY`); the latter two are `optional: true` and the chart never carries
+secret values. Every object
 is labelled `demo/namespace`, `demo/name`, `demo/owner`, `demo/expires` and annotated
 `demo/expires-at` for the reaper.

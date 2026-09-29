@@ -73,6 +73,8 @@ public class ArchiveStoreOptionsTests
     [Theory]
     [InlineData("db2", ArchiveStoreType.Db2)]
     [InlineData("AzureSQL", ArchiveStoreType.AzureSql)]
+    [InlineData("PostgreSQL", ArchiveStoreType.PostgreSql)]
+    [InlineData("postgres", ArchiveStoreType.PostgreSql)]
     [InlineData("oracle", ArchiveStoreType.Invalid)]
     public void StoreType_IsCaseInsensitive(string value, ArchiveStoreType expected)
     {
@@ -88,6 +90,27 @@ public class ArchiveStoreOptionsTests
         Assert.Contains("sql-x.database.windows.net", o.AzsqlConnectionString);
         Assert.Contains("Active Directory Managed Identity", o.AzsqlConnectionString);
         Assert.DoesNotContain("Password", o.AzsqlConnectionString);
+    }
+
+    [Fact]
+    public void Postgres_ConnectionStringAndCompleteness()
+    {
+        var o = Opts(("ARCHIVE_STORE", "postgresql"), ("PG_HOST", "pg.internal"), ("PG_DATABASE", "otterworks_x1"),
+            ("PG_USER", "ldm_reader"), ("PG_PASSWORD", "s3cret"), ("PG_SSLMODE", "require"));
+        Assert.True(o.PgComplete);
+        Assert.Equal("Host=pg.internal;Port=5432;Database=otterworks_x1;Username=ldm_reader;Password=s3cret;SSL Mode=require;Timeout=30;",
+            o.PgConnectionString);
+        Assert.False(Opts(("ARCHIVE_STORE", "postgresql"), ("PG_HOST", "pg.internal")).PgComplete);
+    }
+
+    [Fact]
+    public void Postgres_Timestamp12_RebuildsFromMicrosPlusSixDigitTail()
+    {
+        var ts = new DateTime(2016, 3, 1, 10, 15, 30).AddTicks(1234560);
+        Assert.Equal("2016-03-01-10.15.30.123456789012", Db2Text.Timestamp12FromMicros(ts, 789012));
+        Assert.Equal(Db2Text.Timestamp12(new DateTime(2016, 3, 1, 10, 15, 30).AddTicks(1234567), 89012),
+            Db2Text.Timestamp12FromMicros(ts, 789012));
+        Assert.Equal("2015-07-02-08.00.00.000000000001", Db2Text.Timestamp12FromMicros(new DateTime(2015, 7, 2, 8, 0, 0), 1));
     }
 
     [Fact]
@@ -231,7 +254,10 @@ public class ArchiveControllerTests
     {
         Assert.DoesNotContain("RTRIM(F.", Db2ArchiveEventStore.Sql);
         Assert.DoesNotContain("RTRIM(F.", AzureSqlArchiveEventStore.Sql);
+        Assert.DoesNotContain("RTRIM(F.", PostgresArchiveEventStore.Sql);
         Assert.Contains("ORDER BY F.EVENT_TS", Db2ArchiveEventStore.Sql);
         Assert.Contains("EVENT_TS_NANOS_TAIL", AzureSqlArchiveEventStore.Sql);
+        Assert.Contains("\"EVENT_TS_NANOS_TAIL\"", PostgresArchiveEventStore.Sql);
+        Assert.Equal("postgresql", new PostgresArchiveEventStore("Host=x").StoreName);
     }
 }

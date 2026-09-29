@@ -30,6 +30,26 @@ Credentials come from the Secret named by archive.credentialsSecret, never from 
       name: {{ .credentialsSecret }}
       key: DB2_PASSWORD
 {{- end }}
+{{- if eq .store "postgresql" }}
+- name: PG_HOST
+  value: {{ .postgresql.host | quote }}
+- name: PG_PORT
+  value: {{ .postgresql.port | quote }}
+- name: PG_DATABASE
+  value: {{ .postgresql.database | quote }}
+- name: PG_SSLMODE
+  value: {{ .postgresql.sslmode | quote }}
+- name: PG_USER
+  valueFrom:
+    secretKeyRef:
+      name: {{ .credentialsSecret }}
+      key: PG_USER
+- name: PG_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .credentialsSecret }}
+      key: PG_PASSWORD
+{{- end }}
 {{- if eq .store "azuresql" }}
 - name: AZSQL_SERVER
   value: {{ .azuresql.server | quote }}

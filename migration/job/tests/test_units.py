@@ -92,11 +92,20 @@ def test_overlay_deep_merges_and_typemap_overrides_apply(tmp_path: Path) -> None
     loaded = load_manifest(base, "zz1-after")
     specs = build_table_specs(loaded)
     doc = specs["DOCARCH"].by_name
-    assert doc["OWNER_NAME"].encoding == "cp037" and doc["OWNER_NAME"].target_type == "NVARCHAR(40)"
-    assert doc["UNIT_RATE"].target_type == "DECIMAL(18,8)" and doc["UNIT_RATE"].target_precision == 18
+    assert doc["OWNER_NAME"].encoding == "cp037" and doc["OWNER_NAME"].target_type == "VARCHAR(40)"
+    assert doc["UNIT_RATE"].target_type == "NUMERIC(18,8)" and doc["UNIT_RATE"].target_precision == 18
     assert doc["STORAGE_CHARGE"].kind == "decimal" and doc["STORAGE_CHARGE"].target_precision >= 31
     assert doc["ARCH_KEY"].is_key and doc["LAST_ACCESS_TS"].kind == "timestamp12"
     assert doc["RETENTION_CLASS"].value_map == {"F07R": "LGL7", "L07R": "FIN7", "H07R": "HRS7"}
+
+
+def test_azuresql_overlay_keeps_tsql_type_spelling(tmp_path: Path) -> None:
+    base = make_manifest_tree(tmp_path, "zz2", azure_target=True)
+    loaded = load_manifest(base, "zz2-after")
+    assert loaded.manifest.target.provider == "azuresql"
+    doc = build_table_specs(loaded)["DOCARCH"].by_name
+    assert doc["OWNER_NAME"].target_type == "NVARCHAR(40)"
+    assert doc["UNIT_RATE"].target_type == "DECIMAL(18,8)" and doc["UNIT_RATE"].target_precision == 18
 
 
 # --- copybooks ------------------------------------------------------------------------------------------------------

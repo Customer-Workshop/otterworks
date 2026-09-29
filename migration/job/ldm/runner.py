@@ -12,9 +12,10 @@ from pathlib import Path
 from .config import RUN_ID_RE, LoadedManifest, load_manifest
 from .context import Log, RunContext, build_table_specs, local_staging_dir, require_env
 from .drivers.base import SelectionSpec, SourceDriver, TargetDriver, Value
+from .drivers.factory import TargetSpec, target_spec
 from .errors import EXIT_OK, EXIT_UNEXPECTED, ConfigError, ForeignRunError, LdmError
 from .stages import extract, init, load, purge, reconcile, validate
-from .staging import AzureBlobStore, BlobStore, NoBlobStore
+from .staging import AzureBlobStore, BlobStore, NoBlobStore, S3BlobStore
 
 STAGES: dict[str, Callable[[RunContext], dict[str, dict[str, int]]]] = {
     "extract": extract.run,
@@ -97,37 +98,25 @@ def make_source(loaded: LoadedManifest, env: Mapping[str, str]) -> SourceDriver:
 
 
 def make_target(loaded: LoadedManifest, env: Mapping[str, str]) -> TargetDriver:
-    tgt = loaded.manifest.target
-    if tgt.provider == "azuresql":
-        from .drivers.azuresql import AzureSqlTarget
-
-        ce = tgt.connection_env
-        auth = env.get(ce.auth_mode) or "sql"
-        require_env(dict(env), [ce.server, ce.database], "target azuresql")
-        if auth == "sql":
-            require_env(dict(env), [ce.user, ce.password], "target azuresql (AZSQL_AUTH=sql)")
-        elif auth == "managed-identity":
-            require_env(dict(env), [ce.managed_identity_client_id], "target azuresql (AZSQL_AUTH=managed-identity)")
-        else:
-            raise ConfigError(f"{ce.auth_mode}={auth!r}: expected 'sql' or 'managed-identity'")
-        return AzureSqlTarget(
-            server=env[ce.server],
-            database=env[ce.database],
-            auth=auth,
-            user=env.get(ce.user),
-            password=env.get(ce.password),
-            client_id=env.get(ce.managed_identity_client_id),
-            host=env.get("LDM_HOST", "local"),
-        )
-    raise ConfigError(f"target.provider {tgt.provider!r} has no driver in this build (known: azuresql)")
+    return target_spec(loaded, env).open()
 
 
 def make_blobs(loaded: LoadedManifest, env: Mapping[str, str]) -> BlobStore:
+    """S3 when the bucket variable is set, else Azure Blob when the storage account is, else local files only."""
     ce = loaded.manifest.staging.connection_env
-    account = env.get(ce.storage_account)
+    bucket = env.get(ce.bucket) if ce.bucket else None
+    if bucket:
+        return S3BlobStore(
+            bucket,
+            region=env.get(ce.region) if ce.region else None,
+            endpoint_url=env.get(ce.endpoint_url) if ce.endpoint_url else None,
+        )
+    account = env.get(ce.storage_account) if ce.storage_account else None
     if not account:
         return NoBlobStore()
-    container = env.get(ce.container)
+    if not loaded.manifest.azure:
+        raise ConfigError(f"{ce.storage_account} is set but this namespace has azure: false")
+    container = env.get(ce.container) if ce.container else None
     if not container:
         raise ConfigError(f"{ce.storage_account} is set but {ce.container} is not")
     return AzureBlobStore(account, container, env.get("AZ_STORAGE_KEY"), env.get("AZURE_CLIENT_ID"))
@@ -152,16 +141,21 @@ def build_context(
     tables = build_table_specs(loaded)
     if source is None:
         source = make_source(loaded, env) if verb in SOURCE_VERBS else UnconfiguredSource(verb)
+    spec: TargetSpec | None = None
+    if target is None:
+        spec = target_spec(loaded, env)
+        target = spec.open()
     ctx = RunContext(
         loaded=loaded,
         run_id=run_id,
         source=source,
-        target=target if target is not None else make_target(loaded, env),
+        target=target,
         blobs=blobs if blobs is not None else make_blobs(loaded, env),
         local_dir=local_staging_dir(loaded.manifest, env),
         log=log or Log(),
         env=env,
         tables=tables,
+        target_spec=spec,
     )
     for ts in ctx.tables_in_order():
         ctx.target.register_table(ts.name, ts.config.key_columns, ts.config.hash_columns, ts.columns)

@@ -1,4 +1,8 @@
-"""LOAD: copybook conversion of unload files into stg.* with row-level rejects (CONTRACTS.md §9.2, §9.4)."""
+"""LOAD: copybook conversion of unload files into stg.* with row-level rejects (CONTRACTS.md §9.2, §9.4).
+
+Two engines share the per-range bookkeeping here (`begin_range` / `finish_range`): the serial engine below converts
+and inserts in this process; `execution.load_engine: spark` hands the range to `ldm.engines.spark_load`.
+"""
 
 from __future__ import annotations
 
@@ -14,22 +18,57 @@ from ..staging import sha256_file
 _NATIVE_RULES = {2601: "DUPLICATE_SOURCE_KEY", 2627: "DUPLICATE_SOURCE_KEY"}
 _SQLSTATE_RULES = {
     "23000": "DUPLICATE_SOURCE_KEY",
+    "23505": "DUPLICATE_SOURCE_KEY",  # PostgreSQL unique_violation
     "22003": "DECIMAL_OVERFLOW",
     "22007": "DATE_INVALID",
     "22001": "STRING_TRUNCATION",
 }
 
 
-def _rule_for(f: InsertFailure) -> str:
+def rule_for(f: InsertFailure) -> str:
     if f.native_error in _NATIVE_RULES:
         return _NATIVE_RULES[f.native_error]
     return _SQLSTATE_RULES.get(f.sqlstate or "", "TARGET_REJECTED")
 
 
-def _field_for(rule: str, ts: TableSpec) -> str | None:
+def field_for(rule: str, key_columns: list[str]) -> str | None:
     if rule == "DUPLICATE_SOURCE_KEY":
-        return ts.config.key_columns[0]
+        return key_columns[0]
     return None
+
+
+def failure_reject(f: InsertFailure, row: StagedRow, key_columns: list[str]) -> Reject:
+    """The LOAD reject for a row the target refused (rule from SQLSTATE / native error)."""
+    rule = rule_for(f)
+    return Reject(
+        table_name=row.table_name,
+        source_key=f.source_key,
+        stage="LOAD",
+        rule=rule,
+        field_name=field_for(rule, key_columns),
+        raw_bytes=row.raw_bytes,
+        field_bytes=None,
+        sqlstate=f.sqlstate,
+        native_error=f.native_error,
+        error_text=f.error_text[:4000],
+        key_range_seq=row.key_range_seq,
+    )
+
+
+def duplicate_reject(table: str, source_key: str, key_column: str, rec: bytes, range_seq: int) -> Reject:
+    return Reject(
+        table,
+        source_key,
+        "LOAD",
+        "DUPLICATE_SOURCE_KEY",
+        key_column,
+        rec,
+        None,
+        "23000",
+        2601,
+        f"source key {source_key!r} appears more than once in the unload of range {range_seq}",
+        range_seq,
+    )
 
 
 def _range_file(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> Path:
@@ -47,17 +86,19 @@ def _range_file(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> Path:
     return local
 
 
-def load_range(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[int, int]:
-    """Return (loaded, rejected) for one key range."""
-    m = ctx.manifest
+def begin_range(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[Path, int]:
+    """Verify the unload file (checksum, LRECL, .cnt), roll back a half-loaded range, mark it RUNNING.
+
+    Returns (local file, record count).
+    """
     local = _range_file(ctx, ts, rng)
-    data = local.read_bytes()
+    size = local.stat().st_size
     lrecl = ts.config.record_length
-    if len(data) % lrecl:
-        raise ConfigError(f"{ts.name} range {rng.range_seq}: file size {len(data)} is not a multiple of LRECL {lrecl}")
-    if rng.row_count is not None and len(data) // lrecl != rng.row_count:
+    if size % lrecl:
+        raise ConfigError(f"{ts.name} range {rng.range_seq}: file size {size} is not a multiple of LRECL {lrecl}")
+    if rng.row_count is not None and size // lrecl != rng.row_count:
         raise ConfigError(
-            f"{ts.name} range {rng.range_seq}: file has {len(data) // lrecl} records, .cnt says {rng.row_count}"
+            f"{ts.name} range {rng.range_seq}: file has {size // lrecl} records, .cnt says {rng.row_count}"
         )
 
     if rng.load_status == "RUNNING":
@@ -65,6 +106,21 @@ def load_range(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[int, int]
         ctx.target.delete_staging_range(ctx.run_id, ctx.namespace, ts.name, rng.range_seq)
         ctx.target.delete_rejects_range(ctx.run_id, ctx.namespace, ts.name, "LOAD", rng.range_seq)
     ctx.target.update_key_range(ctx.run_id, ctx.namespace, ts.name, rng.range_seq, load_status="RUNNING")
+    return local, size // lrecl
+
+
+def finish_range(ctx: RunContext, ts: TableSpec, rng: KeyRange, loaded: int, rejected: int) -> tuple[int, int]:
+    ctx.target.update_key_range(ctx.run_id, ctx.namespace, ts.name, rng.range_seq, load_status="DONE")
+    ctx.log.info(f"range {rng.range_seq} loaded={loaded} rejected={rejected}", ts.name)
+    return loaded, rejected
+
+
+def load_range(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[int, int]:
+    """Serial engine: return (loaded, rejected) for one key range."""
+    m = ctx.manifest
+    local, _count = begin_range(ctx, ts, rng)
+    data = local.read_bytes()
+    lrecl = ts.config.record_length
 
     loaded = rejected = 0
     seen_keys: set[str] = set()
@@ -79,23 +135,7 @@ def load_range(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[int, int]
         failed_keys = {f.source_key for f in failures}
         loaded += len(batch) - len(failed_keys)
         by_key = {r.source_key: r for r in batch}
-        for f in failures:
-            rule = _rule_for(f)
-            rejects.append(
-                Reject(
-                    table_name=ts.name,
-                    source_key=f.source_key,
-                    stage="LOAD",
-                    rule=rule,
-                    field_name=_field_for(rule, ts),
-                    raw_bytes=by_key[f.source_key].raw_bytes,
-                    field_bytes=None,
-                    sqlstate=f.sqlstate,
-                    native_error=f.native_error,
-                    error_text=f.error_text[:4000],
-                    key_range_seq=rng.range_seq,
-                )
-            )
+        rejects.extend(failure_reject(f, by_key[f.source_key], ts.config.key_columns) for f in failures)
         rejected += len(failed_keys)
         batch.clear()
         if rejects:
@@ -106,21 +146,7 @@ def load_range(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[int, int]
         rec = data[i : i + lrecl]
         conv = convert_record(rec, ts.columns)
         if conv.ok and conv.source_key in seen_keys:
-            rejects.append(
-                Reject(
-                    ts.name,
-                    conv.source_key,
-                    "LOAD",
-                    "DUPLICATE_SOURCE_KEY",
-                    ts.config.key_columns[0],
-                    rec,
-                    None,
-                    "23000",
-                    2601,
-                    f"source key {conv.source_key!r} appears more than once in the unload of range {rng.range_seq}",
-                    rng.range_seq,
-                )
-            )
+            rejects.append(duplicate_reject(ts.name, conv.source_key, ts.config.key_columns[0], rec, rng.range_seq))
             rejected += 1
             continue
         if not conv.ok:
@@ -150,9 +176,15 @@ def load_range(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[int, int]
     flush()
     if rejects:
         ctx.target.insert_rejects(ctx.run_id, ctx.namespace, rejects)
-    ctx.target.update_key_range(ctx.run_id, ctx.namespace, ts.name, rng.range_seq, load_status="DONE")
-    ctx.log.info(f"range {rng.range_seq} loaded={loaded} rejected={rejected}", ts.name)
-    return loaded, rejected
+    return finish_range(ctx, ts, rng, loaded, rejected)
+
+
+def load_range_with_engine(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[int, int]:
+    if ctx.manifest.execution.load_engine == "spark":
+        from ..engines.spark_load import load_range_spark
+
+        return load_range_spark(ctx, ts, rng)
+    return load_range(ctx, ts, rng)
 
 
 def load_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
@@ -170,7 +202,7 @@ def load_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
     for rng in sorted(ranges, key=lambda r: r.range_seq):
         if rng.load_status == "DONE":
             continue
-        load_range(ctx, ts, rng)
+        load_range_with_engine(ctx, ts, rng)
     ledger = ctx.target.get_ledger(ctx.run_id, ctx.namespace)[ts.name]
     loaded = ctx.target.count_staging(ctx.run_id, ctx.namespace, ts.name)
     rejected = ctx.target.count_rejects(ctx.run_id, ctx.namespace, ts.name, "LOAD")
@@ -183,6 +215,7 @@ def load_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
 
 def run(ctx: RunContext) -> dict[str, dict[str, int]]:
     out: dict[str, dict[str, int]] = {}
+    ctx.log.info(f"engine={ctx.manifest.execution.load_engine}")
     for ts in ctx.tables_in_order():
         log_id = ctx.target.stage_log_start(ctx.run_id, ctx.namespace, "LOAD", ts.name)
         try:

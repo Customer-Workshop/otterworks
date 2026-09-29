@@ -29,6 +29,26 @@ class TypeRule:
 class TypeMap:
     rules: tuple[TypeRule, ...]
     inference: tuple[dict[str, object], ...]
+    target: str = "azuresql"
+
+    @property
+    def char_type(self) -> str:
+        """Fixed-width text type of the target (FOR BIT DATA columns decoded to text land here)."""
+        return "CHAR" if self.target == "postgresql" else "NCHAR"
+
+    def spell_target_type(self, parsed: ParsedType) -> str:
+        """Render a manifest target_type override in this target's dialect.
+
+        Overrides are written once, in the base manifest, in the T-SQL spelling the contract documents
+        (NVARCHAR(40), DECIMAL(18,8), DATETIME2(7), VARBINARY(n)); a PostgreSQL target maps them to the
+        equivalent native type so the same manifest drives either provider.
+        """
+        base = parsed.base
+        if self.target == "postgresql":
+            base = _PG_SPELLING.get(base, base)
+            if base == "BYTEA":
+                return base
+        return f"{base}({','.join(parsed.args)})" if parsed.args else base
 
     def infer_source_type(self, field: Field) -> str:
         key = field.pic_key
@@ -66,6 +86,18 @@ class TypeMap:
             if ok:
                 return rule.target_template.format(**subs), rule.kind
         raise ConfigError(f"type map has no rule for source type {source_type!r}")
+
+
+_PG_SPELLING = {
+    "NCHAR": "CHAR",
+    "NVARCHAR": "VARCHAR",
+    "DECIMAL": "NUMERIC",
+    "INT": "INTEGER",
+    "TINYINT": "SMALLINT",
+    "DATETIME2": "TIMESTAMP",
+    "VARBINARY": "BYTEA",
+    "BINARY": "BYTEA",
+}
 
 
 @dataclass(frozen=True)
@@ -116,7 +148,10 @@ def load_typemap(path: Path) -> TypeMap:
     for rule in inference:
         if "pic" not in rule or not ("source" in rule or "source_by_digits" in rule):
             raise ConfigError(f"type map {path}: bad copybook_inference rule {rule!r}")
-    return TypeMap(rules=tuple(rules), inference=inference)
+    target = str(data.get("target") or "azuresql")
+    if target not in ("azuresql", "postgresql"):
+        raise ConfigError(f"type map {path}: unknown target {target!r}")
+    return TypeMap(rules=tuple(rules), inference=inference, target=target)
 
 
 @dataclass(frozen=True)
@@ -142,12 +177,14 @@ class ColumnSpec:
         return (self.name,)
 
 
-def _apply_override(spec_kind: Kind, target_type: str, ov: TypeOverride, name: str) -> tuple[str, Kind]:
+def _apply_override(
+    spec_kind: Kind, target_type: str, ov: TypeOverride, name: str, typemap: TypeMap
+) -> tuple[str, Kind]:
     if ov.target_type is None:
         return target_type, spec_kind
     new = _parse_type(ov.target_type)
     base = new.base
-    if base in ("NCHAR", "NVARCHAR", "CHAR", "VARCHAR"):
+    if base in ("NCHAR", "NVARCHAR", "CHAR", "VARCHAR", "CHARACTER", "CHARACTER VARYING", "TEXT"):
         kind: Kind = "char"
     elif base in ("DECIMAL", "NUMERIC"):
         kind = "decimal"
@@ -155,13 +192,13 @@ def _apply_override(spec_kind: Kind, target_type: str, ov: TypeOverride, name: s
         kind = "int"
     elif base == "DATE":
         kind = "date8"
-    elif base == "DATETIME2":
+    elif base in ("DATETIME2", "TIMESTAMP"):
         kind = "timestamp12"
-    elif base in ("VARBINARY", "BINARY"):
+    elif base in ("VARBINARY", "BINARY", "BYTEA"):
         kind = "binary"
     else:
         raise ConfigError(f"column {name}: unsupported target_type override {ov.target_type!r}")
-    return ov.target_type.upper().replace(" ", ""), kind
+    return typemap.spell_target_type(new), kind
 
 
 def build_column_specs(
@@ -182,8 +219,8 @@ def build_column_specs(
         if kind == "binary" and ov.encoding:
             # FOR BIT DATA decoded to text: mapped like CHAR(n) unless target_type says otherwise
             n = _parse_type(source_type).length
-            target_type, kind = f"NCHAR({n})", "char"
-        target_type, kind = _apply_override(kind, target_type, ov, col)
+            target_type, kind = f"{typemap.char_type}({n})", "char"
+        target_type, kind = _apply_override(kind, target_type, ov, col, typemap)
         if ov.format:
             if ov.format != "YYYYMMDD":
                 raise ConfigError(f"column {col}: unsupported format {ov.format!r}")
@@ -197,7 +234,9 @@ def build_column_specs(
                 raise ConfigError(f"column {col}: target {target_type} exceeds DECIMAL(38)")
             if field.scale != parsed_target.scale:
                 raise ConfigError(f"column {col}: copybook scale {field.scale} != target scale {parsed_target.scale}")
-        trim = ov.trim == "right" or (kind == "char" and parsed_target.base == "NVARCHAR" and ov.trim is None)
+        trim = ov.trim == "right" or (
+            kind == "char" and parsed_target.base in ("NVARCHAR", "VARCHAR", "TEXT") and ov.trim is None
+        )
         if ov.trim == "none":
             trim = False
         specs.append(

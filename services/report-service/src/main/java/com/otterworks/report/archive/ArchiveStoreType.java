@@ -11,6 +11,7 @@ import java.util.Locale;
 public enum ArchiveStoreType {
     OFF("off"),
     DB2("db2"),
+    POSTGRESQL("postgresql"),
     AZURESQL("azuresql"),
     INVALID("invalid");
 
@@ -24,6 +25,11 @@ public enum ArchiveStoreType {
         return wireName;
     }
 
+    /** Stores that carry the {@code mig.*} migration ledger alongside {@code arch.*}. */
+    public boolean hasMigrationLedger() {
+        return this == POSTGRESQL || this == AZURESQL;
+    }
+
     public static ArchiveStoreType parse(String raw) {
         if (raw == null || raw.trim().isEmpty()) {
             return OFF;
@@ -31,6 +37,9 @@ public enum ArchiveStoreType {
         String value = raw.trim().toLowerCase(Locale.ROOT);
         if ("db2".equals(value)) {
             return DB2;
+        }
+        if ("postgresql".equals(value) || "postgres".equals(value)) {
+            return POSTGRESQL;
         }
         if ("azuresql".equals(value)) {
             return AZURESQL;

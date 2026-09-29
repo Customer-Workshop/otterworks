@@ -4,13 +4,14 @@ public enum ArchiveStoreType
 {
     Off,
     Db2,
+    PostgreSql,
     AzureSql,
     Invalid,
 }
 
 /// <summary>
 /// Archive read-path settings, bound from the same environment variables as report-service
-/// (ARCHIVE_STORE, DB2_*, AZSQL_*, AZURE_CLIENT_ID). Unset ARCHIVE_STORE means feature off.
+/// (ARCHIVE_STORE, DB2_*, PG_*, AZSQL_*, AZURE_CLIENT_ID). Unset ARCHIVE_STORE means feature off.
 /// </summary>
 public sealed class ArchiveStoreOptions
 {
@@ -22,6 +23,13 @@ public sealed class ArchiveStoreOptions
     public string Db2Database { get; set; } = string.Empty;
     public string Db2User { get; set; } = string.Empty;
     public string Db2Password { get; set; } = string.Empty;
+
+    public string PgHost { get; set; } = string.Empty;
+    public string PgPort { get; set; } = "5432";
+    public string PgDatabase { get; set; } = string.Empty;
+    public string PgUser { get; set; } = string.Empty;
+    public string PgPassword { get; set; } = string.Empty;
+    public string PgSslMode { get; set; } = "Prefer";
 
     public string AzsqlServer { get; set; } = string.Empty;
     public string AzsqlDatabase { get; set; } = string.Empty;
@@ -39,6 +47,12 @@ public sealed class ArchiveStoreOptions
         Db2Database = getEnv("DB2_DATABASE") ?? string.Empty,
         Db2User = getEnv("DB2_USER") ?? string.Empty,
         Db2Password = getEnv("DB2_PASSWORD") ?? string.Empty,
+        PgHost = getEnv("PG_HOST") ?? string.Empty,
+        PgPort = getEnv("PG_PORT") is { Length: > 0 } pgPort ? pgPort : "5432",
+        PgDatabase = getEnv("PG_DATABASE") ?? string.Empty,
+        PgUser = getEnv("PG_USER") ?? string.Empty,
+        PgPassword = getEnv("PG_PASSWORD") ?? string.Empty,
+        PgSslMode = getEnv("PG_SSLMODE") is { Length: > 0 } sslMode ? sslMode : "Prefer",
         AzsqlServer = getEnv("AZSQL_SERVER") ?? string.Empty,
         AzsqlDatabase = getEnv("AZSQL_DATABASE") ?? string.Empty,
         AzsqlAuth = getEnv("AZSQL_AUTH") is { Length: > 0 } auth ? auth : "sql",
@@ -51,6 +65,7 @@ public sealed class ArchiveStoreOptions
     {
         "" => ArchiveStoreType.Off,
         "db2" => ArchiveStoreType.Db2,
+        "postgresql" or "postgres" => ArchiveStoreType.PostgreSql,
         "azuresql" => ArchiveStoreType.AzureSql,
         _ => ArchiveStoreType.Invalid,
     };
@@ -63,12 +78,20 @@ public sealed class ArchiveStoreOptions
         !string.IsNullOrWhiteSpace(Db2Host) && !string.IsNullOrWhiteSpace(Db2Database)
         && !string.IsNullOrWhiteSpace(Db2User) && !string.IsNullOrWhiteSpace(Db2Password);
 
+    public bool PgComplete =>
+        !string.IsNullOrWhiteSpace(PgHost) && !string.IsNullOrWhiteSpace(PgDatabase)
+        && !string.IsNullOrWhiteSpace(PgUser) && !string.IsNullOrWhiteSpace(PgPassword);
+
     public bool AzsqlComplete =>
         !string.IsNullOrWhiteSpace(AzsqlServer) && !string.IsNullOrWhiteSpace(AzsqlDatabase)
         && (IsManagedIdentity || (!string.IsNullOrWhiteSpace(AzsqlUser) && !string.IsNullOrWhiteSpace(AzsqlPassword)));
 
     public string Db2ConnectionString =>
         $"Server={Db2Host}:{Db2Port};Database={Db2Database};UID={Db2User};PWD={Db2Password};";
+
+    /// <summary>Npgsql connection string; PG_SSLMODE follows libpq spelling (disable/prefer/require/verify-full).</summary>
+    public string PgConnectionString =>
+        $"Host={PgHost};Port={PgPort};Database={PgDatabase};Username={PgUser};Password={PgPassword};SSL Mode={PgSslMode};Timeout=30;";
 
     public string AzsqlConnectionString
     {

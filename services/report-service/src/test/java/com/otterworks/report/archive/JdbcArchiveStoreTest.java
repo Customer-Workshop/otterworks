@@ -128,6 +128,51 @@ public class JdbcArchiveStoreTest {
     }
 
     @Test
+    public void postgresRowMapperRebuildsTimestampFromSixPlusSixDigits() throws SQLException {
+        ResultSet rs = mock(ResultSet.class);
+        when(rs.getString("ARCH_KEY")).thenReturn("DA00000000000042");
+        when(rs.getString("DOC_ID")).thenReturn("doc-1                               ");
+        when(rs.getInt("VERSION_NO")).thenReturn(3);
+        when(rs.getString("RETENTION_CLASS")).thenReturn("FIN7");
+        when(rs.getString("LAST_ACCESS_TS")).thenReturn("2016-03-01 10:15:30.123456");
+        when(rs.getInt("LAST_ACCESS_TS_NANOS_TAIL")).thenReturn(789012);
+        when(rs.getBigDecimal("STORAGE_CHARGE")).thenReturn(new java.math.BigDecimal("1234.5"));
+        when(rs.getBigDecimal("UNIT_RATE")).thenReturn(new java.math.BigDecimal("0.01"));
+        when(rs.getString("OWNER_NAME")).thenReturn("LOPEZ, M.");
+        when(rs.getString("DISPOSITION_DT")).thenReturn("2023-03-01");
+        when(rs.getString("LEGAL_HOLD_FLAG")).thenReturn("Y");
+        when(rs.getString("CHECKSUM_ALG")).thenReturn("SHA256  ");
+        when(rs.getString("CONTENT_SHA256")).thenReturn("AB");
+        when(rs.getLong("BYTE_SIZE")).thenReturn(4096L);
+        when(rs.getString("SOURCE_SYS")).thenReturn("DMS");
+
+        ArchiveVersion v = PostgresArchiveStore.mapVersion(rs);
+        assertEquals("2016-03-01-10.15.30.123456789012", v.lastAccessTs);
+        assertEquals("1234.50000000", v.storageCharge);
+        assertEquals("2023-03-01", v.dispositionDt);
+        assertEquals("20230301", v.raw.dispositionDt);
+        assertTrue(v.legalHold);
+
+        ResultSet ev = mock(ResultSet.class);
+        when(ev.getString("AUDIT_KEY")).thenReturn("FA000000000000000123");
+        when(ev.getString("ARCH_KEY")).thenReturn("DA00000000000042");
+        when(ev.getString("EVENT_TYPE")).thenReturn("VIEW");
+        when(ev.getString("EVENT_TS")).thenReturn("2015-07-02 08:00:00");
+        when(ev.getInt("EVENT_TS_NANOS_TAIL")).thenReturn(1);
+        ArchiveEvent e = PostgresArchiveStore.mapEvent(ev);
+        assertEquals("2015-07-02-08.00.00.000000000001", e.eventTs);
+        assertEquals("postgresql", new PostgresArchiveStore(mock(JdbcTemplate.class)).storeName());
+    }
+
+    @Test
+    public void pgTimestampHelperMatchesAzureHelperForTheSameInstant() {
+        assertEquals(Db2Text.timestamp12FromDateTime2("2016-03-01 10:15:30.1234567", 89012),
+                Db2Text.timestamp12FromPgTimestamp("2016-03-01 10:15:30.123456", 789012));
+        assertEquals("2016-03-01-10.15.30.100000000000", Db2Text.timestamp12FromPgTimestamp("2016-03-01 10:15:30.1", 0));
+        assertNull(Db2Text.timestamp12FromPgTimestamp(null, 0));
+    }
+
+    @Test
     public void db2RowMapperDecodesEbcdicAndKeepsPadding() throws Exception {
         ResultSet rs = mock(ResultSet.class);
         when(rs.getString("ARCH_KEY")).thenReturn("DA00000000000042");

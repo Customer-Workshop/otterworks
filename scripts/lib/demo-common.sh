@@ -33,8 +33,10 @@ JOB_CHART_DIR="${REPO_ROOT}/infrastructure/helm/migration-job"
 DB2_CREDENTIALS_SECRET="db2-archive-credentials"
 ARCHIVE_STORE_SECRET="archive-store-credentials"
 LDM_AZURE_SECRET="ldm-azure"
+LDM_POSTGRES_SECRET="ldm-postgres"
 DB2_RELEASE="db2-archive"
-MIG06_FIXTURE_PATH="${MIG06_FIXTURE_PATH:-/app/migration/source/seed/fixtures/mig06_prior_run.sql}"
+# MIG-06 prior-run fixture, one rendering per target provider (image path); MIG06_FIXTURE_PATH overrides.
+MIG06_FIXTURE_DIR="${MIG06_FIXTURE_DIR:-/app/migration/source/seed/fixtures}"
 MANIFEST_DIR="${REPO_ROOT}/migration"
 # Evidence root: per-token transcripts, tfvars, report copies (git-ignored by
 # convention; copy what you want to keep into docs/demos/evidence/).
@@ -186,12 +188,45 @@ overlay_flag() {
   case "${v}" in true|True|TRUE) printf 'true' ;; *) printf 'false' ;; esac
 }
 
+# target.provider from the token's overlay; the base manifest's default (postgresql) otherwise.
+token_target_provider() {
+  local token="$1" f v=""; f="$(overlay_path "${token}")"
+  [ -f "${f}" ] && v="$(sed -nE 's/^[[:space:]]+provider:[[:space:]]*([a-z]+).*/\1/p' "${f}" | head -1)"
+  printf '%s' "${v:-postgresql}"
+}
+
+mig06_fixture_path() {
+  if [ -n "${MIG06_FIXTURE_PATH:-}" ]; then printf '%s' "${MIG06_FIXTURE_PATH}"; return 0; fi
+  case "$(token_target_provider "$1")" in
+    azuresql) printf '%s/mig06_prior_run.sql' "${MIG06_FIXTURE_DIR}" ;;
+    *)        printf '%s/mig06_prior_run.postgresql.sql' "${MIG06_FIXTURE_DIR}" ;;
+  esac
+}
+
 # Whether this token gets Azure objects: the overlay decides (§4.2); with no
-# overlay the state alone decides (throwaway `<x>-after` tokens have none).
+# overlay nothing is Azure-backed (the default after-token is PostgreSQL + S3).
 token_wants_azure() {
   local token="$1"
   if [ -f "$(overlay_path "${token}")" ]; then overlay_flag "${token}" azure; return 0; fi
-  [ "$(token_state "${token}")" = "after" ] && printf 'true' || printf 'false'
+  printf 'false'
+}
+
+# Whether this token is migrated at all: the overlay's migrate flag. `ldm` refuses to
+# run a namespace without an overlay (CONTRACTS.md §4: purge may only be enabled there),
+# so an `<x>-after` token needs migration/manifests/<x>-after.yaml before deploying.
+token_wants_migrate() {
+  local token="$1"
+  if [ -f "$(overlay_path "${token}")" ]; then overlay_flag "${token}" migrate; return 0; fi
+  printf 'false'
+}
+
+# Fail before touching anything when an after-token has no overlay: the deploy would
+# otherwise get as far as the `ldm init` Job and exit 4 there.
+require_overlay() {
+  local token="$1"
+  [ "$(token_state "${token}")" = "after" ] || return 0
+  [ -f "$(overlay_path "${token}")" ] ||
+    die "overlay $(overlay_path "${token}") not found; copy migration/manifests/d24-after.yaml and set namespace: ${token}" 2
 }
 
 # Expiry (§3.3) ---------------------------------------------------------------
@@ -625,10 +660,10 @@ render_job() {
   local job_image="${LDM_JOB_IMAGE:-}"
   if [ -z "${job_image}" ] && [ "${DRY_RUN}" != "1" ]; then job_image="$(ldm_job_image "${token}")"; fi
   [ -n "${job_image}" ] && extra+=(--set "image.repository=${job_image%%:*}" --set "image.tag=${job_image##*:}")
-  while IFS= read -r kv; do [ -n "${kv}" ] && extra+=(--set-string "${kv}"); done <<<"$(ldm_azure_values "${ns}")"
+  while IFS= read -r kv; do [ -n "${kv}" ] && extra+=(--set-string "${kv}"); done <<<"$(ldm_target_values "${ns}")"
   # `ldm init` also loads the MIG-06 prior-run fixture (§12.1) via --apply-sql;
   # the image ships the repo's migration/ tree at /app/migration (§13.2).
-  [ "${stage}" = "init" ] && extra+=(--set-json "extraArgs=[\"--apply-sql\",\"${MIG06_FIXTURE_PATH}\"]")
+  [ "${stage}" = "init" ] && extra+=(--set-json "extraArgs=[\"--apply-sql\",\"$(mig06_fixture_path "${token}")\"]")
   # shellcheck disable=SC2086
   helm template "$(job_name "${stage}" "${run_id}")" "${JOB_CHART_DIR}" --namespace "${ns}" \
     --set "stage=${stage}" --set "namespaceToken=${token}" --set "runId=${run_id}" \
@@ -645,9 +680,29 @@ demo_expires() {
   printf '%s' "${v}"
 }
 
-# Values the chart needs that are not secrets (server, database, storage
-# account, container) - read back from the archive-store Secret so migrate
-# does not need Azure credentials on the operator's machine.
+# Values the chart needs that are not secrets - read back from the archive-store
+# Secret so `demo-migrate` needs neither database nor cloud credentials on the
+# operator's machine. PostgreSQL + S3 (default target) and Azure (optional overlay).
+ldm_target_values() {
+  local ns="$1" host port db ssl bucket region role
+  [ "${DRY_RUN}" = "1" ] && return 0
+  host="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" PG_HOST)"
+  port="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" PG_PORT)"
+  db="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" PG_DATABASE)"
+  ssl="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" PG_SSLMODE)"
+  bucket="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" S3_STAGING_BUCKET)"
+  region="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" AWS_REGION)"
+  role="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" LDM_JOB_ROLE_ARN)"
+  [ -n "${host}" ]   && printf 'env.PG_HOST=%s\n' "${host}"
+  [ -n "${port}" ]   && printf 'env.PG_PORT=%s\n' "${port}"
+  [ -n "${db}" ]     && printf 'env.PG_DATABASE=%s\n' "${db}"
+  [ -n "${ssl}" ]    && printf 'env.PG_SSLMODE=%s\n' "${ssl}"
+  [ -n "${bucket}" ] && printf 'env.S3_STAGING_BUCKET=%s\n' "${bucket}"
+  [ -n "${region}" ] && printf 'env.AWS_REGION=%s\n' "${region}"
+  [ -n "${role}" ]   && printf 'serviceAccount.roleArn=%s\n' "${role}"
+  ldm_azure_values "${ns}"
+}
+
 ldm_azure_values() {
   local ns="$1" server db acct cont
   [ "${DRY_RUN}" = "1" ] && return 0
@@ -748,9 +803,18 @@ demo_migrate() {
 # RECONCILE writes reconciliation.{json,csv,html} to the staging container
 # (§9.4.5); the report-service also serves them. Pull both when reachable.
 copy_report_out() {
-  local token="$1" run_id="$2" out="$3" ns acct cont
+  local token="$1" run_id="$2" out="$3" ns acct cont bucket
   ns="$(demo_namespace "${token}")"
   [ "${DRY_RUN}" = "1" ] && { dlog "[dry-run] would copy reconciliation.{json,csv,html} to ${out}"; return 0; }
+  # Default target: S3 staging, key <token>/<run_id>/<file> (operator AWS credentials).
+  bucket="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" S3_STAGING_BUCKET)"
+  if [ -n "${bucket}" ]; then
+    local f
+    for f in reconciliation.json reconciliation.csv reconciliation.html; do
+      if aws s3 cp "s3://${bucket}/${token}/${run_id}/${f}" "${out}/${f}" --only-show-errors 2>/dev/null; then dlog "copied ${f} -> ${out}/"
+      else dwarn "${f} not in s3://${bucket}/${token}/${run_id}/"; fi
+    done
+  fi
   acct="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" AZ_STORAGE_ACCOUNT)"
   cont="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" AZ_STAGING_CONTAINER)"
   if [ -n "${acct}" ] && az_available; then

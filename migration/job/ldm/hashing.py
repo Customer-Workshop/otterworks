@@ -88,6 +88,50 @@ def target_hash(row: dict[str, HashValue], hash_columns: Sequence[str], specs: l
     return _join([render_target_column(row, by_name[n]) for n in hash_columns])
 
 
+def hash_expression(provider: str, hash_columns: Sequence[str], specs: list[ColumnSpec]) -> str:
+    """The target-side SQL expression for `provider` that reproduces `target_hash` over a stg.* row."""
+    if provider == "azuresql":
+        return tsql_hash_expression(hash_columns, specs)
+    if provider == "postgresql":
+        return pg_hash_expression(hash_columns, specs)
+    raise ValueError(f"no hash expression for target provider {provider!r}")
+
+
+def pg_hash_expression(hash_columns: Sequence[str], specs: list[ColumnSpec]) -> str:
+    """PostgreSQL expression producing the same BYTEA(32) as `business_hash` for one target row.
+
+    CHAR(n) keys are re-padded to n because a bpchar loses its padding when cast to text; a TIMESTAMP(12)
+    is TIMESTAMP(6) plus the six digits of <col>_NANOS_TAIL (CONTRACTS.md §6.0).
+    """
+    by_name = {s.name: s for s in specs}
+    parts: list[str] = []
+    for name in hash_columns:
+        spec = by_name[name]
+        col = f'"{name}"'
+        if spec.kind == "char":
+            if spec.is_key and spec.target_length and not spec.trim:
+                expr = f"COALESCE(RPAD({col}::text, {int(spec.target_length)}), '')"
+            elif spec.is_key:
+                expr = f"COALESCE({col}::text, '')"
+            else:
+                expr = f"COALESCE(RTRIM({col}::text), '')"
+        elif spec.kind == "int":
+            expr = f"COALESCE({col}::text, '')"
+        elif spec.kind == "decimal":
+            expr = f"COALESCE(({col}::numeric(38,8))::text, '')"
+        elif spec.kind == "timestamp12":
+            expr = (
+                f"COALESCE(TO_CHAR({col}, 'YYYY-MM-DD-HH24.MI.SS.US') || LPAD(\"{name}_NANOS_TAIL\"::text, 6, '0'), '')"
+            )
+        elif spec.kind == "date8":
+            expr = f"COALESCE(TO_CHAR({col}, 'YYYYMMDD'), '')"
+        else:
+            expr = f"COALESCE(UPPER(ENCODE({col}, 'hex')), '')"
+        parts.append(expr)
+    joined = " || '|' || ".join(parts) if len(parts) > 1 else parts[0]
+    return f"sha256(convert_to({joined}, 'UTF8'))"
+
+
 def tsql_hash_expression(hash_columns: Sequence[str], specs: list[ColumnSpec]) -> str:
     """T-SQL expression producing the same VARBINARY(32) as `business_hash` for one target row."""
     by_name = {s.name: s for s in specs}

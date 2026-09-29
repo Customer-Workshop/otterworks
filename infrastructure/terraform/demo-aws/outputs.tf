@@ -32,3 +32,8 @@ output "tenant_hosts" {
   description = "Tenant hostnames published in Route53 (empty when ingress_hostname is unset)."
   value       = [for r in aws_route53_record.tenant : r.fqdn]
 }
+
+output "job_role_arn" {
+  description = "IRSA role the migration-job chart annotates its ServiceAccount with (S3 staging prefix only)"
+  value       = aws_iam_role.job.arn
+}

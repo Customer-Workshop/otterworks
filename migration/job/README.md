@@ -1,7 +1,7 @@
 # `ldm` — selective legacy data migration job
 
 Owned by the **job** unit (CONTRACTS.md §9, §13.2). Python 3.12 package implementing the staged
-Db2 -> Azure SQL migration with a run ledger, row-level rejects, purge audit and reconciliation.
+Db2 -> PostgreSQL (default; Azure SQL optional) migration with a run ledger, row-level rejects, purge audit and reconciliation.
 
 ```
 python -m ldm <extract|load|validate|purge|reconcile|all> --manifest <path> --namespace <token> --run-id <id>
@@ -16,16 +16,19 @@ failure, `3` purge guard, `4` configuration (manifest, token, env, type map, cop
 | Path | Purpose |
 |---|---|
 | `ldm/config.py` | strict pydantic manifest + overlay (deep merge, unknown keys rejected, token/overlay consistency) |
-| `ldm/typemap.py`, `typemaps/db2-to-azuresql.yaml` | type-mapping table with per-column `type_overrides` |
+| `ldm/typemap.py`, `typemaps/db2-to-postgresql.yaml`, `typemaps/db2-to-azuresql.yaml` | type-mapping table with per-column `type_overrides` |
 | `ldm/copybook.py`, `ldm/convert.py` | COBOL copybook parser (PIC X / display / COMP / COMP-3) and field conversion (cp037 strict, DECIMAL range, low-values dates, TIMESTAMP(12)) |
-| `ldm/hashing.py` | business hash, identical in Python (raw source rows) and T-SQL (target) |
+| `ldm/hashing.py` | business hash, identical in Python (raw source rows, serial and Spark) and in target SQL (PostgreSQL `sha256(convert_to(...))`, T-SQL `HASHBYTES`) |
 | `ldm/drivers/base.py` | `SourceDriver` / `TargetDriver` protocols; Oracle / PostgreSQL are additive implementations |
 | `ldm/drivers/db2.py` | Db2 via `ibm_db` (SQLCODE/SQLSTATE surfaced, transactional purge with `MIGAUDIT.PURGE_AUDIT`) |
-| `ldm/drivers/azuresql.py` | Azure SQL via `pyodbc` + ODBC Driver 18 (SQL or managed-identity auth) |
+| `ldm/drivers/postgresql.py` | PostgreSQL via `psycopg` (default target; `mig`/`stg`/`arch` in the tenant's existing database, SQLSTATE `23505` -> `DUPLICATE_KEY`) |
+| `ldm/drivers/factory.py` | picklable `TargetSpec` so Spark partitions reopen the target driver |
+| `ldm/drivers/azuresql.py` | Azure SQL via `pyodbc` + ODBC Driver 18 (SQL or managed-identity auth), optional |
+| `ldm/engines/spark_load.py` | PySpark local-mode LOAD engine: bounded slices, `convert_record()` per record, duplicate/reject routing, per-partition inserts, aggregate counts only |
 | `ldm/drivers/fakes.py` | in-memory drivers used by the tests |
 | `ldm/stages/*.py` | `init`, `extract`, `load`, `validate`, `purge`, `reconcile` |
-| `ldm/staging.py` | local staging dir and optional Azure Blob staging container |
-| `Dockerfile` | `python:3.12-slim` + msodbcsql18 + ibm_db clidriver + GnuCOBOL; build from the repo root |
+| `ldm/staging.py` | local staging dir, S3 staging (`{namespace}/{run_id}/` prefix in the shared bucket, default) and optional Azure Blob container |
+| `Dockerfile` | `python:3.12-slim` + OpenJDK 17 (PySpark) + psycopg + boto3 + ibm_db clidriver + GnuCOBOL; `--build-arg WITH_AZURE=1` adds msodbcsql18/pyodbc/azure SDKs; build from the repo root |
 
 ## Stage semantics
 
@@ -63,8 +66,11 @@ Every stage applies `target.ddl_dir` first (checksum-tracked in `mig.schema_vers
 
 ```sh
 cd migration/job
-python -m pip install -e '.[dev]'          # add [db2,azuresql] for the real drivers
+python -m pip install -e '.[dev,postgresql,s3,spark]'   # add [db2] / [azuresql] for the real source / Azure drivers
 ruff check . && ruff format --check . && pytest -q
+# PostgreSQL-backed tests (serial vs Spark parity, duplicate keys, restart) need a server:
+docker run -d --name ldm-pg -e POSTGRES_PASSWORD=ldm -e POSTGRES_USER=ldm -e POSTGRES_DB=ldm -p 55432:5432 postgres:16
+LDM_TEST_PG_HOST=localhost LDM_TEST_PG_PORT=55432 pytest -q tests/test_postgresql.py
 docker build -f migration/job/Dockerfile -t ldm:dev ../..   # from repo root
 ```
 

@@ -1,4 +1,5 @@
-"""CLI: python3.12 -m seed --out <dir> [--tables DOCARCH,FILEAUD,RETNPLCY] [--scale 0.01] [--fixture-out <file>]"""
+"""CLI: python3.12 -m seed --out <dir> [--tables DOCARCH,FILEAUD,RETNPLCY] [--scale 0.01]
+         [--fixture-out <file> [--fixture-dialect azuresql|postgresql]]"""
 
 from __future__ import annotations
 
@@ -21,12 +22,14 @@ def main(argv: list[str] | None = None) -> int:
                     help="fraction of the full volumes for fast local tests, e.g. 0.01 (planted rows always included)")
     ap.add_argument("--workers", type=int, default=None, help="worker processes (default: CPU count)")
     ap.add_argument("--fixture-out", type=Path, default=None,
-                    help="also (or only) write the MIG-06 prior-run T-SQL fixture to this path")
+                    help="also (or only) write the MIG-06 prior-run SQL fixture to this path")
+    ap.add_argument("--fixture-dialect", choices=fixture.DIALECTS, default="azuresql",
+                    help="target dialect of --fixture-out (default: azuresql)")
     args = ap.parse_args(argv)
 
     if args.fixture_out:
         args.fixture_out.parent.mkdir(parents=True, exist_ok=True)
-        args.fixture_out.write_text(fixture.render())
+        args.fixture_out.write_text(fixture.render(args.fixture_dialect))
         print(f"fixture written: {args.fixture_out}")
         if not args.out:
             return 0

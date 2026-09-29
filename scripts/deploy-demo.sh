@@ -11,12 +11,15 @@
 #   2. deploy-tenant.sh        - the ordinary OtterWorks tenant (existing path)
 #   3. db2-archive chart       - Db2 StatefulSet + seed hook, DB <RUN>B|<RUN>A
 #   4. wiring                  - archive-store-credentials, ARCHIVE_STORE=db2
-# When the token's overlay says azure: true (d24-after):
-#   5. azure Terraform         - per-namespace state key, generated var file
-#   6. wiring                  - Azure outputs -> Secrets, ARCHIVE_STORE=azuresql,
+# When the token's overlay says migrate: true with azure: false (the default
+# d24-after: PostgreSQL + S3 + Spark local mode, nothing provisioned in Azure):
+#   5. wiring                  - the tenant's existing RDS database + the token's
+#                                S3 prefix -> Secrets, ARCHIVE_STORE=postgresql,
 #                                PEER_APP_URL=<before host>, `ldm init` Job.
-#                                The migration itself is NOT started here
-#                                (`make demo-migrate NS=<token> RUN_ID=<id>`).
+# When the overlay says azure: true (optional rehearsal, r2-after):
+#   5. azure Terraform         - per-namespace state key, generated var file
+#   6. wiring                  - Azure outputs -> Secrets, ARCHIVE_STORE=azuresql, ...
+# The migration itself is NOT started here (`make demo-migrate NS=<token> RUN_ID=<id>`).
 # Transcript: .demo/<token>/deploy-<ts>.log. DRY_RUN=1 / --dry-run prints
 # every mutating command instead of running it.
 # ------------------------------------------------------------------------------
@@ -36,8 +39,8 @@ Usage: $0 [up] <token> [--ttl 72h] [--image-tag TAG] [--host-suffix ${DEMO_HOST_
   --host-suffix DNS suffix; hosts are t-<token>.<suffix> and api-t-<token>.<suffix>
   --profile     deploy-tenant.sh profile (default full)
   --dry-run     print mutating commands, touch nothing (same as DRY_RUN=1)
-Env: DB_PASSWORD (RDS master, for deploy-tenant.sh), AWS creds; for after-tokens also
-     AZURE_CLIENT_ID/SECRET/TENANT_ID/SUBSCRIPTION_ID and TFSTATE_AZ_ACCOUNT/RESOURCE_GROUP/CONTAINER.
+Env: DB_PASSWORD (RDS master, for deploy-tenant.sh and the PostgreSQL target), AWS creds; only for
+     azure: true overlays also AZURE_CLIENT_ID/SECRET/TENANT_ID/SUBSCRIPTION_ID and TFSTATE_AZ_*.
 EOF
 }
 
@@ -60,17 +63,20 @@ export DRY_RUN
 
 # --- validate before touching anything (§3.1) --------------------------------------
 validate_token "${TOKEN}"
+require_overlay "${TOKEN}"
 RUN="$(token_run "${TOKEN}")"; STATE="$(token_state "${TOKEN}")"
 NS="$(demo_namespace "${TOKEN}")"
 DB2_DB="$(db2_db_name "${TOKEN}")"
 EXPIRES="$(ttl_to_expires "${TTL}")"
 WANT_AZURE="$(token_wants_azure "${TOKEN}")"
+WANT_MIGRATE="$(token_wants_migrate "${TOKEN}")"
 WEB_HOST="$(demo_web_host "${TOKEN}")"; API_HOST="$(demo_api_host "${TOKEN}")"
 BEFORE_HOST="$(demo_web_host "${RUN}-before")"
 
 require_bins aws kubectl helm terraform jq
 require_dir "${DEMO_AWS_TF_DIR}" "demo-aws Terraform root" ops
 require_chart "${DB2_CHART_DIR}" source
+[ "${WANT_MIGRATE}" = "true" ] && require_chart "${JOB_CHART_DIR}" job
 if [ "${WANT_AZURE}" = "true" ]; then
   require_bins az
   require_dir "${AZURE_TF_DIR}" "Azure Terraform root" azure
@@ -87,7 +93,7 @@ if [ "${DRY_RUN}" != "1" ]; then
 fi
 
 start_transcript "${TOKEN}" deploy
-dlog "token=${TOKEN} run=${RUN} state=${STATE} namespace=${NS} db2=${DB2_DB} expires=${EXPIRES} azure=${WANT_AZURE} dry_run=${DRY_RUN}"
+dlog "token=${TOKEN} run=${RUN} state=${STATE} namespace=${NS} db2=${DB2_DB} expires=${EXPIRES} migrate=${WANT_MIGRATE} azure=${WANT_AZURE} dry_run=${DRY_RUN}"
 aws_account_id; ensure_kubeconfig
 DEMO_BRANCH="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "demo/${DEMO_NAME}")"
 dlog "tags: $(demo_tags_kv "${TOKEN}" "${EXPIRES}")"
@@ -101,7 +107,7 @@ tf "${TOKEN}" "${DEMO_AWS_TF_DIR}" apply -input=false -auto-approve "${DEMO_AWS_
 DB2_VOLUME_ID="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" db2_volume_id)"
 DB2_VOLUME_AZ="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" db2_volume_az)"
 DEMO_BUCKET="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" bucket_name)"
-JOB_ECR_URL="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" job_repository_url)"
+JOB_ROLE_ARN="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" job_role_arn)"
 [ -n "${DEMO_BUCKET}" ] || DEMO_BUCKET="$(demo_s3_bucket "${TOKEN}")"
 stage_end 0
 
@@ -203,10 +209,46 @@ stage_begin "wiring (db2)"
     "${DB2_RELEASE}" "${NS}" "${DB2_DB}" "${DB2_PASSWORD}"
   printf 'LDM_S3_BUCKET=%s\nLDM_S3_PREFIX=%s/\n' "${DEMO_BUCKET}" "${TOKEN}"
 } | apply_secret_from_stdin "${NS}" "${ARCHIVE_STORE_SECRET}" "${TOKEN}"
-if [ "${WANT_AZURE}" != "true" ]; then wire_archive_store "${NS}" || wiring_rc=$?; fi
+if [ "${WANT_AZURE}" != "true" ] && [ "${WANT_MIGRATE}" != "true" ]; then wire_archive_store "${NS}" || wiring_rc=$?; fi
 stage_end "${wiring_rc}"
 
-# --- 5/6. Azure (after) ----------------------------------------------------------------------
+# --- 5. PostgreSQL + S3 target (default after) ----------------------------------------------
+# No new database: `ldm init` creates the mig/stg/arch schemas inside the tenant's own
+# otterworks_<token> database that deploy-tenant.sh already provisioned on the shared RDS
+# instance. Staging is the token's prefix of the demo bucket; the Job reaches it through
+# the IRSA role from demo-aws. Nothing here touches Azure.
+if [ "${WANT_MIGRATE}" = "true" ] && [ "${WANT_AZURE}" != "true" ]; then
+  stage_begin "wiring (postgresql + s3)"
+  load_infra_outputs
+  PG_DATABASE="$(tenant_db_name "${TOKEN}")"
+  if [ "${DRY_RUN}" = "1" ]; then
+    RDS_HOST="${RDS_HOST:-<rds endpoint>}"; RDS_PORT="${RDS_PORT:-5432}"; DB_PASSWORD="${DB_PASSWORD:-<rds master password>}"
+  else
+    [ -n "${RDS_HOST:-}" ] || die "shared RDS endpoint unknown (infrastructure/terraform output rds_endpoint); cannot wire the PostgreSQL target"
+  fi
+  ensure_ldm_job_image "${TOKEN}"
+  JOB_IMAGE="$(ldm_job_image "${TOKEN}")"
+  {
+    printf 'ARCHIVE_STORE=postgresql\nLDM_NAMESPACE=%s\nLDM_RUN_TOKEN=%s\nLDM_HOST=eks\n' "${TOKEN}" "${RUN}"
+    printf 'DB2_HOST=%s.%s.svc.cluster.local\nDB2_PORT=50000\nDB2_DATABASE=%s\nDB2_USER=db2inst1\nDB2_PASSWORD=%s\n' \
+      "${DB2_RELEASE}" "${NS}" "${DB2_DB}" "${DB2_PASSWORD}"
+    printf 'LDM_S3_BUCKET=%s\nLDM_S3_PREFIX=%s/\n' "${DEMO_BUCKET}" "${TOKEN}"
+    printf 'PG_HOST=%s\nPG_PORT=%s\nPG_DATABASE=%s\nPG_USER=%s\nPG_PASSWORD=%s\nPG_SSLMODE=require\n' \
+      "${RDS_HOST}" "${RDS_PORT}" "${PG_DATABASE}" "${DB_USER}" "${DB_PASSWORD}"
+    printf 'S3_STAGING_BUCKET=%s\nAWS_REGION=%s\nLDM_JOB_ROLE_ARN=%s\n' "${DEMO_BUCKET}" "${AWS_REGION}" "${JOB_ROLE_ARN}"
+    printf 'PEER_APP_URL=https://%s\n' "${BEFORE_HOST}"
+  } | apply_secret_from_stdin "${NS}" "${ARCHIVE_STORE_SECRET}" "${TOKEN}"
+  # Secret `ldm-postgres` consumed by the migration-job chart (§13.2).
+  printf 'PG_USER=%s\nPG_PASSWORD=%s\n' "${DB_USER}" "${DB_PASSWORD}" \
+    | apply_secret_from_stdin "${NS}" "${LDM_POSTGRES_SECRET}" "${TOKEN}"
+  wire_archive_store "${NS}" || wiring_rc=$?
+  trust_peer_tokens "${TOKEN}" || wiring_rc=$?
+  export LDM_JOB_IMAGE="${JOB_IMAGE}"
+  run_stage_job "${TOKEN}" init "${TOKEN}" "${TRANSCRIPT_DIR}/ldm-init.log" || wiring_rc=$?
+  stage_end "${wiring_rc}"
+fi
+
+# --- 5/6. Azure (optional rehearsal overlay) --------------------------------------------------
 if [ "${WANT_AZURE}" = "true" ]; then
   stage_begin "azure terraform apply"
   az_login
@@ -301,7 +343,11 @@ echo
 dlog "namespace   : ${NS}   (expires ${EXPIRES})"
 dlog "web         : https://${WEB_HOST}"
 dlog "api         : https://${API_HOST}"
-dlog "db2         : ${DB2_RELEASE}.${NS}.svc.cluster.local:50000/${DB2_DB}  (ARCHIVE_STORE=$([ "${WANT_AZURE}" = "true" ] && echo azuresql || echo db2))"
+ARCHIVE_STORE_KIND=db2
+[ "${WANT_MIGRATE}" = "true" ] && ARCHIVE_STORE_KIND=postgresql
+[ "${WANT_AZURE}" = "true" ] && ARCHIVE_STORE_KIND=azuresql
+dlog "db2         : ${DB2_RELEASE}.${NS}.svc.cluster.local:50000/${DB2_DB}  (ARCHIVE_STORE=${ARCHIVE_STORE_KIND})"
+[ "${ARCHIVE_STORE_KIND}" = "postgresql" ] && dlog "postgresql  : ${RDS_HOST:-?}:${RDS_PORT:-5432}/${PG_DATABASE:-?}  s3://${DEMO_BUCKET}/${TOKEN}/  (Spark local[*] in the Job)"
 [ "${WANT_AZURE}" = "true" ] && dlog "azure       : $(azure_rg "${TOKEN}") / ${AZSQL_SERVER:-?} / ${AZSQL_DATABASE:-?}   peer=https://${BEFORE_HOST}"
 [ "${WANT_AZURE}" = "true" ] && dlog "next        : make demo-migrate NS=${TOKEN} RUN_ID=$(default_run_id)"
 print_timing_table

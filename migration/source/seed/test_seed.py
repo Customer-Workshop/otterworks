@@ -110,6 +110,17 @@ class RowTests(unittest.TestCase):
         self.assertIn("N'prior-partial'", sql)
         self.assertIn("SESSION_CONTEXT(N'ldm.namespace')", sql)
 
+    def test_fixture_renders_postgresql_dialect(self) -> None:
+        sql = fixture.render("postgresql")
+        self.assertEqual(sql.count('INSERT INTO stg."DOCARCH"'), 5)
+        self.assertEqual(sql.count("ON CONFLICT DO NOTHING"), 7)
+        self.assertIn("current_setting('ldm.namespace', true)", sql)
+        self.assertNotIn("SESSION_CONTEXT", sql)
+        self.assertNotIn(" N'", sql)  # no T-SQL national-string literals
+        # TIMESTAMP(6) + six-digit tail: MIG06 rows carry LAST_ACCESS_TS ...11.111111111111
+        self.assertIn("TIMESTAMP '2016-09-01 11:11:11.111111', 111111,", sql)
+        self.assertTrue(sql.rstrip().endswith("$fixture$;"))
+
 
 class ComplexityManifestTests(unittest.TestCase):
     MANIFEST = Path(__file__).resolve().parents[3] / "demos" / "app" / "complexity-manifest.json"

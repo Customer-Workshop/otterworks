@@ -55,6 +55,8 @@ spec:
               value: {{ include "migration-job.image" . | quote }}
             - name: LOCAL_STAGING_DIR
               value: /work/staging
+            - name: SPARK_LOCAL_DIRS
+              value: /work/staging/spark
             {{- range $k, $v := .Values.env }}
             {{- if $v }}
             - name: {{ $k }}
@@ -64,6 +66,9 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.secrets.db2 }}
+            - secretRef:
+                name: {{ .Values.secrets.postgres }}
+                optional: true
             - secretRef:
                 name: {{ .Values.secrets.azure }}
                 optional: true

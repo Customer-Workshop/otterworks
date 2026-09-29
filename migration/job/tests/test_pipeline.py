@@ -10,7 +10,7 @@ import pytest
 
 from ldm.drivers.base import InsertFailure
 from ldm.drivers.fakes import FakeSource, FakeTarget
-from ldm.errors import PurgeGuardError, ReconcileError
+from ldm.errors import PurgeGuardError, ReconcileError, SourceError
 from ldm.runner import execute, prepare_run
 from ldm.stages import extract, load, purge, reconcile, validate
 
@@ -214,18 +214,56 @@ def test_delete_count_mismatch_rolls_back_batch(tmp_path: Path, seed: Seed, mani
     assert victim in {str(r["ARCH_KEY"]) for r in seed.source.rows("ARCHIVE", "DOCARCH")}
 
 
-def test_db2_sqlcode_surfaces_on_purge(tmp_path: Path, seed: Seed, manifest_after: Path) -> None:
+def test_db2_sqlcode_surfaces_on_purge_after_retries_exhausted(
+    tmp_path: Path, seed: Seed, manifest_after: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ctx = make_ctx(tmp_path, seed.source, manifest=manifest_after)
     prepare_run(ctx)
     for stage in (extract, load, validate):
         stage.run(ctx)
+    slept: list[float] = []
+    monkeypatch.setattr(purge, "_sleep", slept.append)
     seed.source.fail_delete_for.add("FA000000000000000001".ljust(20))
     code, _ = execute(ctx, "purge")
     assert code == 1
+    b = ctx.manifest.batch
+    assert slept == [
+        min(b.purge_retry_backoff_s * 2**i, b.purge_retry_max_backoff_s) for i in range(b.purge_retry_attempts)
+    ]
     target = ctx.target
     assert isinstance(target, FakeTarget)
     failed = [e for e in target.stage_log if e["stage"] == "PURGE" and e["status"] == "FAILED"]
     assert failed and "SQLCODE=-911" in str(failed[0]["message"]) and "SQLSTATE=40001" in str(failed[0]["message"])
+
+
+def test_transient_source_pressure_retries_batch_then_purges(
+    tmp_path: Path, seed: Seed, manifest_after: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ctx = make_ctx(tmp_path, seed.source, manifest=manifest_after)
+    prepare_run(ctx)
+    for stage in (extract, load, validate):
+        stage.run(ctx)
+    source = seed.source
+    real = source.purge_batch
+    log_full = {"remaining": 2}
+
+    def flaky(schema, table, key_column, keys, run_id, namespace, batch_no):
+        if table == "DOCARCH" and log_full["remaining"]:
+            log_full["remaining"] -= 1
+            raise SourceError(-964, "57011", f"{table} batch {batch_no}: SQL0964C transaction log full")
+        return real(schema, table, key_column, keys, run_id, namespace, batch_no)
+
+    monkeypatch.setattr(source, "purge_batch", flaky)
+    slept: list[float] = []
+    monkeypatch.setattr(purge, "_sleep", slept.append)
+    code, tables = execute(ctx, "purge")
+    assert code == 0, tables
+    assert log_full["remaining"] == 0 and slept == [5.0, 10.0]
+    assert tables["DOCARCH"]["purged"] == tables["DOCARCH"]["purge_intended"]
+    target = ctx.target
+    assert isinstance(target, FakeTarget)
+    statuses = {a.status for a in target.purge_audit[(ctx.run_id, ctx.namespace)] if a.table_name == "DOCARCH"}
+    assert statuses == {"PURGED"}
 
 
 def test_reconcile_arithmetic_failure_exits_2(tmp_path: Path, seed: Seed, manifest_after: Path) -> None:

@@ -6,7 +6,7 @@ public class ArchiveFeatureDisabledException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
     public static final String HINT =
-            "archive feature is off; set ARCHIVE_STORE=db2 or ARCHIVE_STORE=azuresql to enable it";
+            "archive feature is off; set ARCHIVE_STORE=db2, postgresql or azuresql to enable it";
 
     public ArchiveFeatureDisabledException() {
         super(HINT);

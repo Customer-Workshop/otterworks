@@ -11,7 +11,7 @@ from ..context import RunContext, TableSpec
 from ..convert import convert_record
 from ..drivers.base import ClassAggregate, ClassTotalRow, Reject, StagedRow, ValidationRow
 from ..errors import ReconcileError
-from ..hashing import render_source_column, render_target_column, source_hash, tsql_hash_expression
+from ..hashing import hash_expression, render_source_column, render_target_column, source_hash
 
 RULE_HASH = "HASH_MISMATCH"
 RULE_ARCHIVE_CONFLICT = "ARCHIVE_CONFLICT"
@@ -115,7 +115,7 @@ def _persist(ctx: RunContext, ts: TableSpec, candidates: list[_Candidate]) -> No
 def _iter_candidates(ctx: RunContext, ts: TableSpec) -> Iterator[list[_Candidate]]:
     """One key-contiguous staging batch at a time: converted source values + both business hashes."""
     hash_cols = ts.config.hash_columns
-    tsql = tsql_hash_expression(hash_cols, ts.columns)
+    tsql = hash_expression(ctx.manifest.target.provider, hash_cols, ts.columns)
     for batch in ctx.target.iter_staging(ctx.run_id, ctx.namespace, ts.name, ctx.manifest.batch.validate_batch_rows):
         if not batch:
             continue

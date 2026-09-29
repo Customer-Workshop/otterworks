@@ -143,3 +143,62 @@ resource "aws_ecr_lifecycle_policy" "job" {
     }]
   })
 }
+
+# IRSA role for the one-shot ldm Job (S3 staging, CONTRACTS.md §9.2): the Job's ServiceAccounts
+# (ldm-<stage>-<run_id>, ldm-init-<token>) in the token's namespace may read/write only this
+# token's prefix of the demo bucket. Nothing else in AWS is reachable from the Job.
+locals {
+  oidc_issuer   = replace(data.aws_eks_cluster.this.identity[0].oidc[0].issuer, "https://", "")
+  job_role_name = "otterworks-ldm-${var.namespace}-job"
+}
+
+data "aws_iam_policy_document" "job_trust" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = ["arn:aws:iam::${local.account_id}:oidc-provider/${local.oidc_issuer}"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "${local.oidc_issuer}:sub"
+      values   = ["system:serviceaccount:otterworks-${var.namespace}:ldm-*"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "job_s3" {
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.demo.arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["${var.namespace}/*"]
+    }
+  }
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:AbortMultipartUpload"]
+    resources = ["${aws_s3_bucket.demo.arn}/${var.namespace}/*"]
+  }
+}
+
+resource "aws_iam_role" "job" {
+  name               = local.job_role_name
+  assume_role_policy = data.aws_iam_policy_document.job_trust.json
+  tags               = merge(local.tags, { Name = local.job_role_name })
+}
+
+resource "aws_iam_role_policy" "job_s3" {
+  name   = "s3-staging-prefix"
+  role   = aws_iam_role.job.id
+  policy = data.aws_iam_policy_document.job_s3.json
+}

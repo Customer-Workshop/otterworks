@@ -1,0 +1,69 @@
+# Db2 -> PostgreSQL type map (CONTRACTS.md §8). Selected by manifest target.typemap.
+# Same shape as db2-to-azuresql.yaml; the `kind` column drives conversion and hashing identically on both.
+schema_version: 1
+source: db2
+target: postgresql
+
+# Source type -> target type. `{n}`, `{p}`, `{s}` are substituted from the source declaration.
+# `kind` is the ldm conversion/hash kind: char | int | decimal | timestamp12 | date8 | binary.
+types:
+  - source: "CHAR({n})"
+    target: "CHAR({n})"
+    kind: char
+    note: "bpchar; padding preserved on read and in the hash expression (RPAD). Override VARCHAR(n) + trim: right to trim"
+  - source: "CHAR({n}) FOR BIT DATA"
+    target: "BYTEA"
+    kind: binary
+    note: "override `encoding` (e.g. cp037) to decode to text"
+  - source: "VARCHAR({n})"
+    target: "VARCHAR({n})"
+    kind: char
+  - source: "SMALLINT"
+    target: "SMALLINT"
+    kind: int
+  - source: "INTEGER"
+    target: "INTEGER"
+    kind: int
+  - source: "BIGINT"
+    target: "BIGINT"
+    kind: int
+  - source: "DECIMAL({p},{s})"
+    target: "NUMERIC({p},{s})"
+    kind: decimal
+    note: "p > 38 is a config error; override target_type NUMERIC(18,8) plants MIG-02"
+  - source: "TIMESTAMP(12)"
+    target: "TIMESTAMP(6)"
+    kind: timestamp12
+    note: "PostgreSQL keeps 6 fraction digits, so digits 7-12 of the fraction go to <col>_NANOS_TAIL INTEGER"
+  - source: "DATE"
+    target: "DATE"
+    kind: date8
+
+# Copybook PIC -> Db2 declared type, used when the manifest does not name a source type explicitly.
+# Rules are tried in order; the first regex match wins. `{n}`, `{p}`, `{s}` are captured by name.
+copybook_inference:
+  - pic: '^X\((?P<n>32)\)$'
+    source: "TIMESTAMP(12)"
+  - pic: '^X\((?P<n>\d+)\)$'
+    source: "CHAR({n})"
+  - pic: '^X$'
+    source: "CHAR(1)"
+  - pic: '^S?9\((?P<n>\d+)\)\s+COMP(?:-5|UTATIONAL(?:-5)?)?$'
+    source_by_digits: {4: "SMALLINT", 9: "INTEGER", 18: "BIGINT"}
+  - pic: '^S?9\((?P<p>\d+)\)V9\((?P<s>\d+)\)\s+COMP-3$'
+    source: "DECIMAL({ps},{s})"
+  - pic: '^S?9\((?P<p>\d+)\)\s+COMP-3$'
+    source: "DECIMAL({p},0)"
+  - pic: '^S?9\((?P<p>\d+)\)V9\((?P<s>\d+)\)$'
+    source: "DECIMAL({ps},{s})"
+  - pic: '^S?9\((?P<p>\d+)\)$'
+    source: "DECIMAL({p},0)"
+
+# Manifest override keys that this map understands (CONTRACTS.md §4.3). Overrides written in the SQL Server
+# spelling (NVARCHAR, DATETIME2, VARBINARY) are accepted so one manifest drives both providers.
+overrides:
+  target_type: "replaces the mapped target type; VARCHAR/NUMERIC/DATE change the kind accordingly"
+  trim: "right | none; right trims trailing spaces of a CHAR column (target side)"
+  encoding: "python codec used to decode the copybook bytes (FOR BIT DATA columns)"
+  format: "YYYYMMDD: CHAR(8) text stored as a DATE on the target"
+  value_map: "source value -> target value substitution applied before the business hash"

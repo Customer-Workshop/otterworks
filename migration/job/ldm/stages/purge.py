@@ -2,8 +2,44 @@
 
 from __future__ import annotations
 
+import time
+
 from ..context import RunContext, TableSpec
-from ..errors import LdmError, PurgeGuardError
+from ..errors import LdmError, PurgeGuardError, SourceError
+
+_sleep = time.sleep
+
+# Source SQLSTATEs for which the rolled-back batch is retried: 57011 transaction log full (Db2 SQL0964C),
+# 57033 lock timeout without automatic rollback, 40001 deadlock / lock-timeout rollback.
+TRANSIENT_SOURCE_SQLSTATES = frozenset({"57011", "57033", "40001"})
+
+
+def is_transient(e: LdmError) -> bool:
+    return isinstance(e, SourceError) and e.sqlstate in TRANSIENT_SOURCE_SQLSTATES
+
+
+def _purge_batch_with_retry(ctx: RunContext, ts: TableSpec, chunk: list[str], batch_no: int) -> int:
+    m = ctx.manifest
+    cfg = ts.config
+    attempts = m.batch.purge_retry_attempts
+    for attempt in range(attempts + 1):
+        ctx.target.insert_purge_audit(ctx.run_id, ctx.namespace, ts.name, chunk, batch_no)
+        try:
+            return ctx.source.purge_batch(
+                cfg.schema_, cfg.name, ts.key_column, chunk, ctx.run_id, ctx.namespace, batch_no
+            )
+        except LdmError as e:
+            ctx.target.set_purge_audit_status(ctx.run_id, ctx.namespace, ts.name, chunk, "ROLLED_BACK")
+            if attempt >= attempts or not is_transient(e):
+                raise
+            delay = min(m.batch.purge_retry_backoff_s * 2**attempt, m.batch.purge_retry_max_backoff_s)
+            ctx.log.warn(
+                f"batch {batch_no} rolled back by source (SQLSTATE={e.sqlstate}); "
+                f"retry {attempt + 1}/{attempts} in {delay:g}s",
+                ts.name,
+            )
+            _sleep(delay)
+    raise AssertionError("unreachable")
 
 
 def guard(ctx: RunContext, ts: TableSpec) -> tuple[list[str], int]:
@@ -48,17 +84,14 @@ def purge_table(ctx: RunContext, ts: TableSpec, keys: list[str], validated: int)
                 f"resuming: {len(recovered)} key(s) already committed to MIGAUDIT.PURGE_AUDIT; marked PURGED", ts.name
             )
             todo = [k for k in todo if k not in committed]
-    key_col = ts.key_column
     batch_rows = m.batch.purge_batch_rows
     batch_no = 0
     for i in range(0, len(todo), batch_rows):
         batch_no += 1
         chunk = todo[i : i + batch_rows]
-        ctx.target.insert_purge_audit(ctx.run_id, ctx.namespace, ts.name, chunk, batch_no)
         try:
-            deleted = ctx.source.purge_batch(cfg.schema_, cfg.name, key_col, chunk, ctx.run_id, ctx.namespace, batch_no)
+            deleted = _purge_batch_with_retry(ctx, ts, chunk, batch_no)
         except LdmError as e:
-            ctx.target.set_purge_audit_status(ctx.run_id, ctx.namespace, ts.name, chunk, "ROLLED_BACK")
             ctx.target.update_ledger(
                 ctx.run_id,
                 ctx.namespace,

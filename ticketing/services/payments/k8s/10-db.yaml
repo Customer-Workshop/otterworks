@@ -12,6 +12,7 @@ spec:
   selector: {matchLabels: {app: ${TOKEN}-payments-db}}
   template:
     metadata:
+      annotations: {karpenter.sh/do-not-disrupt: "true"}
       labels: {app: ${TOKEN}-payments-db, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
     spec:
       containers:

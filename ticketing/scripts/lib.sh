@@ -62,3 +62,48 @@ start_transcript() {
   exec > >(tee -a "${TRANSCRIPT}") 2>&1
   log "transcript: ${TRANSCRIPT#${REPO_ROOT}/}"
 }
+
+# curl against one of the token's public hosts. external-dns re-creates the A record a minute or so after
+# every reset and resolvers cache the NXDOMAIN seen in between for up to 15 minutes, so pin the host to the
+# shared ingress-nginx load balancer (whose own hostname always resolves) with --resolve instead of trusting
+# DNS for the token host. TLS/SNI and the Host header still carry the real hostname.
+#   pub_curl <url> [curl args...]
+INGRESS_LB_IP=""
+ingress_lb_ip() {
+  local lb
+  [ -n "${INGRESS_LB_IP}" ] && { echo "${INGRESS_LB_IP}"; return 0; }
+  lb="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].hostname}{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+  [ -n "${lb}" ] && INGRESS_LB_IP="$(dig +short +time=2 +tries=1 "${lb}" 2>/dev/null | grep -E '^[0-9]+(\.[0-9]+){3}$' | head -1 || true)"
+  echo "${INGRESS_LB_IP}"
+}
+pub_curl() {
+  local url="$1" host ip; shift
+  host="${url#*://}"; host="${host%%/*}"; host="${host%%:*}"
+  ip="$(ingress_lb_ip)"
+  if [ -n "${ip}" ]; then curl --resolve "${host}:443:${ip}" --resolve "${host}:80:${ip}" "$@" "${url}"; else curl "$@" "${url}"; fi
+}
+
+# Poll a public URL until it answers with one of the given HTTP statuses (DNS via external-dns and the
+# letsencrypt certificate both take a minute or two after a namespace is re-created).
+#   wait_http <url> <statuses-regex> [timeout-seconds]
+wait_http() {
+  local url="$1" ok="${2:-200}" timeout="${3:-480}" started=${SECONDS} code
+  while :; do
+    code="$(pub_curl "${url}" -s -o /dev/null -m 30 -w '%{http_code}' 2>/dev/null || true)"
+    [[ "${code}" =~ ^(${ok})$ ]] && { log "   ${url} -> ${code} after $((SECONDS - started))s"; return 0; }
+    (( SECONDS - started >= timeout )) && die "${url} not answering (${ok}) after ${timeout}s (last: ${code:-none})"
+    sleep 5
+  done
+}
+
+# Strimzi KafkaTopics carry a topic-operator finalizer; once the entity operator is gone with the namespace the
+# finalizer is never cleared and the namespace hangs in Terminating. Release the topics before deleting a namespace.
+#   release_kafka_topics <namespace>
+release_kafka_topics() {
+  local ns="$1" t
+  kubectl get crd kafkatopics.kafka.strimzi.io >/dev/null 2>&1 || return 0
+  for t in $(kubectl -n "${ns}" get kafkatopic -o name 2>/dev/null); do
+    kubectl -n "${ns}" patch "${t}" --type=merge -p '{"metadata":{"finalizers":null}}' >/dev/null 2>&1 || true
+    kubectl -n "${ns}" delete "${t}" --wait=false --ignore-not-found >/dev/null 2>&1 || true
+  done
+}

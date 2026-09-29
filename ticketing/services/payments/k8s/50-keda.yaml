@@ -1,6 +1,8 @@
 # KEDA scales the consumer on order-placed lag: 0 replicas when idle, one per ~40 lagging records, capped at
-# 6 (= partitions), and back to zero within 60s of the queue draining. The consumer commits initial offsets
-# on assignment so the scaler never sees "no committed offset" as infinite lag.
+# 6 (= partitions), and back to zero within 60s of the queue draining. Until the consumer has committed once
+# (fresh cluster after a reset, or the first pod was scaled away before it joined) the group has no offset;
+# with offsetResetPolicy=earliest KEDA then counts every record on the topic as lag, so a pending order still
+# wakes the consumer, which commits its initial position on assignment.
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -30,7 +32,7 @@ spec:
         consumerGroup: ${TOKEN}-payments
         topic: ${TOKEN}-order-placed
         lagThreshold: "40"
-        activationLagThreshold: "1"
+        activationLagThreshold: "0"
         offsetResetPolicy: earliest
         allowIdleConsumers: "false"
-        scaleToZeroOnInvalidOffset: "true"
+        scaleToZeroOnInvalidOffset: "false"

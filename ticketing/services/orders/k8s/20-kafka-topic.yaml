@@ -1,5 +1,5 @@
 # The one event orders produces (the outbox relay publishes it). Keyed by orderRef, 6 partitions.
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
   name: ${TOKEN}-order-placed

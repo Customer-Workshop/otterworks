@@ -37,6 +37,7 @@ spec:
       demo.otterworks.app/run-token: ${TOKEN}
   template:
     metadata:
+      annotations: {karpenter.sh/do-not-disrupt: "true"}
       labels:
         demo.otterworks.app/run-token: ${TOKEN}
         demo.otterworks.app/side: after

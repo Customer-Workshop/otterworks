@@ -1,0 +1,54 @@
+# Public entry point for the after side: <token>-after.demo.otterworks.app on the shared ingress-nginx.
+# Knative services are reached with the Kourier pattern from CONVENTIONS.md (ExternalName -> kourier-internal,
+# upstream-vhost = the Knative Service's cluster-local host). upstream-vhost is per Ingress, so each
+# request-driven service gets its own Ingress on the same host: orders here, seats and confirmations from
+# their k8s/ dirs. This Ingress owns the host's TLS certificate (letsencrypt-prod, DNS-01).
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-orders-kourier
+  namespace: ${NS_AFTER}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after, demo.otterworks.app/service: orders}
+spec:
+  type: ExternalName
+  externalName: kourier-internal.kourier-system.svc.cluster.local
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${TOKEN}-after
+  namespace: ${NS_AFTER}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after, demo.otterworks.app/service: orders}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/upstream-vhost: ${TOKEN}-orders.${NS_AFTER}.svc.cluster.local
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  tls: [{hosts: ["${HOST_AFTER}"], secretName: ${TOKEN}-after-tls}]
+  rules:
+    - host: ${HOST_AFTER}
+      http:
+        paths:
+          - {path: /api/purchase, pathType: Prefix, backend: {service: {name: ${TOKEN}-orders-kourier, port: {number: 80}}}}
+          - {path: /api/orders, pathType: Prefix, backend: {service: {name: ${TOKEN}-orders-kourier, port: {number: 80}}}}
+          - {path: /api/stats, pathType: Prefix, backend: {service: {name: ${TOKEN}-orders-kourier, port: {number: 80}}}}
+---
+# payments is a plain Deployment (KEDA-scaled), so its lookup API goes straight to its ClusterIP Service.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${TOKEN}-after-payments
+  namespace: ${NS_AFTER}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after, demo.otterworks.app/service: payments}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  tls: [{hosts: ["${HOST_AFTER}"], secretName: ${TOKEN}-after-tls}]
+  rules:
+    - host: ${HOST_AFTER}
+      http:
+        paths:
+          - {path: /api/payments, pathType: Prefix, backend: {service: {name: ${TOKEN}-payments, port: {number: 80}}}}

@@ -39,9 +39,9 @@ spec:
             - {name: KAFKA_BOOTSTRAP, value: ${TOKEN}-kafka-kafka-bootstrap.${TOKEN}-after.svc:9092}
             - {name: ORDERS_INBOX_URL, value: http://${TOKEN}-orders.${TOKEN}-after.svc.cluster.local/events/order-confirmed}
             - {name: SEATS_INBOX_URL, value: http://${TOKEN}-seats.${TOKEN}-after.svc.cluster.local/events/order-confirmed}
-            - {name: DELIVERY_TIMEOUT_MS, value: "5000"}
+            - {name: DELIVERY_TIMEOUT_MS, value: "20000"}
             - {name: PUBLISH_TIMEOUT_MS, value: "10000"}
-          startupProbe: {httpGet: {path: /actuator/health/readiness}, periodSeconds: 2, failureThreshold: 45}
+          startupProbe: {httpGet: {path: /actuator/health/readiness, port: 8080}, periodSeconds: 2, failureThreshold: 45}
           readinessProbe: {httpGet: {path: /actuator/health/readiness}, periodSeconds: 5, timeoutSeconds: 3}
           livenessProbe: {httpGet: {path: /actuator/health/liveness}, periodSeconds: 15, failureThreshold: 4}
           resources:

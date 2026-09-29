@@ -1,0 +1,54 @@
+# After state: namespace <token>-after with the same quota/limit/isolation shape as the before side,
+# sized for Kafka plus four services at their max of six replicas each. Rendered by deploy.sh.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${NS_AFTER}
+  labels:
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+    app.kubernetes.io/part-of: ticketing-demo
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ${TOKEN}-after-quota
+  namespace: ${NS_AFTER}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  hard: {requests.cpu: "16", limits.cpu: "56", requests.memory: 28Gi, limits.memory: 56Gi, pods: "90", services.loadbalancers: "0", persistentvolumeclaims: "0"}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ${TOKEN}-after-limits
+  namespace: ${NS_AFTER}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  limits:
+    - type: Container
+      default: {cpu: 500m, memory: 512Mi}
+      defaultRequest: {cpu: 50m, memory: 64Mi}
+---
+# Namespace-wide ingress isolation: the namespace itself plus the platform namespaces that must reach the
+# pods (shared ingress, Kourier gateway, Knative activator/autoscaler, KEDA scalers, Prometheus, Strimzi).
+# The per-service NetworkPolicies from services/*/k8s are additive.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ${TOKEN}-after-isolate
+  namespace: ${NS_AFTER}
+  labels: {demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kourier-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: knative-serving}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: keda}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: strimzi}}
+        - namespaceSelector: {matchLabels: {demo.otterworks.app/run-token: "${TOKEN}"}}

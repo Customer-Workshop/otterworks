@@ -24,7 +24,6 @@ metadata:
     demo.otterworks.app/run-token: ${TOKEN}
     demo.otterworks.app/side: after
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/upstream-vhost: ${TOKEN}-seats.${TOKEN}-after.svc.cluster.local
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
 spec:

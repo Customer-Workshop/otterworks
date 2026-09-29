@@ -8,7 +8,9 @@ start_transcript "${TOKEN}" reset
 SECONDS=0
 ensure_kubeconfig
 for ns in "$(ns_before "${TOKEN}")" "$(ns_after "${TOKEN}")"; do
-  if kubectl get ns "${ns}" >/dev/null 2>&1; then log "deleting ${ns}"; kubectl delete ns "${ns}" --wait=true --timeout=10m; fi
+  if kubectl get ns "${ns}" >/dev/null 2>&1; then
+    log "deleting ${ns}"; release_kafka_topics "${ns}"; kubectl delete ns "${ns}" --wait=true --timeout=10m
+  fi
 done
 "${TKT_ROOT}/scripts/deploy-before.sh" "${TOKEN}"
 if [ -x "${TKT_ROOT}/deploy/after/deploy.sh" ]; then

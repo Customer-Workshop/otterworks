@@ -11,6 +11,7 @@ spec:
   selector: {matchLabels: {app: ${TOKEN}-confirmations-db}}
   template:
     metadata:
+      annotations: {karpenter.sh/do-not-disrupt: "true"}
       labels: {app: ${TOKEN}-confirmations-db, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
     spec:
       containers:

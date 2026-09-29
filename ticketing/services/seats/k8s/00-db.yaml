@@ -29,6 +29,7 @@ spec:
     matchLabels: {app.kubernetes.io/name: seats-db, demo.otterworks.app/run-token: ${TOKEN}}
   template:
     metadata:
+      annotations: {karpenter.sh/do-not-disrupt: "true"}
       labels:
         app.kubernetes.io/name: seats-db
         app.kubernetes.io/part-of: ticketing

@@ -58,6 +58,7 @@ spec:
   selector: {matchLabels: {app: ${TOKEN}-db}}
   template:
     metadata:
+      annotations: {karpenter.sh/do-not-disrupt: "true"}
       labels: {app: ${TOKEN}-db, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
     spec:
       containers:
@@ -104,6 +105,7 @@ spec:
   selector: {matchLabels: {app: ${TOKEN}-monolith}}
   template:
     metadata:
+      annotations: {karpenter.sh/do-not-disrupt: "true"}
       labels: {app: ${TOKEN}-monolith, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: before}
     spec:
       containers:

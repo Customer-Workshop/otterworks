@@ -1,5 +1,5 @@
 # The one topic confirmations produces. payment-captured (consumed) is owned by payments.
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
   name: ${TOKEN}-order-confirmed

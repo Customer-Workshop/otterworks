@@ -13,10 +13,21 @@ aws_account_id; ensure_kubeconfig
 run() { if [ "${DRY}" = 1 ]; then echo "DRY-RUN: $*"; else "$@"; fi; }
 SEL="${TOKEN_LABEL}=${TOKEN}"
 
+# Everything the after side creates lives in <token>-after (Kafka/KafkaNodePool/KafkaTopics, Knative Services and
+# their revisions/routes, KEDA ScaledObjects + HPAs, Deployments, CronJob, k6 Jobs, monitors, Ingresses, the TLS
+# certificate/secret and the Grafana dashboard ConfigMap), so deleting the namespace removes it all; list it first.
+list_ns_objects() {
+  local kinds; kinds="$(kubectl api-resources --namespaced --verbs=list,delete -o name 2>/dev/null | grep -v -E '^(events|events.events.k8s.io|endpoints|endpointslices.discovery.k8s.io|pods|replicasets.apps|controllerrevisions.apps)$' | paste -sd, -)"
+  kubectl -n "$1" get "${kinds}" -o name --ignore-not-found 2>/dev/null | sed 's/^/      /'
+}
 log "1/4 namespaces labelled ${SEL}"
 for ns in $(kubectl get ns -l "${SEL}" -o name) ; do run kubectl delete "${ns}" --wait=false; done
 for ns in "$(ns_before "${TOKEN}")" "$(ns_after "${TOKEN}")"; do
-  kubectl get ns "${ns}" >/dev/null 2>&1 && run kubectl delete ns "${ns}" --wait=false || true
+  if kubectl get ns "${ns}" >/dev/null 2>&1; then
+    log "   ${ns} contains:"; list_ns_objects "${ns}"
+    [ "${DRY}" = 1 ] && echo "DRY-RUN: release_kafka_topics ${ns}" || release_kafka_topics "${ns}"
+    run kubectl delete ns "${ns}" --wait=false
+  fi
 done
 
 log "2/4 labelled objects outside those namespaces"

@@ -1,0 +1,51 @@
+# One k6 Job per on-sale run, in the after namespace, hitting BOTH public hosts through the shared ingress.
+# Rendered by run-onsale.sh; the script comes from ConfigMap <token>-onsale-script (load/onsale.js).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${TOKEN}-onsale-${RUN_ID}
+  namespace: ${NS_AFTER}
+  labels:
+    demo.otterworks.app/run-token: "${TOKEN}"
+    demo.otterworks.app/side: after
+    demo.otterworks.app/run-id: "${RUN_ID}"
+    app.kubernetes.io/name: onsale-load
+    app.kubernetes.io/part-of: ticketing-demo
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        demo.otterworks.app/run-token: "${TOKEN}"
+        demo.otterworks.app/side: after
+        demo.otterworks.app/run-id: "${RUN_ID}"
+        app.kubernetes.io/name: onsale-load
+    spec:
+      restartPolicy: Never
+      securityContext: {runAsNonRoot: true, runAsUser: 12345, runAsGroup: 12345, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: k6
+          image: ${ECR_PREFIX}/k6:v1.8.1
+          args: ["run", "--no-usage-report", "/scripts/onsale.js"]
+          env:
+            - {name: TOKEN, value: "${TOKEN}"}
+            - {name: RUN_ID, value: "${RUN_ID}"}
+            - {name: BEFORE_HOST, value: "${HOST_BEFORE}"}
+            - {name: AFTER_HOST, value: "${HOST_AFTER}"}
+            - {name: RAMP, value: "${RAMP}"}
+            - {name: PEAK, value: "${PEAK}"}
+            - {name: DURATION, value: "${DURATION}"}
+            - {name: RAMPDOWN, value: "${RAMPDOWN}"}
+            - {name: MAX_VUS, value: "${MAX_VUS}"}
+            - {name: PERFORMANCES, value: "${PERFORMANCES}"}
+            - {name: QUANTITY, value: "${QUANTITY}"}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources:
+            requests: {cpu: 500m, memory: 256Mi}
+            limits: {cpu: "2", memory: 1Gi}
+          volumeMounts:
+            - {name: scripts, mountPath: /scripts, readOnly: true}
+      volumes:
+        - name: scripts
+          configMap: {name: ${TOKEN}-onsale-script}

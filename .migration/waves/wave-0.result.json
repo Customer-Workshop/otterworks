@@ -1,0 +1,53 @@
+{
+  "auto_merge": false,
+  "batches": [
+    {
+      "branch": "migrate/billing/0-U0-reference",
+      "head": "f70db00e",
+      "id": "w0-b01",
+      "merge_eligible": true,
+      "one_line_summary": "codes/tenants/plans/sequences loaded live; live recon PASS (T1 3/3, T2 6/6, T3 104/104), merge-eligible; idempotent rerun 0 upserts/0 deletes.",
+      "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1742",
+      "recon_mode": "live",
+      "recon_verdict": "PASS",
+      "skill_feedback": [],
+      "status": "PASS",
+      "target_class": "migration_cluster",
+      "write_targets": [
+        "ow_tp_mmp_live.codes",
+        "ow_tp_mmp_live.tenants",
+        "ow_tp_mmp_live.plans",
+        "ow_tp_mmp_live.sequences"
+      ]
+    }
+  ],
+  "breaker_tripped_on": null,
+  "closed": true,
+  "manifest_sha": "5566065a557939b9",
+  "merged_prs": [],
+  "path": "single-session (orchestrator, D-015)",
+  "run_id": "orchestrator-single-session-wave-0",
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "verify": {
+    "findings": [
+      "Fresh live gate for U0-reference passed (counts 3/3, aggregates 6/6, keyed diffs 104/104, merge_eligible=True); the source did not move during the run.",
+      "Key sets, non-null counts and composite code keys for codes, tenants and plans match source exactly, with no duplicate keys and no empty collections.",
+      "All 5 OW_BILLING sequences in DBA_SEQUENCES match the target sequences docs on last_number and increment_by.",
+      "Subscription plan_id/tenant_id and invoices tenant_id references resolve against the migrated plans and tenants.",
+      "All 50 distinct customer/invoice_header tenant_id values are absent from TENANTS in both source and target: a carried-over source property, not a defect.",
+      "Replayed app queries (plan list, default plan, tenant summary, USAGE_KIND lookup) are identical on Oracle and Mongo.",
+      "Harness live output is redacted with unsalted hashes because RECON_REDACT_SALT is not set."
+    ],
+    "report_commit": "73faeab8",
+    "report_path": "recon/wave-0:.migration/recon/wave-0/report.md",
+    "session": "https://partner-workshops.devinenterprise.com/sessions/47ecf8a88f624ad3a5fe71b8b6829820",
+    "unit_verdicts": {
+      "w0-b01": "PASS"
+    },
+    "wave_verdict": "PASS"
+  },
+  "wave": 0,
+  "width": 1,
+  "write_target_overlaps": []
+}

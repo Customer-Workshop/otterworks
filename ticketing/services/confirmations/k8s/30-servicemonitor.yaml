@@ -1,0 +1,30 @@
+# Scrape /actuator/prometheus on the revision pods directly (port 8080 = user container, not the queue-proxy):
+# a plain ClusterIP Service selecting Knative's serving.knative.dev/service label, plus the ServiceMonitor.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-confirmations-metrics
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations-metrics, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector: {serving.knative.dev/service: ${TOKEN}-confirmations}
+  ports: [{name: http-metrics, port: 8080, targetPort: 8080}]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ${TOKEN}-confirmations
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  selector: {matchLabels: {app: ${TOKEN}-confirmations-metrics}}
+  namespaceSelector: {matchNames: ["${TOKEN}-after"]}
+  endpoints:
+    - port: http-metrics
+      path: /actuator/prometheus
+      interval: 15s
+      scrapeTimeout: 10s
+      relabelings:
+        - {sourceLabels: [__meta_kubernetes_pod_label_serving_knative_dev_revision], targetLabel: revision}

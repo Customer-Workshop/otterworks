@@ -1,0 +1,23 @@
+{
+  "name": "order-not-found",
+  "recordedAt": "2026-09-29T01:22:52Z",
+  "source": {
+    "method": "GET",
+    "url": "https://tkt01-before.demo.otterworks.app/api/orders/BO-UNKNOWN0000"
+  },
+  "monolith": {
+    "status": 404,
+    "body": {
+      "message": "BO-UNKNOWN0000",
+      "error": "NOT_FOUND"
+    }
+  },
+  "expected": {
+    "path": "/api/confirmations/BO-UNKNOWN0000",
+    "status": 404,
+    "body": {
+      "error": "NOT_FOUND",
+      "message": "BO-UNKNOWN0000"
+    }
+  }
+}

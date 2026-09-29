@@ -1,0 +1,13 @@
+# The one topic confirmations produces. payment-captured (consumed) is owned by payments.
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: ${TOKEN}-order-confirmed
+  namespace: ${TOKEN}-after
+  labels: {strimzi.io/cluster: ${TOKEN}-kafka, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  partitions: 6
+  replicas: 1
+  config:
+    retention.ms: "604800000"
+    cleanup.policy: delete

@@ -1,0 +1,41 @@
+{
+  "name": "stats-delta",
+  "recordedAt": "2026-09-29T01:22:52Z",
+  "source": {
+    "method": "GET",
+    "url": "https://tkt01-before.demo.otterworks.app/api/stats",
+    "note": "captured before and after the three recorded purchases"
+  },
+  "monolith": {
+    "before": {
+      "ordersTotal": 3,
+      "ordersByStatus": {
+        "CONFIRMED": 3
+      },
+      "paymentsCaptured": 3,
+      "capturedCents": 128508,
+      "ticketsIssued": 6,
+      "confirmationsQueued": 3,
+      "seatsSold": 6,
+      "seatsHeld": 0
+    },
+    "after": {
+      "ordersTotal": 6,
+      "ordersByStatus": {
+        "CONFIRMED": 6
+      },
+      "paymentsCaptured": 6,
+      "capturedCents": 257016,
+      "ticketsIssued": 12,
+      "confirmationsQueued": 6,
+      "seatsSold": 12,
+      "seatsHeld": 0
+    }
+  },
+  "expected": {
+    "ticketsIssuedDelta": 6,
+    "confirmationsQueuedDelta": 3,
+    "confirmationsSentDelta": 0,
+    "note": "confirmations.sent_at stays NULL in the monolith (no mailer runs); confirmationsSent must remain 0"
+  }
+}

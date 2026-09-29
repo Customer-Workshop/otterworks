@@ -1,0 +1,45 @@
+# confirmations' own PostgreSQL (emptyDir; the reset re-seeds). Rendered with envsubst '${TOKEN} ${IMAGE}'.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${TOKEN}-confirmations-db
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations-db, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: ${TOKEN}-confirmations-db}}
+  template:
+    metadata:
+      labels: {app: ${TOKEN}-confirmations-db, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+    spec:
+      containers:
+        - name: postgres
+          image: 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/postgres:16-alpine
+          env:
+            - {name: POSTGRES_DB, value: confirmations}
+            - {name: POSTGRES_USER, value: confirmations}
+            - {name: POSTGRES_PASSWORD, value: confirmations}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          args: ["-c", "max_connections=120", "-c", "shared_buffers=128MB"]
+          ports: [{containerPort: 5432, name: pg}]
+          readinessProbe: {exec: {command: ["pg_isready", "-U", "confirmations", "-d", "confirmations"]}, periodSeconds: 5}
+          livenessProbe: {tcpSocket: {port: 5432}, periodSeconds: 20, failureThreshold: 6}
+          resources:
+            requests: {cpu: 200m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+      volumes:
+        - {name: data, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-confirmations-db
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations-db, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  type: ClusterIP
+  selector: {app: ${TOKEN}-confirmations-db}
+  ports: [{name: pg, port: 5432, targetPort: 5432}]

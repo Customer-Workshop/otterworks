@@ -1,0 +1,18 @@
+# BEFORE deployment on the Oracle source estate: seeded Oracle Database 23ai Free only (oracle-archive
+# chart). Never migrated; `ldm` exits 4 for this namespace. deploy-demo.sh reads source.driver to pick
+# the source chart, everything else here is the usual before-token contract.
+namespace: o28-before
+run_token: o28
+extends: ../manifest.yaml
+migrate: false
+azure: false
+purge: false
+source:
+  driver: oracle
+  connection_env:
+    host: ORACLE_HOST
+    port: ORACLE_PORT
+    database: ORACLE_SERVICE
+    user: ORACLE_USER
+    password: ORACLE_PASSWORD
+  unload_command: []

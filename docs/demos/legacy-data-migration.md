@@ -15,6 +15,44 @@ Architecture and stage semantics: `migration/README.md`. This page is the operat
 | `d24-before` | `otterworks-d24-before` | `D24B` | none | Db2 (`ARCHIVE_STORE=db2`) |
 | `d24-after` | `otterworks-d24-after` | `D24A` (validated rows purged) | `rg-otterworks-d24-after` | Azure SQL (`ARCHIVE_STORE=azuresql`) |
 
+### 1.1 Source estates
+
+The overlay's `source.driver` picks the legacy estate; everything from the unload files on is
+identical (the two drivers emit byte-identical fixed-width records).
+
+| `source.driver` | Stand-in for | Chart | Seeded by | Seed wall time | App reads history from |
+|---|---|---|---|---|---|
+| `db2` (default) | Db2 for z/OS | `infrastructure/helm/db2-archive` | `migration/source/seed/load.sh` | 20–35 min | Db2 (`ARCHIVE_STORE=db2`) |
+| `oracle` | Oracle Exadata | `infrastructure/helm/oracle-archive` (Oracle Database 23ai Free, one StatefulSet, ClusterIP `oracle-archive:1521`, PDB `FREEPDB1`) | chart post-install Job (`migration/source/seed/oracle.py`) | **~70–75 min** (5.3 M rows over SQL*Net from one pod, 4 workers; a re-run is idempotent and takes ~45 s) | BEFORE: nothing (`ARCHIVE_STORE=off`); AFTER: the PostgreSQL target (`ARCHIVE_STORE=postgresql`) |
+
+Oracle tokens in the repo: `o27-*` (first live run, `r20260928153505`) and `o28-*`
+(presenter run). Same tables (`ARCHIVE.RETNPLCY / DOCARCH / FILEAUD`, plus source-side
+`MIGAUDIT.PURGE_AUDIT`), same counts, same MIG-01..07 keys. Two Oracle-specific facts to say
+out loud: `report-service`/`audit-service` have no Oracle reader yet, so the Oracle BEFORE
+tenant runs with the archive feature **off** (the before/after proof is Oracle counts vs the
+AFTER app, not two app windows); and Oracle keeps 9 fraction digits in `TIMESTAMP`, so the
+last three digits of every `TIMESTAMP(12)` read back as `000` (the seed plants them that way,
+so byte parity with Db2 holds).
+
+Querying Oracle directly (counts / purge proof) from the operator workstation:
+
+```bash
+kubectl -n otterworks-o28-after exec -i oracle-archive-0 -- \
+  bash -c 'sqlplus -S "$APP_USER/$APP_USER_PASSWORD@localhost:1521/FREEPDB1"' <<'SQL'
+SET PAGESIZE 200 LINESIZE 200 FEEDBACK OFF
+SELECT 'ARCHIVE.RETNPLCY' t, COUNT(*) n FROM ARCHIVE.RETNPLCY
+UNION ALL SELECT 'ARCHIVE.DOCARCH', COUNT(*) FROM ARCHIVE.DOCARCH
+UNION ALL SELECT 'ARCHIVE.FILEAUD', COUNT(*) FROM ARCHIVE.FILEAUD
+UNION ALL SELECT 'MIGAUDIT.PURGE_AUDIT', COUNT(*) FROM MIGAUDIT.PURGE_AUDIT;
+SELECT SUBSTR(ARCH_KEY,1,5) planted, COUNT(*) n FROM ARCHIVE.DOCARCH WHERE ARCH_KEY LIKE 'MIG%' GROUP BY SUBSTR(ARCH_KEY,1,5) ORDER BY 1;
+EXIT
+SQL
+```
+
+The migration user's credentials are already in the pod's environment (`APP_USER`,
+`APP_USER_PASSWORD`, from Secret `oracle-archive-credentials`), so nothing is copied to the
+workstation or printed. `RAW` columns must be read with `RAWTOHEX(...)`, never selected raw.
+
 Both tenants are ordinary OtterWorks tenants (`scripts/deploy-tenant.sh`) behind the shared
 ingress: `https://t-<token>.otterworks.app` (web), `https://api-t-<token>.otterworks.app` and
 `https://admin-t-<token>.otterworks.app` (admin dashboard; log in with a tenant account -
@@ -91,12 +129,17 @@ make demo-up NS=d24-after  TTL=72h
    S3 bucket `otterworks-ldm-<token>-<account>`, ECR repo `otterworks-demo/<token>/ldm-job`.
 2. **deploy-tenant** — the golden app via `scripts/deploy-tenant.sh <token> --ttl … --host-suffix …`,
    then the demo labels and `demo/expires` annotation on the namespace, and the S3 prefix `<token>/`.
-3. **db2 seed** — Secret `db2-archive-credentials` (generated once, reused on re-run), Helm
+3. **source seed** — `db2`: Secret `db2-archive-credentials` (generated once, reused on re-run), Helm
    release `db2-archive` with `dbName=D24B|D24A` and the static PV, then the seed (chart
    hook when the chart exposes `seed:`, otherwise `migration/source/seed/load.sh`).
-   The seed is idempotent (skip when SHA-256s already match).
-4. **wiring (db2)** — Secret `archive-store-credentials` (`ARCHIVE_STORE=db2`, `DB2_*`,
-   `LDM_S3_*`) fed to `report-service`, `audit-service`, `admin-dashboard`.
+   The seed is idempotent (skip when SHA-256s already match). `oracle`: the
+   `gvenzl/oracle-free:23-slim` image is mirrored into ECR `workshop/otterworks/oracle-free`
+   (digest-checked), Secret `oracle-archive-credentials`, release `oracle-archive` on the same
+   static PV, and the chart's post-install seed Job (`helm --wait --timeout 90m`).
+4. **wiring (source)** — Secret `archive-store-credentials` (`ARCHIVE_STORE=db2`, `DB2_*`,
+   `LDM_S3_*`) fed to `report-service`, `audit-service`, `admin-dashboard`. For `oracle`
+   the app has no reader, so `ARCHIVE_STORE=off` on the BEFORE tenant (the AFTER tenant is
+   re-pointed at PostgreSQL in step 6).
 5. **azure terraform apply** (only when the overlay `migration/manifests/<token>.yaml` has
    `azure: true`) — per-token backend key, a generated var file
    `.demo/<token>/azure.auto.tfvars.json` (no secrets; git-ignored), NAT egress CIDRs,
@@ -116,6 +159,7 @@ Expected (measured on a clean account; fill in your numbers from the timing tabl
 | aws terraform (demo-aws) | ~1 min | ~1 min |
 | deploy-tenant | 6–10 min | 6–10 min |
 | db2 seed (5.3 M rows) | 20–35 min | 20–35 min |
+| oracle seed (5.3 M rows, `source.driver: oracle` overlays only) | 70–75 min | 70–75 min |
 | azure terraform apply | — | 8–12 min (SQL server + ACA env dominate) |
 | wiring | < 1 min | 1–2 min |
 

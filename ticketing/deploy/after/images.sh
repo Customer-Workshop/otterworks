@@ -3,5 +3,5 @@
 # already set in the environment wins.
 : "${ORDERS_IMAGE:=599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/orders:tkt01-cf0e952b}"
 : "${SEATS_IMAGE:=599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/seats:tkt01-134dbe9c}"
-: "${PAYMENTS_IMAGE:=599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/payments:tkt01-f017d40c}"
+: "${PAYMENTS_IMAGE:=599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/payments:tkt01-222164f1}"
 : "${CONFIRMATIONS_IMAGE:=599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/confirmations:tkt01-0da2c6d269ea}"

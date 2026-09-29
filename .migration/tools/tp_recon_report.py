@@ -32,15 +32,6 @@ def _target_counts(db, collections):
     return {name: db[name].count_documents({}) for name in collections}
 
 
-def _tier_checks(tier, coll, expected, actual):
-    return {
-        "id": f"tier{tier['tier']}.{tier['name']}.{coll}",
-        "expected": expected,
-        "actual": actual,
-        "source_of_truth": SOURCE_OF_TRUTH,
-        "result": "pass" if tier["passed"] else "fail",
-    }
-
 
 def _orphan_hashes(db):
     return sorted(
@@ -88,27 +79,121 @@ def main():
     coll_by_root = {c["root_table"].lower(): c["collection"] for c in
                     json.loads((REPO_ROOT / ".migration" / "03_mapping_spec.json").read_text())["collections"]}
 
+    spec_by_coll = {
+        c["collection"]: c
+        for c in json.loads(
+            (REPO_ROOT / ".migration" / "03_mapping_spec.json").read_text()
+        )["collections"]
+    }
+
+    def _check(check_id, expected, actual, passed):
+        return {
+            "id": check_id,
+            "expected": expected,
+            "actual": actual,
+            "source_of_truth": SOURCE_OF_TRUTH,
+            "result": "pass" if passed else "fail",
+        }
+
     checks = []
+    unverified_paths = []
     if result:
         tier1 = next((t for t in result["tiers"] if t["tier"] == 1), None)
+        tier2 = next((t for t in result["tiers"] if t["tier"] == 2), None)
+        tier3 = next((t for t in result["tiers"] if t["tier"] == 3), None)
+        t3_stats = (tier3 or {}).get("stats", {})
+        embeds_graded = t3_stats.get("embeds_graded", {})
+        embed_extras_unchecked = t3_stats.get("embed_extras_unchecked", [])
+        tier2_findings = (tier2 or {}).get("findings") or []
+        tier3_findings = (tier3 or {}).get("findings") or []
+        string_aggs = {
+            s["field"]: len(s.get("stats", [1]))
+            for s in (tier2 or {}).get("stats", {}).get(
+                "string_aggregates_deferred_to_tier3", []
+            )
+        }
+        deferred_fields = (tier2 or {}).get("stats", {}).get(
+            "deferred_to_tier3", []
+        )
         for coll in collections:
             root = next((r for r, c in coll_by_root.items() if c == coll), coll)
-            expected = (
-                tier1["stats"]["source_counts"].get(coll, source_counts.get(root))
-                if tier1
-                else source_counts.get(root)
+            expected_count = (
+                (tier1 or {}).get("stats", {}).get("source_counts", {}).get(coll)
             )
-            actual = target_counts[coll]
-            for tier in result["tiers"]:
-                if tier["tier"] == 3:
-                    stats = tier["stats"].get(coll, {})
+            if expected_count is None:
+                expected_count = source_counts.get(root)
+            actual_count = target_counts[coll]
+            checks.append(
+                _check(
+                    f"tier1.counts_through_mapping.{coll}",
+                    expected_count,
+                    actual_count,
+                    expected_count == actual_count,
+                )
+            )
+            for embed in spec_by_coll.get(coll, {}).get("embeds", []):
+                path = f"{coll}.{embed['array_path']}"
+                child_src = source_counts.get(embed["child_table"].lower())
+                if child_src is not None:
+                    child_src -= sum(
+                        source_counts.get(oc["root_table"].lower(), 0)
+                        for name, oc in spec_by_coll.items()
+                        if name != coll
+                        and oc.get("root_table", "").lower()
+                        == embed["child_table"].lower()
+                    )
+                actual_embeds = embeds_graded.get(path)
+                if actual_embeds is None or child_src is None:
                     checks.append(
-                        _tier_checks(
-                            tier, coll, stats.get("population", expected), actual
+                        {
+                            "id": f"tier1.embedded_count.{path}",
+                            "expected": child_src,
+                            "actual": actual_embeds,
+                            "source_of_truth": SOURCE_OF_TRUTH,
+                            "result": "skipped",
+                        }
+                    )
+                    unverified_paths.append(f"{path}: embed UNGRADED by harness")
+                else:
+                    checks.append(
+                        _check(
+                            f"tier1.embedded_count.{path}",
+                            child_src,
+                            actual_embeds,
+                            child_src == actual_embeds,
                         )
                     )
-                else:
-                    checks.append(_tier_checks(tier, coll, expected, actual))
+            compared = sum(
+                string_aggs.get(f, 1)
+                for f in deferred_fields
+                if f.split(".", 1)[0] == coll
+            )
+            coll_t2_findings = sum(
+                1 for f in tier2_findings if f.get("collection") == coll
+            )
+            checks.append(
+                _check(
+                    f"tier2.per_field_aggregates.{coll}",
+                    compared,
+                    compared - coll_t2_findings,
+                    coll_t2_findings == 0,
+                )
+            )
+            coll_t3_findings = sum(
+                1 for f in tier3_findings if f.get("collection") == coll
+            )
+            checks.append(
+                _check(
+                    f"tier3.keyed_diffs.{coll}",
+                    0,
+                    coll_t3_findings,
+                    coll_t3_findings == 0,
+                )
+            )
+        for path in embed_extras_unchecked:
+            unverified_paths.append(
+                f"{path}: extra-element check skipped (scoped embed, D-012)"
+            )
     else:
         for coll in collections:
             root = (
@@ -163,7 +248,8 @@ def main():
             "unexpected": sorted(set(actual_set) - set(expected_set)),
         },
         "unverified_paths": (
-            (["live recon not yet run"] if args.mode == "fixture" else [])
+            unverified_paths
+            + (["live recon not yet run"] if args.mode == "fixture" else [])
             + (
                 []
                 if result

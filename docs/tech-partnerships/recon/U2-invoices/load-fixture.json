@@ -1,0 +1,72 @@
+{
+  "bulk": {
+    "invoices": {
+      "deleted": 0,
+      "matched": 18750,
+      "modified": 0,
+      "upserted": 0
+    },
+    "quarantine_invoice_line": {
+      "deleted": 0,
+      "matched": 37,
+      "modified": 0,
+      "upserted": 0
+    }
+  },
+  "doc_counts": {
+    "invoices": 18750,
+    "quarantine_invoice_line": 37
+  },
+  "embedded_counts": {
+    "invoices.lines": 149963
+  },
+  "expected_orphan_hashes": [
+    "03317c1f95c605b7",
+    "04bf263aa2feaca0",
+    "0e3e9495b0ada394",
+    "14710a50ea4d5cd6",
+    "1b9d1841d3bb7098",
+    "2004c7e54ae112b7",
+    "27a1be474b76b203",
+    "2ad6d8ab56a98545",
+    "316329da513183a1",
+    "367b2792482e13d2",
+    "3dfb10327f349cb0",
+    "49afc6fd8854ff00",
+    "4bb042b3be974728",
+    "51577cccc17e5643",
+    "552adc217ac52568",
+    "5540550478722d4f",
+    "71feec2b32c6bca8",
+    "7af9af45f441b1a8",
+    "7f20a8a8e2d887cd",
+    "84734be299762f8c",
+    "883437567f5bc1f5",
+    "89bee600fc4a8453",
+    "8c5ba55e75012a94",
+    "8deae9e453d6c6f7",
+    "9610b270bb333e2f",
+    "9e8600ee9d519215",
+    "9f644093eab1eb70",
+    "a2cc7d70844caa16",
+    "bd512bb93e84b8fc",
+    "c21f6fa161ec2c7b",
+    "cde5b31cd14dc225",
+    "d052151fe6369245",
+    "d4fb5f680f5cc014",
+    "d8df32b47b1f95ab",
+    "dc1d7c1953b28eca",
+    "e171b54d99b005d9",
+    "e8f41e8137c82341"
+  ],
+  "finished_utc": "2026-09-29T19:05:29Z",
+  "mode": "fixture",
+  "source_counts": {
+    "invoice_header": 18750,
+    "invoice_line": 150000,
+    "invoice_line_matched": 149963,
+    "invoice_line_orphans": 37
+  },
+  "started_utc": "2026-09-29T19:05:21Z",
+  "unit": "U2-invoices"
+}

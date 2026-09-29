@@ -345,3 +345,49 @@ def test_plan_change_rejects_unknown_plan(monkeypatch):
     )
     assert response.status_code == 400
     assert response.get_json()["error"] == "invalid plan change"
+
+
+def _customer_queries():
+    rows = iter(
+        [
+            [{"cust_id": "c1", "cust_no": "OW-1", "cust_name": "Tenant"}],
+            [{"attr_name": "segment", "attr_value": "smb"}],
+        ]
+    )
+    return lambda sql, params=(): next(rows)
+
+
+def test_readonly_skips_ensure_tenant(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.setenv("BILLING_READONLY", "1")
+    monkeypatch.setattr(
+        facade_module.oracle,
+        "oracle_connect",
+        lambda: (_ for _ in ()).throw(AssertionError("Oracle touched")),
+    )
+    monkeypatch.setattr(facade_module.oracle, "query", _customer_queries())
+    response = app.test_client().get(
+        "/api/v1/billing/customer", headers={"X-User-ID": "t1"}
+    )
+    assert response.status_code == 200
+    assert response.get_json()["cust_no"] == "OW-1"
+
+
+def test_writable_calls_ensure_tenant(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.delenv("BILLING_READONLY", raising=False)
+    calls = []
+
+    def ensure_tenant(connection, tenant_id, email):
+        calls.append(tenant_id)
+
+    monkeypatch.setattr(facade_module.oracle, "ensure_tenant", ensure_tenant)
+    monkeypatch.setattr(
+        facade_module.oracle, "oracle_connect", lambda: FakeConnection()
+    )
+    monkeypatch.setattr(facade_module.oracle, "query", _customer_queries())
+    response = app.test_client().get(
+        "/api/v1/billing/customer", headers={"X-User-ID": "t1"}
+    )
+    assert response.status_code == 200
+    assert calls == ["t1"]

@@ -17,6 +17,7 @@ services:
       ORACLE_USER: ${ORACLE_USER:-ow_billing}
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-ow_billing}
       ORACLE_SERVICE: ${ORACLE_SERVICE:-FREEPDB1}
+      BILLING_READONLY: ${BILLING_READONLY:-0}
       FINANCE_REPORT_DIR: /app/etl/legacy-extra/reports
       USAGE_INTERNAL_TOKEN: ${USAGE_INTERNAL_TOKEN:-ow-usage-local-dev-token}
     volumes:

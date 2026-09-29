@@ -40,7 +40,13 @@ def _admin():
     }
 
 
+def _readonly():
+    return os.getenv("BILLING_READONLY", "").strip().lower() in {"1", "true", "yes"}
+
+
 def _ensure(tenant_id):
+    if _readonly():
+        return
     with oracle.oracle_connect() as connection:
         oracle.ensure_tenant(
             connection,

@@ -27,9 +27,11 @@ spec:
         app.kubernetes.io/name: orders-outbox-relay
     spec:
       terminationGracePeriodSeconds: 30
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: relay
           image: ${IMAGE}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
           ports:
             - name: http
               containerPort: 8080

@@ -29,9 +29,11 @@ spec:
     spec:
       containerConcurrency: 0
       timeoutSeconds: 30
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: orders
           image: ${IMAGE}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
           ports:
             - name: http1
               containerPort: 8080

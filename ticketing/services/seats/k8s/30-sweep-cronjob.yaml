@@ -33,9 +33,11 @@ spec:
             demo.otterworks.app/side: after
         spec:
           restartPolicy: Never
+          securityContext: {runAsNonRoot: true, runAsUser: 70, runAsGroup: 70, seccompProfile: {type: RuntimeDefault}}
           containers:
             - name: sweep
               image: 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/postgres:16-alpine
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
               command: ["wget", "-q", "-O", "-", "-T", "45", "--post-data=", "--header=Content-Type: application/json",
                         "http://${TOKEN}-seats.${TOKEN}-after.svc.cluster.local/api/holds/sweep"]
               resources:

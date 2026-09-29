@@ -1,31 +1,53 @@
 {
   "wave": 1,
-  "decision": "D-011",
-  "execution": "single-session",
-  "width": 1,
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "child_macro": "!mongo_unit_migration",
+  "verify_macro": "!mongo_reconciliation",
+  "breaker_threshold": 3,
   "auto_merge": false,
+  "source_access": "live",
+  "target_access": "migration_cluster",
   "stop_mode": "hard",
+  "decision": "D-015",
   "base_branch": "tp-run/mongodb-20260929T160602Z",
+  "workspace_branch": "migrate/billing/0-setup",
   "mapping": ".migration/03_mapping_spec.json",
   "tolerances": ".migration/02_tolerances.json",
-  "canonicalization": "profiles/oracle.md (mongo-migration plugin)",
-  "fixture_manifest": ".migration/fixtures/oracle-mmpfix.manifest.json",
-  "source": {"family": "oracle", "live_dsn_secret": "OW_TP_ORACLE_RO_DSN", "fixture_dsn_env": "OW_TP_ORACLE_FIXTURE_DSN", "source_concurrency": 1},
-  "target": {"db": "ow_tp_mmp_live", "live_uri_secret": "OW_TP_MMP_TARGET_URI", "fixture_uri_env": "OW_TP_MMP_FIXTURE_URI", "target_class": "migration_cluster"},
-  "live_window": "parent-owned: one live load + one live recon per data unit",
+  "source": {
+    "family": "oracle",
+    "live_dsn_secret": "OW_TP_ORACLE_RO_DSN",
+    "fixture_dsn_env": "OW_TP_ORACLE_FIXTURE_DSN",
+    "source_concurrency": 1
+  },
+  "target": {
+    "db": "ow_tp_mmp_live",
+    "live_uri_secret": "OW_TP_MMP_TARGET_URI",
+    "fixture_uri_env": "OW_TP_MMP_FIXTURE_URI",
+    "target_class": "migration_cluster"
+  },
+  "execution": "in-session (calibration)",
+  "width": 1,
+  "verify": "one fresh session (!mongo_reconciliation), report on recon/billing-wave-1; wave 2 waits for it",
   "batches": [
-    {"unit": "U1-customers", "branch": "migrate/billing/1-U1-customers",
-     "sources": ["CUSTOMER_MASTER", "ENTITY_ATTR_VALUE"],
-     "write_targets": ["ow_tp_mmp_live.customers"]},
-    {"unit": "U2-invoices", "branch": "migrate/billing/1-U2-invoices",
-     "sources": ["INVOICE_HEADER", "INVOICE_LINE"],
-     "write_targets": ["ow_tp_mmp_live.invoices", "ow_tp_mmp_live.quarantine_invoice_line"]},
-    {"unit": "U3-billing-core", "branch": "migrate/billing/1-U3-billing-core",
-     "sources": ["CODES", "TENANTS", "PLANS", "SUBSCRIPTIONS", "SUBSCRIPTIONS_HIST", "USAGE_EVENTS", "RATING_PERIODS", "RATING_RESULTS", "INVOICES", "INVOICE_LINES", "CREDIT_NOTES", "DUNNING_ATTEMPTS", "NOTIFICATIONS", "BILLING_AUDIT_LOG", "DBA_SEQUENCES"],
-     "write_targets": ["ow_tp_mmp_live.codes", "ow_tp_mmp_live.tenants", "ow_tp_mmp_live.plans", "ow_tp_mmp_live.subscriptions", "ow_tp_mmp_live.subscriptions_hist", "ow_tp_mmp_live.usage_events", "ow_tp_mmp_live.rating_periods", "ow_tp_mmp_live.rating_results", "ow_tp_mmp_live.billing_invoices", "ow_tp_mmp_live.credit_notes", "ow_tp_mmp_live.dunning_attempts", "ow_tp_mmp_live.notifications", "ow_tp_mmp_live.billing_audit_log", "ow_tp_mmp_live.sequences"]},
-    {"unit": "U4-app-backend", "branch": "migrate/billing/1-U4-app-backend",
-     "sources": [],
-     "write_targets": [],
-     "note": "code only: BILLING_BACKEND=mongo, pinned driver, Mongo fixture container, compose + CI, parity tests; no live target writes"}
+    {
+      "id": "w1-b01",
+      "units": [
+        "U1-customers"
+      ],
+      "branch": "migrate/billing/1-U1-customers",
+      "loader": ".migration/units/U1-customers/load.py",
+      "sources": [
+        "OW_BILLING.CUSTOMER_MASTER",
+        "OW_BILLING.ENTITY_ATTR_VALUE"
+      ],
+      "write_targets": [
+        "ow_tp_mmp_live.customers"
+      ],
+      "recon_collections": [
+        "customers"
+      ],
+      "fixture_manifest": ".migration/fixtures/oracle-mmpfix.manifest.json",
+      "brief": "Calibration unit (D-015). customers: one doc per CUSTOMER_MASTER row, 155 columns, attributes array keeping duplicate EAV rows ordered by eav_id. Live load + idempotent rerun and live recon (PASS, merge_eligible) already done under D-011 with the current spec (D-013/D-014); carried unchanged. One PR into tp-run/mongodb-20260929T160602Z, then fresh-session reconciliation before wave 2."
+    }
   ]
 }

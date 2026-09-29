@@ -57,6 +57,16 @@ public class FulfilmentRepository {
                 .update();
     }
 
+    public boolean isDelivered(String orderRef) {
+        return jdbc.sql("SELECT COUNT(*) FROM confirmations WHERE order_ref = :ref AND delivered_at IS NOT NULL")
+                .param("ref", orderRef).query(Long.class).single() > 0;
+    }
+
+    public void markDelivered(String orderRef, LocalDateTime at) {
+        jdbc.sql("UPDATE confirmations SET delivered_at = :at WHERE order_ref = :ref AND delivered_at IS NULL")
+                .param("at", Timestamp.valueOf(at)).param("ref", orderRef).update();
+    }
+
     public long countTickets() {
         return jdbc.sql("SELECT COUNT(*) FROM tickets").query(Long.class).single();
     }

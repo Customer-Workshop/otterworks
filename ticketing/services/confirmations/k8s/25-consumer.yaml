@@ -1,0 +1,101 @@
+# The payment-captured consumer: the same image with KAFKA_CONSUMER_ENABLED=true as a plain Deployment scaled 0..6
+# by KEDA on <token>-payment-captured lag (group <token>-confirmations). The Knative revision (20-ksvc.yaml) stays
+# the request-driven fast path (payments POSTs the same event to /events/payment-captured); this consumer is the
+# durable path, so a captured payment reaches a confirmation even while no Knative pod can be scheduled.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${TOKEN}-confirmations-consumer
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations-consumer, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: ${TOKEN}-confirmations-consumer}}
+  template:
+    metadata:
+      labels: {app: ${TOKEN}-confirmations-consumer, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+    spec:
+      terminationGracePeriodSeconds: 45
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: confirmations
+          image: ${IMAGE}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          env:
+            - {name: TOKEN, value: "${TOKEN}"}
+            - {name: DB_HOST, value: ${TOKEN}-confirmations-db}
+            - {name: DB_PORT, value: "5432"}
+            - {name: DB_NAME, value: confirmations}
+            - {name: DB_USER, value: confirmations}
+            - {name: DB_PASSWORD, value: confirmations}
+            - {name: DB_POOL_SIZE, value: "4"}
+            - {name: KAFKA_ENABLED, value: "true"}
+            - {name: KAFKA_CONSUMER_ENABLED, value: "true"}
+            - {name: KAFKA_CONCURRENCY, value: "1"}
+            - {name: KAFKA_BOOTSTRAP, value: ${TOKEN}-kafka-kafka-bootstrap.${TOKEN}-after.svc:9092}
+            - {name: ORDERS_INBOX_URL, value: http://${TOKEN}-orders.${TOKEN}-after.svc.cluster.local/events/order-confirmed}
+            - {name: SEATS_INBOX_URL, value: http://${TOKEN}-seats.${TOKEN}-after.svc.cluster.local/events/order-confirmed}
+            - {name: DELIVERY_TIMEOUT_MS, value: "20000"}
+            - {name: PUBLISH_TIMEOUT_MS, value: "10000"}
+            - {name: JAVA_TOOL_OPTIONS, value: "-XX:MaxRAMPercentage=70 -Djava.security.egd=file:/dev/./urandom -Djava.io.tmpdir=/tmp"}
+          ports: [{containerPort: 8080, name: http}]
+          startupProbe: {httpGet: {path: /actuator/health/liveness, port: http}, periodSeconds: 5, failureThreshold: 36}
+          readinessProbe: {httpGet: {path: /actuator/health/readiness, port: http}, periodSeconds: 10, timeoutSeconds: 3}
+          livenessProbe: {httpGet: {path: /actuator/health/liveness, port: http}, periodSeconds: 20, failureThreshold: 3}
+          resources:
+            requests: {cpu: 250m, memory: 384Mi}
+            limits: {cpu: "1", memory: 768Mi}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+---
+# Scraped by the ServiceMonitor in 30-servicemonitor.yaml (it selects app=${TOKEN}-confirmations-metrics Services).
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-confirmations-consumer-metrics
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations-metrics, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector: {app: ${TOKEN}-confirmations-consumer}
+  ports: [{name: http-metrics, port: 8080, targetPort: 8080}]
+---
+# 0 replicas when idle, one per ~40 lagging records, capped at 6 (= partitions), back to zero within 60s of the
+# topic draining. offsetResetPolicy=earliest so a group without a committed offset yet (fresh reset) still counts
+# pending records as lag; the consumer commits its initial position on assignment (KafkaConsumerConfig).
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ${TOKEN}-confirmations-consumer
+  namespace: ${TOKEN}-after
+  labels: {app: ${TOKEN}-confirmations-consumer, app.kubernetes.io/part-of: ticketing-demo, app.kubernetes.io/component: confirmations, demo.otterworks.app/run-token: "${TOKEN}", demo.otterworks.app/side: after}
+spec:
+  scaleTargetRef:
+    name: ${TOKEN}-confirmations-consumer
+  pollingInterval: 5
+  cooldownPeriod: 60
+  minReplicaCount: 0
+  maxReplicaCount: 6
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{type: Pods, value: 6, periodSeconds: 15}]
+        scaleDown:
+          stabilizationWindowSeconds: 30
+          policies: [{type: Percent, value: 100, periodSeconds: 15}]
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: ${TOKEN}-kafka-kafka-bootstrap.${TOKEN}-after.svc:9092
+        consumerGroup: ${TOKEN}-confirmations
+        topic: ${TOKEN}-payment-captured
+        lagThreshold: "40"
+        activationLagThreshold: "0"
+        offsetResetPolicy: earliest
+        allowIdleConsumers: "false"
+        scaleToZeroOnInvalidOffset: "false"

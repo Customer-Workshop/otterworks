@@ -28,6 +28,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  * written in one local transaction keyed by {@code orderRef}; the seat/hold/order side effects that used to be
  * three UPDATEs on other contexts' tables travel as {@code order-confirmed} to Kafka and to the orders and seats
  * inboxes. A replay for a known {@code orderRef} issues nothing and re-drives the event.
+ *
+ * <p>payment-captured arrives on two paths that converge on the {@code order_ref} unique key: the HTTP inbox
+ * (payments POSTs before committing its offset — the fast path) and the {@code <token>-payment-captured} topic
+ * (the durable path, drained by the KEDA-scaled consumer). The inbox always re-drives on replay (it may be the
+ * retry of a failed delivery); the consumer treats a record whose event already reached Kafka and both inboxes
+ * ({@code delivered_at} set) as a no-op, so a partition replay costs nothing downstream.
  */
 @Service
 public class FulfilmentService {
@@ -44,7 +50,11 @@ public class FulfilmentService {
     private final Counter ordersConfirmed;
     private final Counter replays;
     private final Counter deliveryFailures;
+    private final Counter consumedIssued;
+    private final Counter consumedNoops;
+    private final Counter consumedRedriven;
     private final Timer inboxTimer;
+    private final Timer consumerTimer;
 
     public FulfilmentService(FulfilmentRepository repo, TransactionTemplate tx, OrderConfirmedPublisher publisher,
                              InboxDelivery inboxes, Clock clock, MeterRegistry registry) {
@@ -57,7 +67,11 @@ public class FulfilmentService {
         this.ordersConfirmed = registry.counter("confirmations_orders_confirmed_total");
         this.replays = registry.counter("confirmations_inbox_replays_total");
         this.deliveryFailures = registry.counter("confirmations_delivery_failures_total");
+        this.consumedIssued = registry.counter("confirmations_consumer_records_total", "outcome", "issued");
+        this.consumedNoops = registry.counter("confirmations_consumer_records_total", "outcome", "noop");
+        this.consumedRedriven = registry.counter("confirmations_consumer_records_total", "outcome", "redriven");
         this.inboxTimer = registry.timer("confirmations_inbox_seconds", "event", "payment-captured");
+        this.consumerTimer = registry.timer("confirmations_consumer_seconds", "event", "payment-captured");
     }
 
     /** Result of one inbox request: what is stored, whether it already was, and where the event went. */
@@ -69,11 +83,27 @@ public class FulfilmentService {
         }
     }
 
+    /** HTTP inbox path: a replay re-drives order-confirmed (the caller may be retrying a failed delivery). */
     public Outcome onPaymentCaptured(PaymentCapturedEvent event) {
-        return inboxTimer.record(() -> handle(event));
+        return inboxTimer.record(() -> handle(event, false));
     }
 
-    private Outcome handle(PaymentCapturedEvent event) {
+    /** Kafka path: a redelivered record whose event was already delivered is a no-op. */
+    public Outcome onPaymentCapturedRecord(PaymentCapturedEvent event) {
+        return consumerTimer.record(() -> {
+            Outcome out = handle(event, true);
+            if (!out.replay()) {
+                consumedIssued.increment();
+            } else if (out.topic() == null) {
+                consumedNoops.increment();
+            } else {
+                consumedRedriven.increment();
+            }
+            return out;
+        });
+    }
+
+    private Outcome handle(PaymentCapturedEvent event, boolean skipDeliveredReplay) {
         String ref = event.orderRef();
         Stored stored;
         try {
@@ -85,6 +115,10 @@ public class FulfilmentService {
         }
         if (stored.replay()) {
             replays.increment();
+            if (skipDeliveredReplay && Boolean.TRUE.equals(tx.execute(status -> repo.isDelivered(ref)))) {
+                log.info("orderRef={} already confirmed and delivered; record is a no-op", ref);
+                return new Outcome(stored.confirmation(), stored.tickets(), true, null, Map.of());
+            }
         } else {
             ticketsIssued.increment(stored.tickets().size());
             ordersConfirmed.increment();
@@ -99,6 +133,8 @@ public class FulfilmentService {
             deliveryFailures.increment();
             throw e;
         }
+        LocalDateTime deliveredAt = LocalDateTime.now(clock);
+        tx.executeWithoutResult(status -> repo.markDelivered(ref, deliveredAt));
         log.info("orderRef={} tickets={} replay={} topic={} delivered={}", ref, stored.tickets().size(), stored.replay(), topic, delivered);
         return new Outcome(stored.confirmation(), stored.tickets(), stored.replay(), topic, delivered);
     }

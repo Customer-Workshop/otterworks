@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Deploy (or re-create) the after namespace <token>-after: quota/limits/isolation, the Strimzi KRaft cluster
 # <token>-kafka, the services' databases, the six-partition topics, the four services (Knative orders/seats/
-# confirmations, KEDA-scaled payments and the orders outbox relay), the public Ingress on
+# confirmations, KEDA-scaled payments, the orders outbox relay and the confirmations payment-captured consumer),
+# the public Ingress on
 # <token>-after.demo.otterworks.app and the Grafana dashboard ConfigMap; then waits for everything to be Ready.
 #   usage: deploy/after/deploy.sh <token>          (called by scripts/reset.sh)
 # Images come from images.sh (ORDERS_IMAGE, SEATS_IMAGE, PAYMENTS_IMAGE, CONFIRMATIONS_IMAGE override).
@@ -63,7 +64,7 @@ svc_apply payments/k8s/20-topics.yaml           "${PAYMENTS_IMAGE}"
 svc_apply confirmations/k8s/10-kafka-topic.yaml "${CONFIRMATIONS_IMAGE}"
 kubectl -n "${NS}" wait kafkatopic -l "${TOKEN_LABEL}=${TOKEN}" --for=condition=Ready --timeout=5m
 
-log "4/6 services: Knative orders/seats/confirmations, payments + outbox relay (KEDA), monitors, policies"
+log "4/6 services: Knative orders/seats/confirmations, payments + outbox relay + confirmations consumer (KEDA), monitors, policies"
 svc_apply orders/k8s/30-orders-ksvc.yaml           "${ORDERS_IMAGE}"
 svc_apply orders/k8s/50-monitoring.yaml            "${ORDERS_IMAGE}"
 svc_apply orders/k8s/60-networkpolicy.yaml         "${ORDERS_IMAGE}"
@@ -74,6 +75,7 @@ svc_apply seats/k8s/50-networkpolicy.yaml          "${SEATS_IMAGE}"
 svc_apply confirmations/k8s/20-ksvc.yaml           "${CONFIRMATIONS_IMAGE}"
 svc_apply confirmations/k8s/30-servicemonitor.yaml "${CONFIRMATIONS_IMAGE}"
 svc_apply confirmations/k8s/40-networkpolicy.yaml  "${CONFIRMATIONS_IMAGE}"
+svc_apply_deferring confirmations/k8s/25-consumer.yaml "${CONFIRMATIONS_IMAGE}" ScaledObject
 svc_apply payments/k8s/30-payments.yaml            "${PAYMENTS_IMAGE}"
 svc_apply payments/k8s/40-observability.yaml       "${PAYMENTS_IMAGE}"
 # Deployment/Service first so the image is proven to boot at one replica; the ScaledObject then takes it to 0.
@@ -82,6 +84,7 @@ svc_apply_deferring payments/k8s/35-inbox-relay.yaml "${PAYMENTS_IMAGE}" ScaledO
 kubectl -n "${NS}" rollout status "deploy/${TOKEN}-payments" --timeout=5m
 kubectl -n "${NS}" rollout status "deploy/${TOKEN}-orders-outbox-relay" --timeout=5m
 kubectl -n "${NS}" rollout status "deploy/${TOKEN}-payments-relay" --timeout=5m
+kubectl -n "${NS}" rollout status "deploy/${TOKEN}-confirmations-consumer" --timeout=5m
 svc_apply payments/k8s/50-keda.yaml "${PAYMENTS_IMAGE}"
 apply_deferred ScaledObject
 kubectl -n "${NS}" wait ksvc -l "${TOKEN_LABEL}=${TOKEN}" --for=condition=Ready --timeout=10m

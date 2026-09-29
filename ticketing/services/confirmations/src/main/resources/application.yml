@@ -16,6 +16,22 @@ spring:
     enabled: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP:${TOKEN:tkt01}-kafka-kafka-bootstrap.${TOKEN:tkt01}-after.svc:9092}
+    consumer:
+      group-id: ${TOKEN:tkt01}-confirmations
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: com.boxoffice.confirmations.events.PaymentCapturedEvent
+        spring.json.use.type.headers: false
+        spring.json.trusted.packages: com.boxoffice.confirmations.events
+        max.poll.interval.ms: 300000
+        max.poll.records: 50
+    listener:
+      ack-mode: manual_immediate
+      concurrency: ${KAFKA_CONCURRENCY:1}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -31,6 +47,9 @@ confirmations:
   token: ${TOKEN:tkt01}
   kafka-enabled: ${KAFKA_ENABLED:true}
   topic: ${confirmations.token}-order-confirmed
+  consumer:
+    enabled: ${KAFKA_CONSUMER_ENABLED:false}
+    topic: ${confirmations.token}-payment-captured
   orders-inbox-url: ${ORDERS_INBOX_URL:http://${confirmations.token}-orders.${confirmations.token}-after.svc.cluster.local/events/order-confirmed}
   seats-inbox-url: ${SEATS_INBOX_URL:http://${confirmations.token}-seats.${confirmations.token}-after.svc.cluster.local/events/order-confirmed}
   delivery-timeout-ms: ${DELIVERY_TIMEOUT_MS:5000}

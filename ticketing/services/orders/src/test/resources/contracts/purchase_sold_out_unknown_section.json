@@ -1,0 +1,20 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 1,
+      "email": "contract.orders+soldout@example.test",
+      "quantity": 2,
+      "section": "Z99"
+    }
+  },
+  "response": {
+    "status": 409,
+    "body": {
+      "message": "not enough seats available",
+      "error": "SOLD_OUT"
+    }
+  },
+  "source": "https://tkt01-before.demo.otterworks.app"
+}

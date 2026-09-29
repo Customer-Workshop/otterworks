@@ -1,0 +1,18 @@
+# The one event orders produces (the outbox relay publishes it). Keyed by orderRef, 6 partitions.
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: ${TOKEN}-order-placed
+  namespace: ${TOKEN}-after
+  labels:
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+    demo.otterworks.app/service: orders
+    app.kubernetes.io/part-of: ticketing
+    strimzi.io/cluster: ${TOKEN}-kafka
+spec:
+  partitions: 6
+  replicas: 1
+  config:
+    retention.ms: "86400000"
+    cleanup.policy: delete

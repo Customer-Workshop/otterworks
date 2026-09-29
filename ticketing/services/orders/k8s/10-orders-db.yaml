@@ -1,0 +1,103 @@
+# Dedicated PostgreSQL for the orders service (emptyDir: the reset re-seeds through Flyway on boot).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${TOKEN}-orders-db
+  namespace: ${TOKEN}-after
+  labels:
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+    demo.otterworks.app/service: orders
+    app.kubernetes.io/part-of: ticketing
+    app.kubernetes.io/name: orders-db
+type: Opaque
+stringData:
+  POSTGRES_DB: orders
+  POSTGRES_USER: orders
+  POSTGRES_PASSWORD: orders-synthetic-${TOKEN}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${TOKEN}-orders-db
+  namespace: ${TOKEN}-after
+  labels:
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+    demo.otterworks.app/service: orders
+    app.kubernetes.io/part-of: ticketing
+    app.kubernetes.io/name: orders-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orders-db
+      demo.otterworks.app/run-token: ${TOKEN}
+  template:
+    metadata:
+      labels:
+        demo.otterworks.app/run-token: ${TOKEN}
+        demo.otterworks.app/side: after
+        demo.otterworks.app/service: orders
+        app.kubernetes.io/part-of: ticketing
+        app.kubernetes.io/name: orders-db
+    spec:
+      containers:
+        - name: postgres
+          image: 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/ticketing/postgres:16-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: ${TOKEN}-orders-db
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          args: ["-c", "max_connections=200", "-c", "shared_buffers=128MB"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "orders", "-d", "orders"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "orders", "-d", "orders"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TOKEN}-orders-db
+  namespace: ${TOKEN}-after
+  labels:
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+    demo.otterworks.app/service: orders
+    app.kubernetes.io/part-of: ticketing
+    app.kubernetes.io/name: orders-db
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: orders-db
+    demo.otterworks.app/run-token: ${TOKEN}
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

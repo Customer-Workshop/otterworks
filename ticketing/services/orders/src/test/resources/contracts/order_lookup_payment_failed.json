@@ -1,0 +1,49 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/orders/BO-3RNLJV88U3",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": 17,
+      "order_ref": "BO-3RNLJV88U3",
+      "customer_id": 5014,
+      "performance_id": 1,
+      "hold_id": 17,
+      "delivery_method_id": 1,
+      "promo_code_id": null,
+      "status": "PAYMENT_FAILED",
+      "subtotal_cents": 37800,
+      "fees_cents": 5036,
+      "total_cents": 42836,
+      "channel": "API",
+      "created_at": "2026-09-29 01:25:16.121616",
+      "updated_at": "2026-09-29 01:25:16.121616",
+      "email": "contract.orders+declined@example.test",
+      "event_title": "Static Meridian: The Long Signal Tour",
+      "starts_at": "2026-10-06 20:00:00.0",
+      "venue_name": "Tallowmere Arena",
+      "items": [
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 22,
+          "zone": "Premium",
+          "ticket_code": null
+        },
+        {
+          "price_cents": 18900,
+          "section": "A01",
+          "row_label": "R01",
+          "seat_number": 23,
+          "zone": "Premium",
+          "ticket_code": null
+        }
+      ]
+    }
+  },
+  "source": "https://tkt01-before.demo.otterworks.app"
+}

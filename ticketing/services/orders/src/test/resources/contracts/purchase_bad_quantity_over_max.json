@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 1,
+      "email": "contract.orders+qty9@example.test",
+      "quantity": 9
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "message": "quantity must be 1..8",
+      "error": "BAD_QUANTITY"
+    }
+  },
+  "source": "https://tkt01-before.demo.otterworks.app"
+}

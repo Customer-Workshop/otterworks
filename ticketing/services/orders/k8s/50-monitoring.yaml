@@ -1,0 +1,43 @@
+# Prometheus (namespace monitoring) selects every ServiceMonitor/PodMonitor in the cluster.
+# Knative pods are scraped directly on the user container port (bypassing the queue-proxy, so scrapes
+# do not count as traffic); the relay Deployment through its ClusterIP Service.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ${TOKEN}-orders
+  namespace: ${TOKEN}-after
+  labels:
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+    demo.otterworks.app/service: orders
+    app.kubernetes.io/part-of: ticketing
+    app.kubernetes.io/name: orders
+spec:
+  selector:
+    matchLabels:
+      serving.knative.dev/service: ${TOKEN}-orders
+  podMetricsEndpoints:
+    - port: user-port
+      path: /actuator/prometheus
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ${TOKEN}-orders-outbox-relay
+  namespace: ${TOKEN}-after
+  labels:
+    demo.otterworks.app/run-token: ${TOKEN}
+    demo.otterworks.app/side: after
+    demo.otterworks.app/service: orders
+    app.kubernetes.io/part-of: ticketing
+    app.kubernetes.io/name: orders-outbox-relay
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orders-outbox-relay
+      demo.otterworks.app/run-token: ${TOKEN}
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s

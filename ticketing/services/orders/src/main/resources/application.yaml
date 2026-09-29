@@ -1,0 +1,66 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: orders
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/orders}
+    username: ${DB_USER:orders}
+    password: ${DB_PASSWORD:orders}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:8}
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      acks: all
+      retries: 5
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 20000
+        request.timeout.ms: 10000
+        linger.ms: 5
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: orders
+      token: ${TOKEN:local}
+
+orders:
+  token: ${TOKEN:local}
+  channel: ${ORDERS_CHANNEL:API}
+  seats:
+    base-url: ${SEATS_BASE_URL:http://localhost:8081}
+    connect-timeout: 2s
+    read-timeout: 10s
+  relay:
+    enabled: ${ORDERS_RELAY_ENABLED:false}
+    poll-interval: ${ORDERS_RELAY_POLL_INTERVAL:500ms}
+    batch-size: ${ORDERS_RELAY_BATCH_SIZE:200}
+    send-timeout: 15s
+
+logging:
+  level:
+    root: INFO
+    org.apache.kafka: WARN

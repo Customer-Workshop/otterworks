@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": "{not json"
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "message": "invalid JSON",
+      "error": "BAD_REQUEST"
+    }
+  },
+  "source": "https://tkt01-before.demo.otterworks.app"
+}

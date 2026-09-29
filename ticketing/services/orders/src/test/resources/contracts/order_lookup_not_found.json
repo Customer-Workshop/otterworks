@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/orders/BO-DOESNOTEXIST",
+    "body": null
+  },
+  "response": {
+    "status": 404,
+    "body": {
+      "message": "BO-DOESNOTEXIST",
+      "error": "NOT_FOUND"
+    }
+  },
+  "source": "https://tkt01-before.demo.otterworks.app"
+}

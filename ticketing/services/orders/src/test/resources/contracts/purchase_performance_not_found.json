@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 999,
+      "email": "contract.orders+missing@example.test",
+      "quantity": 2
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": {
+      "message": "performance 999 not found",
+      "error": "NOT_FOUND"
+    }
+  },
+  "source": "https://tkt01-before.demo.otterworks.app"
+}

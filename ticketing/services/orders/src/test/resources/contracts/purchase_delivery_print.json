@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/purchase",
+    "body": {
+      "performanceId": 1,
+      "email": "contract.orders+print@example.test",
+      "quantity": 2,
+      "delivery": "PRINT"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "orderRef": "BO-LPB9ZS5KVY",
+      "status": "CONFIRMED",
+      "totalCents": 42986,
+      "tickets": 2,
+      "paymentOutcome": "APPROVED"
+    }
+  },
+  "source": "https://tkt01-before.demo.otterworks.app"
+}

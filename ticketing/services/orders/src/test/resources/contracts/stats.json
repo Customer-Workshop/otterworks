@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/stats",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "ordersTotal": 17,
+      "ordersByStatus": {
+        "CONFIRMED": 16,
+        "PAYMENT_FAILED": 1
+      },
+      "paymentsCaptured": 16,
+      "capturedCents": 696660,
+      "ticketsIssued": 33,
+      "confirmationsQueued": 16,
+      "seatsSold": 33,
+      "seatsHeld": 0
+    }
+  },
+  "source": "https://tkt01-before.demo.otterworks.app"
+}

@@ -7,6 +7,7 @@ inline at its own call sites (the write-scope guard requires it).
 import argparse
 import json
 import os
+import re
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -92,17 +93,25 @@ def _key_fields(coll):
     return {s: t for s, t in zip(key["source"], targets)}
 
 
+def _key_value(value):
+    if isinstance(value, Decimal):
+        return Int64(value)
+    if isinstance(value, datetime):
+        return value.replace(microsecond=value.microsecond // 1000 * 1000)
+    return value
+
+
 def _doc_key(coll, row, doc):
     key = coll["key"]
     target = key["target"]
     if isinstance(target, str):
-        return {target: row[key["source"][0]]}
+        return {target: _key_value(row[key["source"][0]])}
     if "id_format" in coll:
         rendered = coll["id_format"]
         for src, tgt in zip(key["source"], target):
             rendered = rendered.replace(f"<{tgt}>", str(row[src]))
         return {"_id": rendered}
-    return {s: row[src] for s, src in zip(target, key["source"])}
+    return {s: _key_value(row[src]) for s, src in zip(target, key["source"])}
 
 
 def build_root_docs(coll, rows, embeds=None):
@@ -147,6 +156,10 @@ def build_root_docs(coll, rows, embeds=None):
             | set(embed["key"]["source"])
             | {f["source"] for f in embed["fields"]}
             | set(embed.get("parent_columns_dropped", []))
+            | {
+                token.upper()
+                for token in re.findall(r"[A-Za-z_]\w*", embed.get("child_where", ""))
+            }
         )
         grouped = {}
         for child in child_rows:
@@ -288,6 +301,8 @@ def run_unit(unit_id, load_fn):
     out_dir = REPO_ROOT / ".migration" / "recon" / unit_id
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"load-{args.mode}.json"
+    if out.exists():
+        out.replace(out_dir / f"load-{args.mode}-previous.json")
     out.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
     print(json.dumps({"wrote": str(out), **record}, sort_keys=True))
     return record

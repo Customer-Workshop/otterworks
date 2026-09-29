@@ -1,0 +1,510 @@
+{
+ "autonomous_tx": [
+  {
+   "name": "PKG_OW_UTIL",
+   "type": "PACKAGE BODY"
+  }
+ ],
+ "dependencies": [
+  {
+   "name": "PKG_DUNNING",
+   "referenced_name": "DUNNING_ATTEMPTS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_DUNNING",
+   "referenced_name": "INVOICES",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_DUNNING",
+   "referenced_name": "NOTIFICATIONS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_DUNNING",
+   "referenced_name": "PKG_DUNNING",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_DUNNING",
+   "referenced_name": "PKG_OW_UTIL",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_DUNNING",
+   "referenced_name": "SUBSCRIPTIONS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_DUNNING",
+   "referenced_name": "TENANTS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "CREDIT_NOTES",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "INVOICES",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "INVOICE_LINES",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "PKG_INVOICING",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "PKG_OW_UTIL",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "PKG_RATING",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "PLANS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "SUBSCRIPTIONS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_INVOICING",
+   "referenced_name": "TENANTS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_OW_UTIL",
+   "referenced_name": "BILLING_AUDIT_LOG",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_OW_UTIL",
+   "referenced_name": "PKG_OW_UTIL",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_PLANS",
+   "referenced_name": "PKG_OW_UTIL",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_PLANS",
+   "referenced_name": "PKG_PLANS",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_PLANS",
+   "referenced_name": "PLANS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_PLANS",
+   "referenced_name": "SUBSCRIPTIONS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_PLANS",
+   "referenced_name": "TENANTS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_RATING",
+   "referenced_name": "PKG_OW_UTIL",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_RATING",
+   "referenced_name": "PKG_RATING",
+   "referenced_type": "PACKAGE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_RATING",
+   "referenced_name": "PLANS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_RATING",
+   "referenced_name": "RATING_PERIODS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_RATING",
+   "referenced_name": "RATING_RESULTS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_RATING",
+   "referenced_name": "SUBSCRIPTIONS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "PKG_RATING",
+   "referenced_name": "USAGE_EVENTS",
+   "referenced_type": "TABLE",
+   "type": "PACKAGE BODY"
+  },
+  {
+   "name": "TRG_BILLING_AUDIT_LOG_ID",
+   "referenced_name": "BILLING_AUDIT_LOG",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_BILLING_AUDIT_LOG_ID",
+   "referenced_name": "SEQ_BILLING_AUDIT_LOG",
+   "referenced_type": "SEQUENCE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_CUSTOMER_MASTER_HIST",
+   "referenced_name": "CUSTOMER_MASTER",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_CUSTOMER_MASTER_HIST",
+   "referenced_name": "CUSTOMER_MASTER_HIST",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_CUSTOMER_MASTER_HIST",
+   "referenced_name": "SEQ_CUSTOMER_MASTER_HIST",
+   "referenced_type": "SEQUENCE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_CUSTOMER_MASTER_SEQ",
+   "referenced_name": "CUSTOMER_MASTER",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_CUSTOMER_MASTER_SEQ",
+   "referenced_name": "SEQ_CUSTOMER_MASTER",
+   "referenced_type": "SEQUENCE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_ENTITY_ATTR_VALUE_SEQ",
+   "referenced_name": "ENTITY_ATTR_VALUE",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_ENTITY_ATTR_VALUE_SEQ",
+   "referenced_name": "SEQ_ENTITY_ATTR_VALUE",
+   "referenced_type": "SEQUENCE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_SUBSCRIPTIONS_HIST",
+   "referenced_name": "SEQ_SUBSCRIPTIONS_HIST",
+   "referenced_type": "SEQUENCE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_SUBSCRIPTIONS_HIST",
+   "referenced_name": "SUBSCRIPTIONS",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_SUBSCRIPTIONS_HIST",
+   "referenced_name": "SUBSCRIPTIONS_HIST",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_SUB_NO_UNCANCEL",
+   "referenced_name": "SUBSCRIPTIONS",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_USAGE_EVENTS_CHECK",
+   "referenced_name": "CODES",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  },
+  {
+   "name": "TRG_USAGE_EVENTS_CHECK",
+   "referenced_name": "USAGE_EVENTS",
+   "referenced_type": "TABLE",
+   "type": "TRIGGER"
+  }
+ ],
+ "grants": [],
+ "nls_usage": [],
+ "objects": [
+  {
+   "object_name": "JOB_NIGHTLY_DUNNING",
+   "object_type": "JOB",
+   "status": "VALID"
+  },
+  {
+   "object_name": "JOB_PURGE_AUDIT_LOG",
+   "object_type": "JOB",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_DUNNING",
+   "object_type": "PACKAGE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_INVOICING",
+   "object_type": "PACKAGE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_OW_UTIL",
+   "object_type": "PACKAGE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_PLANS",
+   "object_type": "PACKAGE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_RATING",
+   "object_type": "PACKAGE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_DUNNING",
+   "object_type": "PACKAGE BODY",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_INVOICING",
+   "object_type": "PACKAGE BODY",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_OW_UTIL",
+   "object_type": "PACKAGE BODY",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_PLANS",
+   "object_type": "PACKAGE BODY",
+   "status": "VALID"
+  },
+  {
+   "object_name": "PKG_RATING",
+   "object_type": "PACKAGE BODY",
+   "status": "VALID"
+  },
+  {
+   "object_name": "SEQ_BILLING_AUDIT_LOG",
+   "object_type": "SEQUENCE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "SEQ_CUSTOMER_MASTER",
+   "object_type": "SEQUENCE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "SEQ_CUSTOMER_MASTER_HIST",
+   "object_type": "SEQUENCE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "SEQ_ENTITY_ATTR_VALUE",
+   "object_type": "SEQUENCE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "SEQ_SUBSCRIPTIONS_HIST",
+   "object_type": "SEQUENCE",
+   "status": "VALID"
+  },
+  {
+   "object_name": "TRG_BILLING_AUDIT_LOG_ID",
+   "object_type": "TRIGGER",
+   "status": "VALID"
+  },
+  {
+   "object_name": "TRG_CUSTOMER_MASTER_HIST",
+   "object_type": "TRIGGER",
+   "status": "VALID"
+  },
+  {
+   "object_name": "TRG_CUSTOMER_MASTER_SEQ",
+   "object_type": "TRIGGER",
+   "status": "VALID"
+  },
+  {
+   "object_name": "TRG_ENTITY_ATTR_VALUE_SEQ",
+   "object_type": "TRIGGER",
+   "status": "VALID"
+  },
+  {
+   "object_name": "TRG_SUBSCRIPTIONS_HIST",
+   "object_type": "TRIGGER",
+   "status": "VALID"
+  },
+  {
+   "object_name": "TRG_SUB_NO_UNCANCEL",
+   "object_type": "TRIGGER",
+   "status": "VALID"
+  },
+  {
+   "object_name": "TRG_USAGE_EVENTS_CHECK",
+   "object_type": "TRIGGER",
+   "status": "VALID"
+  }
+ ],
+ "rowid_usage": [],
+ "scheduler_jobs": [
+  {
+   "enabled": "FALSE",
+   "job_name": "JOB_NIGHTLY_DUNNING",
+   "job_type": "PLSQL_BLOCK",
+   "last_start_date": null,
+   "repeat_interval": "FREQ=DAILY;BYHOUR=2;BYMINUTE=0",
+   "run_count": 0,
+   "state": "DISABLED"
+  },
+  {
+   "enabled": "FALSE",
+   "job_name": "JOB_PURGE_AUDIT_LOG",
+   "job_type": "PLSQL_BLOCK",
+   "last_start_date": null,
+   "repeat_interval": "FREQ=DAILY;BYHOUR=3;BYMINUTE=30",
+   "run_count": 0,
+   "state": "DISABLED"
+  }
+ ],
+ "sequences": [
+  {
+   "cache_size": 0,
+   "increment_by": 1,
+   "last_number": 1,
+   "sequence_name": "SEQ_BILLING_AUDIT_LOG"
+  },
+  {
+   "cache_size": 0,
+   "increment_by": 1,
+   "last_number": 125000,
+   "sequence_name": "SEQ_CUSTOMER_MASTER"
+  },
+  {
+   "cache_size": 0,
+   "increment_by": 1,
+   "last_number": 1,
+   "sequence_name": "SEQ_CUSTOMER_MASTER_HIST"
+  },
+  {
+   "cache_size": 1000,
+   "increment_by": 1,
+   "last_number": 11001,
+   "sequence_name": "SEQ_ENTITY_ATTR_VALUE"
+  },
+  {
+   "cache_size": 0,
+   "increment_by": 1,
+   "last_number": 1,
+   "sequence_name": "SEQ_SUBSCRIPTIONS_HIST"
+  }
+ ],
+ "sessions": [],
+ "triggers": [
+  {
+   "status": "ENABLED",
+   "table_name": "BILLING_AUDIT_LOG",
+   "trigger_name": "TRG_BILLING_AUDIT_LOG_ID",
+   "trigger_type": "BEFORE EACH ROW",
+   "triggering_event": "INSERT"
+  },
+  {
+   "status": "ENABLED",
+   "table_name": "CUSTOMER_MASTER",
+   "trigger_name": "TRG_CUSTOMER_MASTER_HIST",
+   "trigger_type": "AFTER EACH ROW",
+   "triggering_event": "UPDATE OR DELETE"
+  },
+  {
+   "status": "ENABLED",
+   "table_name": "CUSTOMER_MASTER",
+   "trigger_name": "TRG_CUSTOMER_MASTER_SEQ",
+   "trigger_type": "BEFORE EACH ROW",
+   "triggering_event": "INSERT"
+  },
+  {
+   "status": "ENABLED",
+   "table_name": "ENTITY_ATTR_VALUE",
+   "trigger_name": "TRG_ENTITY_ATTR_VALUE_SEQ",
+   "trigger_type": "BEFORE EACH ROW",
+   "triggering_event": "INSERT"
+  },
+  {
+   "status": "ENABLED",
+   "table_name": "SUBSCRIPTIONS",
+   "trigger_name": "TRG_SUBSCRIPTIONS_HIST",
+   "trigger_type": "AFTER EACH ROW",
+   "triggering_event": "UPDATE OR DELETE"
+  },
+  {
+   "status": "ENABLED",
+   "table_name": "SUBSCRIPTIONS",
+   "trigger_name": "TRG_SUB_NO_UNCANCEL",
+   "trigger_type": "BEFORE EACH ROW",
+   "triggering_event": "UPDATE"
+  },
+  {
+   "status": "ENABLED",
+   "table_name": "USAGE_EVENTS",
+   "trigger_name": "TRG_USAGE_EVENTS_CHECK",
+   "trigger_type": "BEFORE EACH ROW",
+   "triggering_event": "INSERT"
+  }
+ ],
+ "views": []
+}

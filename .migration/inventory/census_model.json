@@ -1,0 +1,57 @@
+{
+  "yn_domain_customer_master": [
+    0,
+    0,
+    0,
+    0,
+    25000,
+    25000,
+    0,
+    25000
+  ],
+  "yn_domain_invoice_line": [
+    0,
+    120058
+  ],
+  "yn_domain_tenants_plans": [
+    0,
+    0
+  ],
+  "ts_submillisecond": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "line_vs_header_denorm": [
+    149963,
+    0,
+    0,
+    0
+  ],
+  "line_dup_key_full": [
+    0
+  ],
+  "header_invoice_no_distinct": [
+    18750,
+    18750,
+    18750
+  ],
+  "text_date_parse_customer_master": [
+    50,
+    0,
+    0,
+    0,
+    0
+  ],
+  "text_date_parse_invoices": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "codes_count": [
+    32,
+    10
+  ]
+}

@@ -12,3 +12,4 @@
 | D-008 | 2026-09-29 | Org statement guard blocks the plugin's `connectivity_probe.py` (dict-built SQL). Probe run through `.migration/tools/connectivity_probe_oracle.py`, same checks with a literal statement | DECIDED | requester | user: STOP A reply (web, 2026-09-29) |
 | D-009 | 2026-09-29 | Add `legacy_sources` (Oracle secret names and host) to allowed_targets.json so the guard treats any non-read through them as a legacy write | DECIDED | requester | user: STOP A reply (web, 2026-09-29) |
 | D-010 | 2026-09-29 | STOP A approved: tolerances v1, connectivity policy online, D-008, D-009, target principal rescoped. source_access=live, target_access=migration_cluster | DECIDED (hard) | requester | user: STOP A reply (web, 2026-09-29) |
+| D-011 | 2026-09-29 | STOP B proposal: model map-1 (03_mapping_spec.json, inventory/model.md), units U1-U4 in one wave, single session at width 1, fixture `fixtures/oracle-mmpfix.manifest.json` | PENDING (hard) | - | - |

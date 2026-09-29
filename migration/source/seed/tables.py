@@ -103,44 +103,85 @@ def docarch_generated(sizes: Sizes, g: int) -> DocarchRow:
 
 # --- RETNPLCY (§4) ---------------------------------------------------------------------------
 
+RETNPLCY_EFFECTIVE_TS = "2010-01-01-00.00.00.000000000000"
+
+
+@dataclass(frozen=True)
+class RetnplcyRow:
+    policy_code: str
+    policy_desc: str
+    retention_years: int
+    successor_code: str
+    active_flag: str
+    effective_ts: str = RETNPLCY_EFFECTIVE_TS
+
+    @property
+    def disposition_action(self) -> str:
+        if self.policy_code == "PERM":
+            return "PERM"
+        return "REVW" if self.retention_years == 9 else "DEST"
+
+    def record(self) -> bytes:
+        rec = b"".join((
+            ascii_field(self.policy_code, 4),
+            ascii_field(self.policy_desc, 60),
+            comp(self.retention_years, 2),
+            ascii_field(self.successor_code, 4),
+            ascii_field(self.active_flag, 1),
+            ascii_field(self.disposition_action, 4),
+            ascii_field(self.effective_ts, 32),
+            b" " * 21,
+        ))
+        assert len(rec) == 128
+        return rec
+
+
 def retnplcy_record(code: str, desc: str, years: int, successor: str, active: str) -> bytes:
-    action = "PERM" if code == "PERM" else ("REVW" if years == 9 else "DEST")
-    rec = b"".join((
-        ascii_field(code, 4),
-        ascii_field(desc, 60),
-        comp(years, 2),
-        ascii_field(successor, 4),
-        ascii_field(active, 1),
-        ascii_field(action, 4),
-        ascii_field("2010-01-01-00.00.00.000000000000", 32),
-        b" " * 21,
-    ))
-    assert len(rec) == 128
-    return rec
+    return RetnplcyRow(code, desc, years, successor, active).record()
+
+
+def retnplcy_rows() -> list[RetnplcyRow]:
+    return [RetnplcyRow(*row) for row in RETNPLCY_ROWS]
 
 
 def retnplcy_records() -> list[bytes]:
-    return [retnplcy_record(*row) for row in RETNPLCY_ROWS]
+    return [row.record() for row in retnplcy_rows()]
 
 
 # --- FILEAUD (§6) ----------------------------------------------------------------------------
 
+@dataclass(frozen=True)
+class FileaudRow:
+    audit_key: str
+    arch_key: bytes            # 16 bytes exactly as the parent stores them
+    event_type: str
+    event_ts: str              # TIMESTAMP(12) text
+    actor_id: str
+    retention_class: str
+    client_ip: str
+    detail_text: str
+    disposition_code: str = "00"
+
+    def record(self) -> bytes:
+        rec = b"".join((
+            ascii_field(self.audit_key, 20),
+            self.arch_key,
+            ascii_field(self.event_type, 4),
+            ascii_field(self.event_ts, 32),
+            ascii_field(self.actor_id, 12),
+            ascii_field(self.retention_class, 4),
+            ascii_field(self.disposition_code, 2),
+            ascii_field(self.client_ip, 15),
+            ascii_field(self.detail_text, 40),
+            b" " * 15,
+        ))
+        assert len(rec) == 160
+        return rec
+
+
 def fileaud_record(audit_key: str, arch_key: bytes, event_type: str, event_ts: str, actor: str,
                    ret_class: str, client_ip: str, detail: str) -> bytes:
-    rec = b"".join((
-        ascii_field(audit_key, 20),
-        arch_key,
-        ascii_field(event_type, 4),
-        ascii_field(event_ts, 32),
-        ascii_field(actor, 12),
-        ascii_field(ret_class, 4),
-        b"00",
-        ascii_field(client_ip, 15),
-        ascii_field(detail, 40),
-        b" " * 15,
-    ))
-    assert len(rec) == 160
-    return rec
+    return FileaudRow(audit_key, arch_key, event_type, event_ts, actor, ret_class, client_ip, detail).record()
 
 
 def fileaud_key(m: int) -> str:
@@ -149,6 +190,13 @@ def fileaud_key(m: int) -> str:
 
 def fileaud_generated(sizes: Sizes, m: int, s_keys: list[int], ns_keys: list[int]) -> tuple[bytes, DocarchRow, int]:
     """Returns (record, parent row, event seconds). Parent is regenerated from its index."""
+    row, parent, ev_secs = fileaud_generated_row(sizes, m, s_keys, ns_keys)
+    return row.record(), parent, ev_secs
+
+
+def fileaud_generated_row(
+    sizes: Sizes, m: int, s_keys: list[int], ns_keys: list[int]
+) -> tuple[FileaudRow, DocarchRow, int]:
     q = sizes.fileaud_q(m)
     if q < sizes.fileaud_selected:
         parent = docarch_generated(sizes, s_keys[q % len(s_keys)])
@@ -159,13 +207,13 @@ def fileaud_generated(sizes: Sizes, m: int, s_keys: list[int], ns_keys: list[int
     else:
         ev_secs = parent.last_access_secs - pick("FILEAUD", m, 44, YEAR3_SECS)
     event_type = EVENT_TYPES[pick("FILEAUD", m, 3, 6)]
-    rec = fileaud_record(
+    row = FileaudRow(
         fileaud_key(m), parent.arch_key, event_type, ts12(ev_secs, parent.last_access_frac),
         f"U{pick('FILEAUD', m, 5, 10**11):011d}", parent.retention_class,
         f"10.{pick('FILEAUD', m, 45, 256)}.{pick('FILEAUD', m, 46, 256)}.{pick('FILEAUD', m, 47, 254) + 1}",
         f"{event_type} v{parent.version_no}",
     )
-    return rec, parent, ev_secs
+    return row, parent, ev_secs
 
 
 # --- Planted rows (§7) -----------------------------------------------------------------------
@@ -217,19 +265,23 @@ def planted_docarch() -> list[tuple[str, DocarchRow]]:
     return rows
 
 
-def planted_fileaud(mig05_parents: list[DocarchRow]) -> list[bytes]:
+def planted_fileaud_rows(mig05_parents: list[DocarchRow]) -> list[FileaudRow]:
     """The 5 MIG-05 orphan FILEAUD rows (selected; their parents are not)."""
     out = []
     for k in range(1, 6):
         m = k - 1
         parent = mig05_parents[m]
-        out.append(fileaud_record(
+        out.append(FileaudRow(
             f"MIG05-{k:014d}", parent.arch_key, "VIEW", f"2017-05-0{k}-07.00.00.000000000000",
             f"U{pick('PLANTED', m, 5, 10**11):011d}", "FIN7",
             f"10.{pick('PLANTED', m, 45, 256)}.{pick('PLANTED', m, 46, 256)}.{pick('PLANTED', m, 47, 254) + 1}",
             f"VIEW v{parent.version_no}",
         ))
     return out
+
+
+def planted_fileaud(mig05_parents: list[DocarchRow]) -> list[bytes]:
+    return [row.record() for row in planted_fileaud_rows(mig05_parents)]
 
 
 def is_selected_docarch(row: DocarchRow) -> bool:

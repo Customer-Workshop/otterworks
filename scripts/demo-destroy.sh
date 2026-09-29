@@ -6,7 +6,7 @@
 #   scripts/demo-destroy.sh verify <token>        (Makefile demo-verify-clean)
 #
 # Order (§12.1): Azure terraform destroy (when its state or resource group
-# exists) -> helm uninstall migration jobs + db2-archive -> the existing
+# exists) -> helm uninstall migration jobs + db2-archive/oracle-archive -> the existing
 # tenant teardown (scripts/teardown-tenant.sh: namespace, RDS db, IRSA trust)
 # -> delete the S3 prefix -> demo-aws terraform destroy -> VERIFY nothing
 # tagged namespace=<token> survives in AWS, Azure or Kubernetes. Exit 1 if
@@ -111,9 +111,13 @@ helm_rc=0
 if [ "${DRY_RUN}" = "1" ] || kubectl get ns "${NS}" >/dev/null 2>&1; then
   # Migration Jobs are templated, not released: delete by label.
   run kubectl -n "${NS}" delete jobs -l "app.kubernetes.io/part-of=otterworks-ldm" --ignore-not-found --wait=false || helm_rc=$?
-  if [ "${DRY_RUN}" = "1" ] || helm -n "${NS}" status "${DB2_RELEASE}" >/dev/null 2>&1; then
-    run helm -n "${NS}" uninstall "${DB2_RELEASE}" --wait --timeout 10m || helm_rc=$?
-  fi
+  # Whichever source estate the token ran (db2-archive or oracle-archive); both are checked so a
+  # tenant whose overlay changed source.driver after deploy is still cleaned up.
+  for rel in "${DB2_RELEASE}" "${ORACLE_RELEASE}"; do
+    if [ "${DRY_RUN}" = "1" ] || helm -n "${NS}" status "${rel}" >/dev/null 2>&1; then
+      run helm -n "${NS}" uninstall "${rel}" --wait --timeout 10m || helm_rc=$?
+    fi
+  done
   if [ "${DRY_RUN}" != "1" ]; then
     for rel in $(helm -n "${NS}" list -q -l "app.kubernetes.io/part-of=otterworks-ldm" 2>/dev/null); do
       run helm -n "${NS}" uninstall "${rel}" --wait --timeout 5m || helm_rc=$?

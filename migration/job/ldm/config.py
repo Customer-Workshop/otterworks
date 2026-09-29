@@ -36,6 +36,7 @@ OVERLAY_TOP_LEVEL_KEYS = {
     "execution",
     "batch",
     "run_token",
+    "source",
     "target",
     "staging",
 }
@@ -75,8 +76,9 @@ class RecordFormat(_Strict):
 
 
 class SourceConfig(_Strict):
-    driver: str
+    driver: Literal["db2", "oracle"]
     connection_env: SourceConnectionEnv
+    # argv template for the external unloader; empty = ldm's built-in fixed-width writer over the driver
     unload_command: list[str]
     copybook_dir: str
     record_format: RecordFormat

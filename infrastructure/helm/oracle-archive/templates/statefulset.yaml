@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: oracle-archive
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "oracle-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "oracle-archive.annotations" . | nindent 4 }}
+spec:
+  serviceName: oracle-archive
+  replicas: 1
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "oracle-archive.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "oracle-archive.labels" . | nindent 8 }}
+        ldm/role: oracle-server
+      annotations:
+        checksum/ddl: {{ include (print $.Template.BasePath "/configmaps.yaml") . | sha256sum }}
+    spec:
+      terminationGracePeriodSeconds: 120
+      # The image runs as oracle (54321:54321); fsGroup hands it the fresh ext4 volume.
+      securityContext:
+        runAsUser: 54321
+        runAsGroup: 54321
+        fsGroup: 54321
+        fsGroupChangePolicy: OnRootMismatch
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: oracle
+          image: {{ include "oracle-archive.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            # SYS/SYSTEM; the DDL runs as SYSDBA from /container-entrypoint-initdb.d on first start only.
+            - name: ORACLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: ORACLE_SYS_PASSWORD
+            # The migration login in FREEPDB1 (created by the image, granted by ddl/060_grants.sh).
+            - name: APP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: ORACLE_USER
+            - name: APP_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: ORACLE_PASSWORD
+          ports:
+            - name: sqlnet
+              containerPort: {{ .Values.database.port }}
+              protocol: TCP
+          # 0 iff initialisation (incl. the initdb.d DDL) finished and FREEPDB1 is OPEN READ WRITE, so a
+          # pod is Ready only with the schema in place and liveness restarts a hung instance.
+          startupProbe:
+            exec:
+              command: ["/opt/oracle/healthcheck.sh", {{ .Values.database.service | quote }}]
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          readinessProbe:
+            exec:
+              command: ["/opt/oracle/healthcheck.sh", {{ .Values.database.service | quote }}]
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          livenessProbe:
+            exec:
+              command: ["/opt/oracle/healthcheck.sh", {{ .Values.database.service | quote }}]
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /opt/oracle/oradata
+            - name: ddl
+              mountPath: /container-entrypoint-initdb.d
+              readOnly: true
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: ddl
+          configMap:
+            name: oracle-archive-ddl
+            defaultMode: 0555
+        # Oracle's SGA lives in /dev/shm; the container default (64Mi) is too small to open the PDB.
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+        - name: data
+          persistentVolumeClaim:
+            claimName: oracle-archive-data

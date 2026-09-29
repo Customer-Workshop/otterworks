@@ -12,6 +12,7 @@ being killed mid-spike without losing an order, and are back at zero replicas 79
 | | |
 |---|---|
 | Branch | `tkt/tkt01/integration` (PR into `review-base-ticketing`; never `main`) |
+| PR | https://github.com/Cognition-Partner-Workshops/otterworks/pull/1738 |
 | Hosts | `https://tkt01-before.demo.otterworks.app` (monolith), `https://tkt01-after.demo.otterworks.app` (services) |
 | Grafana | `https://grafana.otterworks.app/d/ticketing-onsale-tkt01` (dashboard "Ticketing on-sale — before vs after") |
 | Cluster | EKS `otterworks-dev`, us-east-1; namespaces `tkt01-before` and `tkt01-after` |
@@ -217,7 +218,7 @@ rows, both consumer groups at lag 0; before side 857 = 857 = 857 = 857 with 663 
 
 ### 4.7 Close on the PR (tab 5)
 
-The single PR from `tkt/tkt01/integration` into `review-base-ticketing`: the four services, the deploy and load
+The single PR, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1738, from `tkt/tkt01/integration` into `review-base-ticketing`: the four services, the deploy and load
 scripts, the dashboard, the decomposition note, the two reconciliation reports and this runbook. Scroll to the
 Devin Review comment and read its findings as they stand — nothing was pushed to silence them. Do not merge.
 

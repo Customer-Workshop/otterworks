@@ -1,0 +1,11 @@
+2026-09-29T05:34:38Z pay=1/1 payrelay=1/1 outboxrelay=1/1 confcons=1/1 orders_pods=3 seats_pods=3 conf_pods=1 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+DRAINED at 2026-09-29T05:34:38Z
+2026-09-29T05:35:20Z pay=1/1 payrelay=1/1 outboxrelay=1/1 confcons=1/1 orders_pods=2 seats_pods=2 conf_pods=1 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+2026-09-29T05:35:20Z pay=1/1 payrelay=1/1 outboxrelay=1/1 confcons=1/1 orders_pods=2 seats_pods=2 conf_pods=1 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+2026-09-29T05:35:46Z pay=0/0 payrelay=0/0 outboxrelay=1/1 confcons=0/0 orders_pods=1 seats_pods=1 conf_pods=1 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+2026-09-29T05:35:46Z pay=0/0 payrelay=0/0 outboxrelay=1/1 confcons=0/0 orders_pods=1 seats_pods=1 conf_pods=1 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+2026-09-29T05:35:46Z pay=0/0 payrelay=0/0 outboxrelay=1/1 confcons=0/0 orders_pods=1 seats_pods=1 conf_pods=1 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+2026-09-29T05:36:11Z pay=0/0 payrelay=0/0 outboxrelay=0/0 confcons=0/0 orders_pods=1 seats_pods=1 conf_pods=1 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+2026-09-29T05:36:11Z pay=0/0 payrelay=0/0 outboxrelay=0/0 confcons=0/0 orders_pods=1 seats_pods=1 conf_pods=1 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+2026-09-29T05:36:36Z pay=0/0 payrelay=0/0 outboxrelay=0/0 confcons=0/0 orders_pods=0 seats_pods=1 conf_pods=0 lag_pay=0 lag_conf=0 outbox=0 deliv=0
+ALL_ZERO (seats=1) at 2026-09-29T05:36:36Z

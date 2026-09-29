@@ -1,0 +1,16 @@
+
+GROUP               TOPIC                  PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+tkt01-confirmations tkt01-payment-captured 0          288             288             0               -               -               -
+tkt01-confirmations tkt01-payment-captured 1          278             278             0               -               -               -
+tkt01-confirmations tkt01-payment-captured 2          244             244             0               -               -               -
+tkt01-confirmations tkt01-payment-captured 3          273             273             0               -               -               -
+tkt01-confirmations tkt01-payment-captured 4          303             303             0               -               -               -
+tkt01-confirmations tkt01-payment-captured 5          263             263             0               -               -               -
+
+GROUP           TOPIC              PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+tkt01-payments  tkt01-order-placed 0          288             288             0               -               -               -
+tkt01-payments  tkt01-order-placed 1          278             278             0               -               -               -
+tkt01-payments  tkt01-order-placed 2          244             244             0               -               -               -
+tkt01-payments  tkt01-order-placed 3          273             273             0               -               -               -
+tkt01-payments  tkt01-order-placed 4          303             303             0               -               -               -
+tkt01-payments  tkt01-order-placed 5          263             263             0               -               -               -

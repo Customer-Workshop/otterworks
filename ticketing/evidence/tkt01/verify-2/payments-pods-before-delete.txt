@@ -1,0 +1,6 @@
+tkt01-payments-7765cc5b48-72lcs   1/1   Running   0     49s   10.0.100.67    ip-10-0-100-113.ec2.internal   <none>   <none>
+tkt01-payments-7765cc5b48-bbrsf   1/1   Running   0     38s   10.0.100.83    ip-10-0-100-112.ec2.internal   <none>   <none>
+tkt01-payments-7765cc5b48-dcxdq   1/1   Running   0     38s   10.0.101.72    ip-10-0-101-146.ec2.internal   <none>   <none>
+tkt01-payments-7765cc5b48-j42lm   1/1   Running   0     38s   10.0.101.45    ip-10-0-101-146.ec2.internal   <none>   <none>
+tkt01-payments-7765cc5b48-j5bwb   1/1   Running   0     38s   10.0.100.164   ip-10-0-100-177.ec2.internal   <none>   <none>
+tkt01-payments-7765cc5b48-zpc68   1/1   Running   0     38s   10.0.1.173     ip-10-0-100-241.ec2.internal   <none>   <none>

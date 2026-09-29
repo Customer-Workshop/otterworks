@@ -1,0 +1,54 @@
+{
+  "run_id": "20260929t053124",
+  "token": "tkt01",
+  "finished_at": "2026-09-29T05:35:17.766Z",
+  "test_duration_s": 227,
+  "shape": {
+    "ramp": "60s",
+    "peak_orders_per_minute": 600,
+    "duration": "120s",
+    "rampdown": "30s",
+    "max_vus": 300,
+    "performances": 24,
+    "quantity": 2
+  },
+  "order_key_pattern": "20260929t053124-<side>-<n>",
+  "dropped_iterations": 129,
+  "http_reqs": 3169,
+  "sides": {
+    "before": {
+      "host": "tkt01-before.demo.otterworks.app",
+      "fired": 1520,
+      "accepted": 857,
+      "statuses": {
+        "201": 857,
+        "500": 92,
+        "503": 571
+      },
+      "latency_ms": {
+        "avg": 11023,
+        "p50": 7328,
+        "p90": 29176,
+        "p95": 33449,
+        "p99": 41165,
+        "max": 45637
+      }
+    },
+    "after": {
+      "host": "tkt01-after.demo.otterworks.app",
+      "fired": 1649,
+      "accepted": 1649,
+      "statuses": {
+        "202": 1649
+      },
+      "latency_ms": {
+        "avg": 159,
+        "p50": 45,
+        "p90": 148,
+        "p95": 243,
+        "p99": 3076,
+        "max": 14439
+      }
+    }
+  }
+}

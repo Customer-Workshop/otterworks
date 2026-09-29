@@ -1,0 +1,56 @@
+{
+  "run_id": "20260929t053124",
+  "queried_at": "2026-09-29T05:36:45Z",
+  "before": {
+    "placed": 857,
+    "paid_captured": 857,
+    "payment_rows": 857,
+    "duplicates": 0,
+    "confirmed": 857,
+    "tickets": 1714,
+    "orders_by_status": {
+      "CONFIRMED": 857
+    },
+    "payments_by_status": {
+      "CAPTURED": 857
+    }
+  },
+  "after": {
+    "placed": 1649,
+    "orders_by_status": {
+      "CONFIRMED": 1649
+    },
+    "orders_by_payment_outcome": {
+      "APPROVED": 1649
+    },
+    "order_items_ticketed": 3298,
+    "outbox_total": 1649,
+    "outbox_unpublished": 0,
+    "payment_rows": 1649,
+    "paid_captured": 1649,
+    "duplicates": 0,
+    "payments_by_status": {
+      "CAPTURED": 1649
+    },
+    "duplicate_deliveries_suppressed": 0,
+    "orders_with_suppressed_duplicates": 0,
+    "attempt_rows": 1649,
+    "orders_with_multiple_attempts": 0,
+    "outcome_deliveries": {
+      "CONFIRMATIONS:delivered": 1649
+    },
+    "confirmed": 1649,
+    "confirmations_delivered": 1649,
+    "confirmations_by_status": {
+      "QUEUED": 1649
+    },
+    "tickets": 3298,
+    "seats_sold": 3298,
+    "holds_by_status": {
+      "CONVERTED": 1649
+    },
+    "seats_inbox_by_event": {
+      "order-confirmed": 1649
+    }
+  }
+}

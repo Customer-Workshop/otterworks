@@ -1,0 +1,35 @@
+== tkt01-before
+KIND         NAME             DESIRED   READY
+Deployment   tkt01-db         1         1
+Deployment   tkt01-monolith   1         1
+KSVC   READY   URL
+SCALEDOBJECT   TARGET   MIN   MAX   ACTIVE
+   running pods: 2
+== tkt01-after
+KIND         NAME                                   DESIRED   READY
+Deployment   tkt01-confirmations-00001-deployment   0         <none>
+Deployment   tkt01-confirmations-consumer           0         <none>
+Deployment   tkt01-confirmations-db                 1         1
+Deployment   tkt01-kafka-entity-operator            1         1
+Deployment   tkt01-kafka-kafka-exporter             1         1
+Deployment   tkt01-orders-00001-deployment          0         <none>
+Deployment   tkt01-orders-db                        1         1
+Deployment   tkt01-orders-outbox-relay              0         <none>
+Deployment   tkt01-payments                         0         <none>
+Deployment   tkt01-payments-db                      1         1
+Deployment   tkt01-payments-relay                   0         <none>
+Deployment   tkt01-seats-00001-deployment           1         1
+Deployment   tkt01-seats-db                         1         1
+KSVC                  READY   URL
+tkt01-confirmations   True    http://tkt01-confirmations.tkt01-after.svc.cluster.local
+tkt01-orders          True    http://tkt01-orders.tkt01-after.svc.cluster.local
+tkt01-seats           True    http://tkt01-seats.tkt01-after.svc.cluster.local
+SCALEDOBJECT                   TARGET                         MIN   MAX   ACTIVE
+tkt01-confirmations-consumer   tkt01-confirmations-consumer   0     6     False
+tkt01-orders-outbox-relay      tkt01-orders-outbox-relay      0     1     False
+tkt01-payments                 tkt01-payments                 0     6     False
+tkt01-payments-relay           tkt01-payments-relay           0     2     False
+   running pods: 8
+== pod IP capacity
+   us-east-1a: 9 free /28 pod-IP block(s)  cni 10.0.1.0/24 free_ips=201 free_/28=9, node 10.0.100.0/24 free_ips=67 free_/28=0
+   us-east-1b: 20 free /28 pod-IP block(s)  cni 10.0.2.0/24 free_ips=250 free_/28=13, node 10.0.101.0/24 free_ips=184 free_/28=7

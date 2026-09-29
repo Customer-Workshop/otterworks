@@ -1,0 +1,15 @@
+reset_start=2026-09-29T05:03:03Z
+reset_exit=1 at 2026-09-29T05:17:04Z
+cert_ratelimit_note=deploy.sh 6/6 timed out on certificate/tkt01-after-tls (LE 429 rateLimited, exact-identifier set, retry after 2026-09-30T12:14Z); ingress-nginx default *.demo.otterworks.app wildcard serves both hosts (verify=0), so the rest of deploy.sh (wait_http x3) + load/seed.sh were run by hand at 2026-09-29T05:18:31Z
+seed_start=2026-09-29T05:18:46Z
+seed_exit=0 at 2026-09-29T05:20:29Z
+at_rest_status=2026-09-29T05:23:26Z
+onsale_launch_noop=(first launch aborted before creating the k6 Job: shell lacked AWS creds; nothing fired)
+onsale_exit=253 at 2026-09-29T05:25:48Z
+onsale_start=2026-09-29T05:31:21Z
+pod_deleted=tkt01-payments-7765cc5b48-72lcs at 2026-09-29T05:33:11Z
+onsale_exit=0 at 2026-09-29T05:35:23Z
+spike_end(k6 finished_at)=2026-09-29T05:35:17Z
+drain_all_zero_first_row_after_spike_end=2026-09-29T05:35:20Z
+all_services_zero_except_seats=2026-09-29T05:36:36Z (payments deploy scaled 1->0 at 05:35:42Z per ReplicaSet event)
+final_status=2026-09-29T05:43:36Z

@@ -24,7 +24,7 @@ Wave results: `waves/wave-{0,1,2}.result.json`, briefs `waves/wave-{0,1,2}.brief
 None. The source has no writers other than legacy-billing (DEP-1) and was held static for the whole engagement (every recount equals the baseline). There is no live-write delta to observe, so a parallel-run window was not run (D-020, confirmed at STOP C).
 
 ## 4. Watermark recon
-Watermark W = the source state equal to `baseline/oracle_counts.json`, verified by a read-only recount. The full recon gate across U0-U4 at W, plus the independent audit, is in `recon/cutover-audit:.migration/recon/cutover/audit.md` (D-021). The customer re-verifies W at freeze (runbook step F2); any drift means a delta reload before repoint.
+Watermark W = the source state equal to `baseline/oracle_counts.json`, verified by a read-only recount. W = 2026-09-29T20:14:55Z. Full recon gate across U0-U4 at W: PASS; independent audit: PASS, countersigned (`recon/cutover-audit:.migration/recon/cutover/audit.md` @ 70a87880, D-022). The customer re-verifies W at freeze (runbook step F2); any drift means a delta reload before repoint.
 
 ## 5. Business-logic track
 | Legacy object | Mongo path | Evidence |
@@ -50,7 +50,7 @@ Every legacy-billing path repoints. The only legacy consumer that does not repoi
 | OI-4 | `RECON_REDACT_SALT` not provisioned; live artifacts use unsalted hashes | Accepted: artifacts hold aggregates only; provision a salt for future runs |
 | OI-5 | Empty `_connectivity_probe` collection left in `ow_tp_mmp_live` from the STOP A probe | Harmless; customer may drop it after cutover |
 | OI-6 | `02_tolerances.md` named the quarantine collection in plural | Doc typo fixed; `02_tolerances.json` was always authoritative |
-| OI-7 | compose hardcoded `BILLING_BACKEND: oracle` for legacy-billing; 3 ruff issues in U4 test files | Fixed on #1746 (compose passes `BILLING_BACKEND`, `BILLING_MONGO_URI`, `BILLING_MONGO_DB` through; defaults unchanged) |
+| OI-7 | compose hardcoded `BILLING_BACKEND: oracle` for legacy-billing; 3 ruff issues in U4 test files | Fixed on #1746 from head 34d40006 (compose passes `BILLING_BACKEND`, `BILLING_MONGO_URI`, `BILLING_MONGO_DB` through; defaults unchanged) |
 | OI-8 | No PR is merged yet (hard mode, auto_merge=false) | Merge order in the runbook section M; required before post-STOP C verification |
 
 ## 7. Dependency register

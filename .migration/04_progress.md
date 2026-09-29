@@ -13,3 +13,4 @@
 | w2-b01 U2-invoices (+quarantine) | PASS, merge_eligible=false (D-012 scoped-embed warning only) | 18,750 invoices, 149,963 embedded lines, 168,750 keyed rows | 37/37 orphans quarantined | - | 3.49 ACU | #1745 |
 | w2-b02 U3-billing-core | PASS, merge-eligible | T1 11 / T2 28 / T3 901 | - | subscriptions_hist, billing_audit_log empty in source | 3.54 ACU | #1744 |
 | w2-b03 U4-app-backend | PASS, merge-eligible | fixture + live recon PASS; app queries Oracle = Mongo | - | 3 lint issues in test files (not CI-gated) | 21.34 ACU | #1746 |
+| cutover prep: watermark recon + independent audit | PASS, countersigned (D-022); STOP C posted (hard) | W 2026-09-29T20:14:55Z recount = baseline; U0-U4 live gates PASS | 37/37 | findings F1-F6 non-blocking | 3.83 ACU | #1740-#1746 unmerged |

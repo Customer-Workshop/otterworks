@@ -3,11 +3,11 @@
 # (aws ecr-public get-login-password | docker login public.ecr.aws) and reuse the pulled layers.
 FROM public.ecr.aws/docker/library/maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
-COPY docker/maven-settings.xml /root/.m2/settings.xml
+COPY docker/maven-settings.xml /build/maven-settings.xml
 COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 mvn -B -q -DskipTests dependency:go-offline || true
+RUN --mount=type=cache,target=/root/.m2 mvn -B -q -s /build/maven-settings.xml -DskipTests dependency:go-offline || true
 COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 mvn -B -q -DskipTests package && cp target/seats-*.jar /build/app.jar
+RUN --mount=type=cache,target=/root/.m2 mvn -B -q -s /build/maven-settings.xml -DskipTests package && cp target/seats.jar /build/app.jar
 
 FROM public.ecr.aws/docker/library/eclipse-temurin:21-jre-alpine
 RUN addgroup -S seats && adduser -S -G seats -h /app seats

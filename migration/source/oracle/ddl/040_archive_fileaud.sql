@@ -1,0 +1,26 @@
+-- ARCHIVE.FILEAUD: access / disposition events, child of DOCARCH. Logical layout: FILEAUD.cpy, LRECL 160.
+-- Range-partitioned by EVENT_TS per calendar year, as an Exadata-era audit table would be: the selection cutoff
+-- (EVENT_TS < 2019-01-01) prunes to the closed partitions, and the purge only touches those.
+-- The PK is global so the deletion-count guard sees one row per AUDIT_KEY across partitions.
+WHENEVER SQLERROR EXIT SQL.SQLCODE
+ALTER SESSION SET CONTAINER = FREEPDB1;
+
+CREATE TABLE ARCHIVE.FILEAUD (
+    AUDIT_KEY           CHAR(20)       NOT NULL,
+    ARCH_KEY            CHAR(16)       NOT NULL,
+    EVENT_TYPE          CHAR(4)        NOT NULL,
+    EVENT_TS            TIMESTAMP(9)   NOT NULL,
+    ACTOR_ID            CHAR(12)       NOT NULL,
+    RETENTION_CLASS     CHAR(4)        NOT NULL,
+    DISPOSITION_CODE    CHAR(2)        NOT NULL,
+    CLIENT_IP           CHAR(15)       NOT NULL,
+    DETAIL_TEXT         VARCHAR2(40)   NOT NULL,
+    CONSTRAINT PK_FILEAUD PRIMARY KEY (AUDIT_KEY),
+    CONSTRAINT FK_FILEAUD_DOCARCH FOREIGN KEY (ARCH_KEY) REFERENCES ARCHIVE.DOCARCH (ARCH_KEY)
+)
+PARTITION BY RANGE (EVENT_TS) INTERVAL (NUMTOYMINTERVAL(1, 'YEAR')) (
+    PARTITION P_PRE2010 VALUES LESS THAN (TIMESTAMP '2010-01-01 00:00:00')
+);
+
+CREATE INDEX ARCHIVE.IX_FILEAUD_PARENT ON ARCHIVE.FILEAUD (ARCH_KEY) LOCAL;
+CREATE INDEX ARCHIVE.IX_FILEAUD_SELECT ON ARCHIVE.FILEAUD (RETENTION_CLASS, EVENT_TS) LOCAL;

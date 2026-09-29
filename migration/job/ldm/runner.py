@@ -94,7 +94,19 @@ def make_source(loaded: LoadedManifest, env: Mapping[str, str]) -> SourceDriver:
             user=env[ce.user],
             password=env[ce.password],
         )
-    raise ConfigError(f"source.driver {src.driver!r} has no driver in this build (known: db2)")
+    if src.driver == "oracle":
+        from .drivers.oracle import OracleSource
+
+        ce = src.connection_env
+        require_env(dict(env), [ce.host, ce.port, ce.database, ce.user, ce.password], "source oracle")
+        return OracleSource(
+            host=env[ce.host],
+            port=env[ce.port],
+            service=env[ce.database],
+            user=env[ce.user],
+            password=env[ce.password],
+        )
+    raise ConfigError(f"source.driver {src.driver!r} has no driver in this build (known: db2, oracle)")
 
 
 def make_target(loaded: LoadedManifest, env: Mapping[str, str]) -> TargetDriver:

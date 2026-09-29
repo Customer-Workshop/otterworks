@@ -10,12 +10,17 @@ from ..errors import LdmError, PurgeGuardError, SourceError
 _sleep = time.sleep
 
 # Source SQLSTATEs for which the rolled-back batch is retried: 57011 transaction log full (Db2 SQL0964C),
-# 57033 lock timeout without automatic rollback, 40001 deadlock / lock-timeout rollback.
+# 57033 lock timeout without automatic rollback, 40001 deadlock / lock-timeout rollback. A driver that knows
+# better (Oracle: ORA-01555 / ORA-00060 / ORA-30036, no SQLSTATE from the client) sets SourceError.transient.
 TRANSIENT_SOURCE_SQLSTATES = frozenset({"57011", "57033", "40001"})
 
 
 def is_transient(e: LdmError) -> bool:
-    return isinstance(e, SourceError) and e.sqlstate in TRANSIENT_SOURCE_SQLSTATES
+    if not isinstance(e, SourceError):
+        return False
+    if e.transient is not None:
+        return e.transient
+    return e.sqlstate in TRANSIENT_SOURCE_SQLSTATES
 
 
 def _purge_batch_with_retry(ctx: RunContext, ts: TableSpec, chunk: list[str], batch_no: int) -> int:
@@ -34,7 +39,7 @@ def _purge_batch_with_retry(ctx: RunContext, ts: TableSpec, chunk: list[str], ba
                 raise
             delay = min(m.batch.purge_retry_backoff_s * 2**attempt, m.batch.purge_retry_max_backoff_s)
             ctx.log.warn(
-                f"batch {batch_no} rolled back by source (SQLSTATE={e.sqlstate}); "
+                f"batch {batch_no} rolled back by source (SQLCODE={e.sqlcode} SQLSTATE={e.sqlstate}); "
                 f"retry {attempt + 1}/{attempts} in {delay:g}s",
                 ts.name,
             )

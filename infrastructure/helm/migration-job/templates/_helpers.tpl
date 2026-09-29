@@ -41,3 +41,10 @@ demo/expires: {{ required "expires is required (YYYY-MM-DDTHH:MM:SSZ)" .Values.e
 app.kubernetes.io/name: {{ .Chart.Name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{/* Validated manifest source.driver: db2 | oracle. */}}
+{{- define "migration-job.sourceDriver" -}}
+{{- $d := .Values.sourceDriver | default "db2" -}}
+{{- if not (has $d (list "db2" "oracle")) -}}{{- fail (printf "sourceDriver %q must be db2 or oracle" $d) -}}{{- end -}}
+{{- $d -}}
+{{- end -}}

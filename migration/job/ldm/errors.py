@@ -34,12 +34,17 @@ class PurgeGuardError(LdmError):
 
 
 class SourceError(LdmError):
-    """A Db2 (or other source) error. The message always starts with 'SQLCODE=<n> SQLSTATE=<s>: '."""
+    """A Db2 / Oracle (or other source) error. The message always starts with 'SQLCODE=<n> SQLSTATE=<s>: '.
 
-    def __init__(self, sqlcode: int | None, sqlstate: str | None, text: str):
+    `transient` is the driver's own verdict on whether a rolled-back batch may be retried; None leaves the decision
+    to the SQLSTATE table in stages.purge (drivers whose client library does not report a SQLSTATE set it).
+    """
+
+    def __init__(self, sqlcode: int | None, sqlstate: str | None, text: str, transient: bool | None = None):
         self.sqlcode = sqlcode
         self.sqlstate = sqlstate
         self.text = text
+        self.transient = transient
         super().__init__(f"SQLCODE={sqlcode if sqlcode is not None else '?'} SQLSTATE={sqlstate or '?????'}: {text}")
 
 
